@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>arminer Studio — Khai Phá Báo Cáo Thường Niên</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <span class="brand-badge">ARMINER</span>
+        <div>
+          <h1 class="brand-title">Hệ Thống Khai Phá Báo Cáo Thường Niên DN Việt Nam</h1>
+          <p class="brand-subtitle">Kho Dữ Liệu Báo Cáo Thường Niên Zenodo (13,982 file | 1,421 mã chứng khoán | 2000-2025)</p>
+        </div>
+      </div>
+      <div class="header-status">
+        <span class="status-dot"></span>
+        <span id="headerStatText">Zenodo Catalog: 1,421 Mã CK | 13,982 Báo Cáo</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-catalog">
+        <span>Báo cáo thường niên</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-dictionary">
+        <span>Từ điển</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-financial">
+        <span>Báo cáo tài chính</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-upload">
+        <span>Tải báo cáo</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-results">
+        <span>Kết quả</span>
+      </button>
+    </nav>
+
+    <!-- ===================================================================
+         TAB 1: CATALOG & MINING (ZENODO DATASET)
+         =================================================================== -->
+    <section id="tab-catalog" class="tab-panel active">
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Kho Báo Cáo Thường Niên Zenodo (13,982 Báo Cáo)</h2>
+            <p class="card-desc">Lọc theo mã cổ phiếu, phân ngành ICB và khoảng thời gian. Chọn các báo cáo cần nghiên cứu và bấm "Khai Phá".</p>
+          </div>
+        </div>
+
+        <!-- Filter controls in clean grid -->
+        <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) 130px;">
+          <div class="form-group">
+            <label class="form-label">Mã Cổ Phiếu:</label>
+            <input type="text" id="catTickerInput" class="form-input" placeholder="VCB, BID, FPT...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ngành Cấp 1 (ICB L1):</label>
+            <select id="catSectorL1" class="form-select">
+              <option value="">Tất cả ngành (L1)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phân ngành Cấp 2 (ICB L2):</label>
+            <select id="catSectorL2" class="form-select">
+              <option value="">Tất cả phân ngành (L2)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Từ năm:</label>
+            <input type="number" id="catYearFrom" class="form-input tabular" value="2000" min="2000" max="2025">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Đến năm:</label>
+            <input type="number" id="catYearTo" class="form-input tabular" value="2025" min="2000" max="2025">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Hiển thị:</label>
+            <select id="catLimitSelect" class="form-select">
+              <option value="500">500 dòng</option>
+              <option value="1000">1,000 dòng</option>
+              <option value="2000">2,000 dòng</option>
+              <option value="0">Tất cả kết quả</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="align-self: flex-end;">
+            <button id="btnSearchCatalog" class="btn btn-primary" style="width: 100%;">
+              <span>Tìm Kiếm</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick selection bar -->
+        <div class="quick-toolbar">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button id="btnQuickSelect20" class="btn btn-secondary btn-sm">Chọn 20 Báo Cáo Đầu</button>
+            <button id="btnSelectAllVisible" class="btn btn-secondary btn-sm">Chọn Toàn Bộ Đang Hiển Thị</button>
+            <button id="btnSelectAllMatched" class="btn btn-secondary btn-sm" style="font-weight: 600; color: var(--brand-primary); background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.3);">Chọn Toàn Bộ Khớp Bộ Lọc</button>
+            <button id="btnClearSelection" class="btn btn-secondary btn-sm">Bỏ Chọn Tất Cả</button>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary);" id="catalogResultSummary">
+            <!-- Dynamic count -->
+          </div>
+        </div>
+
+
+        <!-- Sticky Action Bar for Selected Reports -->
+        <div class="action-banner">
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;">
+              <input type="checkbox" id="chkSelectAll" class="custom-chk">
+              <span>Chọn tất cả đang hiển thị</span>
+            </label>
+            <span style="color: var(--text-muted);">|</span>
+            <span id="selectedCountLabel" style="font-weight: 600; color: var(--brand-primary);">Đã chọn: 0 báo cáo</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- Cấu trúc phân cấp thư mục file ZIP -->
+            <select id="catZipStructure" class="form-select" style="padding: 6px 10px; font-size: 13px;" title="Cấu trúc phân cấp thư mục trong file ZIP">
+              <option value="ticker">Phân thư mục theo Mã CK (Mã CK / Tên file)</option>
+              <option value="sector">Phân thư mục theo Ngành (Ngành / Mã CK / Tên file)</option>
+              <option value="year">Phân thư mục theo Năm (Năm / Mã CK / Tên file)</option>
+            </select>
+
+            <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Tự động xóa file PDF đệm sau khi nén ZIP để tránh tốn dung lượng ổ đĩa">
+              <input type="checkbox" id="chkZipCleanupCache">
+              <span>Xóa file đệm sau khi nén</span>
+            </label>
+
+            <!-- Nút Tải Về File Gốc .zip -->
+            <button id="btnDownloadSelectedZip" class="btn btn-secondary" disabled title="Tải về toàn bộ file PDF gốc đã chọn và tự động nén ZIP phân thư mục">
+              <span id="btnZipText">Tải Về File Gốc (.zip)</span>
+            </button>
+
+            <button id="btnClearZenodoCache" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 8px;" title="Xóa toàn bộ file PDF đệm trong thư mục zenodo_cache để giải phóng dung lượng ổ đĩa">
+              Dọn Dẹp Cache
+            </button>
+
+            <span style="color: var(--text-muted);">|</span>
+
+            <span style="font-size: 13px; color: var(--text-secondary);">Bộ từ điển:</span>
+            <select id="catTopicSelect" class="form-select" style="padding: 6px 10px; font-size: 13px;">
+              <option value="blockchain">Blockchain &amp; Web3 (55 từ)</option>
+              <option value="esg">ESG &amp; Phát triển bền vững (36 từ)</option>
+              <option value="fintech">Fintech &amp; Ngân hàng số (29 từ)</option>
+            </select>
+
+            <button id="btnExecuteSelectedScan" class="btn btn-primary" disabled>
+              <span id="btnScanText">Khai Phá Báo Cáo Đã Chọn</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mining Progress Bar (hidden by default) -->
+        <div id="miningProgressContainer" class="mining-progress-container" style="display: none;">
+          <div class="mining-progress-header">
+            <span id="miningProgressPhase" class="mining-progress-phase">Đang chuẩn bị...</span>
+            <span id="miningProgressPct" class="mining-progress-pct">0%</span>
+          </div>
+          <div class="mining-progress-track">
+            <div id="miningProgressBar" class="mining-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div class="mining-progress-detail">
+            <span id="miningProgressMsg">Đang khởi tạo...</span>
+            <span id="miningProgressCount"></span>
+          </div>
+        </div>
+
+        <!-- Table of Catalog Reports -->
+        <div class="table-wrapper" style="max-height: 520px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;"></th>
+                <th style="width: 85px;">Mã CK</th>
+                <th style="width: 65px;">Năm</th>
+                <th style="width: 240px;">Ngành (ICB L1 / L2)</th>
+                <th>Tên File Báo Cáo</th>
+                <th style="width: 120px; text-align: center;">Giai Đoạn</th>
+                <th style="width: 100px; text-align: right;">Dung Lượng</th>
+              </tr>
+            </thead>
+            <tbody id="catalogTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                  Đang tải danh mục báo cáo từ kho Zenodo...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ===================================================================
+         TAB 2: DICTIONARY STUDIO (Full CRUD)
+         =================================================================== -->
+    <section id="tab-dictionary" class="tab-panel">
+      <div class="grid-split">
+        <!-- Sidebar: Dictionary List & Add Keyword -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom: 12px;">Chọn Bộ Từ Điển</h3>
+            <div class="form-group" style="margin-bottom: 12px;">
+              <select id="dictSelectTopic" class="form-select"></select>
+            </div>
+            <button id="btnCreateNewTopic" class="btn btn-secondary btn-sm" style="width: 100%;">
+              Tạo Bộ Từ Điển Mới
+            </button>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom: 12px;">Thêm Từ Khóa Mới</h3>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label">Thuật ngữ / Từ khóa:</label>
+              <input type="text" id="newKwInput" class="form-input" placeholder="Ví dụ: hợp đồng thông minh">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label">Nhóm phân loại (Category):</label>
+              <input type="text" id="newKwCategory" class="form-input" placeholder="Ví dụ: core, finance, legal...">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label">Trọng số (Weight):</label>
+              <input type="number" id="newKwWeight" class="form-input" value="1.0" step="0.1" min="0.1" max="5.0">
+            </div>
+
+            <button id="btnAddKeyword" class="btn btn-primary" style="width: 100%;">
+              Thêm Vào Từ Điển
+            </button>
+          </div>
+        </div>
+
+        <!-- Main: Keywords Table with Filter & Actions -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title" id="dictCurrentTitle">Từ Điển</h2>
+              <p class="card-desc" id="dictCurrentSubtitle">Quản lý, thêm mới, chỉnh sửa và xóa từ khóa theo mục đích nghiên cứu</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="dictSearchKw" class="form-input" placeholder="Lọc từ khóa..." style="padding: 4px 8px; font-size: 12px;">
+            </div>
+          </div>
+
+          <!-- Category filter pills -->
+          <div id="dictCategoryPills" class="pill-group"></div>
+
+          <!-- Table of keywords -->
+          <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th>Từ Khóa (Keyword)</th>
+                  <th style="width: 140px;">Nhóm (Category)</th>
+                  <th style="width: 90px; text-align: right;">Trọng số</th>
+                  <th style="width: 130px; text-align: right;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="dictTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         TAB: FINANCIAL DATA (vnfinancialdata)
+         =================================================================== -->
+    <section id="tab-financial" class="tab-panel">
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Dữ Liệu Báo Cáo Tài Chính (BCTC)</h2>
+            <p class="card-desc">Truy vấn đầy đủ 702 chỉ tiêu tài chính của DN niêm yết Việt Nam (Balance Sheet, Income Statement, Cash Flow) -- dữ liệu từ <code>vnfinancialdata</code>.</p>
+          </div>
+          <div id="finStatusBadge" style="font-size: 12px;"></div>
+        </div>
+
+        <!-- Dataset metadata -->
+        <div id="finMetadataPanel" style="display: none; padding: 0 20px 12px 20px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-muted);">
+            <span id="finMetaRevision"></span>
+            <span id="finMetaSchema"></span>
+            <span id="finMetaExchanges"></span>
+            <span id="finMetaAccess"></span>
+          </div>
+        </div>
+
+        <!-- Preset + Exchange + Tickers + Years -->
+        <div class="filter-grid" style="grid-template-columns: 1fr 100px 1.2fr 90px 90px 120px; margin-bottom: 16px;">
+          <div class="form-group">
+            <label class="form-label">Preset nhanh:</label>
+            <select id="finPresetSelect" class="form-select">
+              <option value="">-- Chọn preset --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sàn GD:</label>
+            <select id="finExchangeSelect" class="form-select">
+              <option value="">Tự động</option>
+              <option value="HSX">HSX</option>
+              <option value="HNX">HNX</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label">Mã CK (cách nhau bởi dấu phẩy):</label>
+            <input type="text" id="finTickerInput" class="form-input" placeholder="VND, VCI, HCM, SHS, VIX, MBS, VCB, VNM, HPG, FPT...">
+            <div style="margin-top: 6px; font-size: 11px; line-height: 1.6; color: var(--text-muted);">
+              <span>CTCK: </span>
+              <button type="button" class="fin-tag-btn" data-ticker="VND">VND</button>
+              <button type="button" class="fin-tag-btn" data-ticker="VCI">VCI</button>
+              <button type="button" class="fin-tag-btn" data-ticker="HCM">HCM</button>
+              <button type="button" class="fin-tag-btn" data-ticker="SHS">SHS</button>
+              <button type="button" class="fin-tag-btn" data-ticker="VIX">VIX</button>
+              <button type="button" class="fin-tag-btn" data-ticker="MBS">MBS</button>
+              <button type="button" class="fin-tag-btn" data-ticker="FTS">FTS</button>
+              <span style="margin-left: 8px;">Bluechips: </span>
+              <button type="button" class="fin-tag-btn" data-ticker="VCB">VCB</button>
+              <button type="button" class="fin-tag-btn" data-ticker="VNM">VNM</button>
+              <button type="button" class="fin-tag-btn" data-ticker="HPG">HPG</button>
+              <button type="button" class="fin-tag-btn" data-ticker="FPT">FPT</button>
+              <button type="button" class="fin-tag-btn" data-ticker="TCB">TCB</button>
+            </div>
+            <div style="margin-top: 4px; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+              * vnfinancialdata hỗ trợ 692 mã trên HSX/HNX. Khuyết mã SSI từ nguồn cào dữ liệu gốc; các CTCK khác như VND, VCI, HCM, SHS, VIX, MBS đều có 100% dữ liệu.
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Từ năm:</label>
+            <input type="number" id="finYearFrom" class="form-input tabular" value="2014" min="2006" max="2025">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Đến năm:</label>
+            <input type="number" id="finYearTo" class="form-input tabular" value="2024" min="2006" max="2025">
+          </div>
+          <div class="form-group" style="align-self: flex-end;">
+            <button id="btnFinQuery" class="btn btn-primary" style="width: 100%;">Tải Dữ Liệu</button>
+          </div>
+        </div>
+
+        <!-- Item Explorer: Accordion (13 Nhom Quy Chuan) + Selected & WiData Ratios -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <!-- Left: Accordion Item Explorer -->
+          <div>
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <input type="text" id="finItemSearch" class="form-input" placeholder="Lọc chỉ tiêu theo tên hoặc mã..." style="flex: 1;">
+              <button id="btnFinExpandAll" class="btn btn-secondary btn-sm" title="Mở rộng tất cả các nhóm">Mở hết</button>
+              <button id="btnFinCollapseAll" class="btn btn-secondary btn-sm" title="Thu gọn tất cả các nhóm">Thu gọn</button>
+            </div>
+            <div id="finAccordionContainer" style="max-height: 440px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: 8px;">
+              <div style="padding: 20px; text-align: center; color: var(--text-muted);">Đang tải danh mục 702 chỉ tiêu BCTC...</div>
+            </div>
+          </div>
+
+          <!-- Right: Selected Items + Full WiData Ratios -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">
+                Chỉ tiêu BCTC đã chọn: <span id="finSelectedCount" style="color: var(--brand-primary); font-weight: 700;">0</span>
+              </span>
+              <div style="display: flex; gap: 6px;">
+                <button id="btnFinSelectAll702" class="btn btn-secondary btn-sm" title="Chọn toàn bộ 702 chỉ tiêu tài chính">Chọn Toàn Bộ 702 Chỉ Tiêu</button>
+                <button id="btnFinClearAll" class="btn btn-secondary btn-sm">Bỏ chọn hết</button>
+                <button id="btnFinSavePreset" class="btn btn-secondary btn-sm">Lưu Preset</button>
+              </div>
+            </div>
+            <div id="finSelectedItems" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 38px; padding: 8px 10px; background: var(--bg-subtle); border-radius: 8px; margin-bottom: 12px; max-height: 110px; overflow-y: auto;">
+              <span style="color: var(--text-muted); font-size: 12px;">Bấm "Chọn Toàn Bộ 702 Chỉ Tiêu" hoặc chọn từng nhóm theo 13 nhóm quy chuẩn bên trái</span>
+            </div>
+
+            <!-- WiData Ratios Container -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">
+                Chỉ số tài chính WiData: <span id="finRatiosCount" style="color: var(--brand-primary); font-weight: 600;">(Đang tải...)</span>
+              </span>
+              <div style="display: flex; gap: 6px;">
+                <button id="btnFinSelectAllRatios" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px;">Chọn tất cả chỉ số</button>
+                <button id="btnFinClearRatios" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px;">Bỏ chọn</button>
+              </div>
+            </div>
+            <div id="finRatiosContainer" style="max-height: 270px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: 8px; padding: 10px; background: var(--bg-subtle);">
+              <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 16px;">Đang tải danh mục chỉ số WiData...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Preview -->
+        <div style="border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; margin-bottom: 16px; background: var(--bg-subtle);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <span style="font-weight: 600; font-size: 13px; color: var(--text-secondary);">Xem nhanh 1 doanh nghiệp:</span>
+            <input type="text" id="finPreviewTicker" class="form-input" placeholder="VCB" style="width: 80px;">
+            <select id="finPreviewStmt" class="form-select" style="width: 170px;">
+              <option value="balance_sheet">Balance Sheet</option>
+              <option value="income_statement">Income Statement</option>
+              <option value="cash_flow">Cash Flow</option>
+            </select>
+            <input type="number" id="finPreviewYear" class="form-input tabular" value="2023" min="2006" max="2025" style="width: 80px;">
+            <button id="btnFinPreview" class="btn btn-secondary btn-sm">Xem</button>
+          </div>
+          <div id="finPreviewResult" style="display: none; max-height: 250px; overflow-y: auto;">
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="finProgressContainer" class="mining-progress-container" style="display: none;">
+          <div class="mining-progress-header">
+            <span id="finProgressPhase" class="mining-progress-phase">Đang tải...</span>
+            <span id="finProgressPct" class="mining-progress-pct">0%</span>
+          </div>
+          <div class="mining-progress-track">
+            <div id="finProgressBar" class="mining-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div class="mining-progress-detail">
+            <span id="finProgressMsg">Đang kết nối HuggingFace...</span>
+            <span id="finProgressCount"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="finResultsCard" class="card" style="display: none;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Kết Quả Truy Vấn</h2>
+            <p class="card-desc" id="finResultsSummary"></p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a id="finDlCsv" class="btn btn-secondary btn-sm" href="#">CSV</a>
+            <a id="finDlXlsx" class="btn btn-secondary btn-sm" href="#" title="File Excel chuẩn gồm 5 sheet">Excel (.xlsx)</a>
+            <a id="finDlXlsm" class="btn btn-secondary btn-sm" href="#" title="File Excel tích hợp Macro VBA lọc theo Mã CK">Excel Macro (.xlsm)</a>
+            <a id="finDlDta" class="btn btn-secondary btn-sm" href="#">Stata (.dta)</a>
+            <button id="btnFinMerge" class="btn btn-primary btn-sm">Kết Hợp Với Mining</button>
+          </div>
+        </div>
+        <div class="table-wrapper" style="max-height: 450px; overflow: auto;">
+          <table class="data-table">
+            <thead id="finResultsHead"></thead>
+            <tbody id="finResultsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Merge Results -->
+      <div id="finMergeCard" class="card" style="display: none; margin-top: 16px;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Panel Data Hoàn Chỉnh (Mining + Tài chính)</h2>
+            <p class="card-desc" id="finMergeSummary"></p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <a id="mergeDlCsv" class="btn btn-secondary btn-sm" href="#">CSV</a>
+            <a id="mergeDlXlsx" class="btn btn-primary btn-sm" href="#">Excel</a>
+            <a id="mergeDlDta" class="btn btn-secondary btn-sm" href="#">Stata (.dta)</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         TAB 3: UPLOAD / FOLDER SCAN (Dành cho người dùng có sẵn file riêng)
+         =================================================================== -->
+    <section id="tab-upload" class="tab-panel">
+      <div class="grid-split">
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom: 14px;">Tải Lên Báo Cáo Riêng</h2>
+          
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Chọn file PDF hoặc TXT:</label>
+            <input type="file" id="uploadFileInput" class="form-input" accept=".pdf,.txt">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Hoặc đường dẫn thư mục quét một lần:</label>
+            <input type="text" id="uploadFolderInput" class="form-input" placeholder="Ví dụ: C:\Data\Reports hoặc /home/user/reports">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Chọn từ điển áp dụng:</label>
+            <select id="uploadTopicSelect" class="form-select"></select>
+          </div>
+
+          <button id="btnExecuteUploadScan" class="btn btn-primary" style="width: 100%;">
+            Bắt Đầu Quét File
+          </button>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom: 14px;">Thêm Thư Mục Của Bạn Vào Kho Tra Cứu Chung</h2>
+          <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6; margin-bottom: 14px;">
+            Nếu bạn có một thư mục chứa nhiều file PDF báo cáo thường niên (theo cấu trúc tên file chuẩn hoặc thư mục <code>MÃ_CK/NĂM/*.pdf</code>), hãy nhập đường dẫn để tích hợp vào kho tra cứu và lọc ngành:
+          </p>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Đường dẫn thư mục trên máy tính của bạn:</label>
+            <input type="text" id="customIndexFolderInput" class="form-input" placeholder="Ví dụ: C:\NghienCuu\PDFs hoặc /data/reports">
+          </div>
+
+          <button id="btnIndexCustomFolder" class="btn btn-secondary" style="width: 100%;">
+            Lập Chỉ Mục Thư Mục Này Vào Kho
+          </button>
+
+          <div id="indexCustomResult" style="margin-top: 10px; font-size: 12px; color: var(--color-success); display: none;"></div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ===================================================================
+         TAB 4: RESEARCH RESULTS (Panel Data & Exports)
+         =================================================================== -->
+    <section id="tab-results" class="tab-panel">
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Bảng Dữ Liệu Nghiên Cứu Định Lượng (Panel Data)</h2>
+            <p class="card-desc" id="resSummarySubtitle">Chỉ số tần suất, độ đa dạng và điểm số chuẩn hóa sẵn sàng cho hồi quy</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <a id="btnDlExcel" href="#" class="btn btn-secondary btn-sm" download>Xuất Excel (Multi-Sheets)</a>
+            <a id="btnDlStata" href="#" class="btn btn-secondary btn-sm" download>Xuất File Stata (.dta)</a>
+            <a id="btnDlCsv" href="#" class="btn btn-secondary btn-sm" download>Xuất CSV</a>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-item-label">Tổng Số Quan Sát (N)</div>
+            <div class="stat-item-value" id="statObsCount">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-item-label">Số Báo Cáo Có Đề Cập</div>
+            <div class="stat-item-value" id="statHitsCount" style="color: var(--color-success);">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-item-label">Tổng Lượt Đề Cập (Mentions)</div>
+            <div class="stat-item-value" id="statMentionsCount" style="color: #60a5fa;">0</div>
+          </div>
+        </div>
+
+        <!-- Table of Panel Data -->
+        <div class="table-wrapper" style="max-height: 380px; overflow-y: auto; margin-bottom: 20px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 75px;">Mã CK</th>
+                <th style="width: 60px;">Năm</th>
+                <th style="width: 140px;">Ngành (L1)</th>
+                <th style="width: 150px;">Phân Ngành (L2)</th>
+                <th>Tên File</th>
+                <th style="width: 90px; text-align: right;">Số Từ</th>
+                <th style="width: 85px; text-align: right;">Tần Suất</th>
+                <th style="width: 80px; text-align: right;">Đa Dạng</th>
+                <th style="width: 95px; text-align: right;">Điểm Số</th>
+              </tr>
+            </thead>
+            <tbody id="panelDataTableBody">
+              <tr>
+                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                  Chưa có dữ liệu. Hãy chọn báo cáo ở tab "Kho Báo Cáo" và bấm "Khai Phá".
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Context Snippets Section -->
+        <h3 class="card-title" style="margin-bottom: 12px;">Trích Đoạn Ngữ Cảnh Trong Văn Bản (Context Excerpts)</h3>
+        <div id="snippetsContainer" style="max-height: 280px; overflow-y: auto;">
+          <p style="color: var(--text-muted); font-style: italic;">Chưa có trích đoạn nào.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

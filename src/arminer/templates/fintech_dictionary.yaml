@@ -1,0 +1,108 @@
+# Fintech Dictionary — Từ điển Fintech cho nghiên cứu DN niêm yết Việt Nam
+name: "Fintech Dictionary"
+version: "1.0"
+description: "Bộ từ điển Công nghệ Tài chính (Fintech) song ngữ Anh-Việt"
+
+categories:
+  digital_banking:
+    display_name: "Ngân hàng số"
+    keywords:
+      - keyword: "digital banking"
+        variants: "ngân hàng số|ngan hang so"
+      - keyword: "mobile banking"
+        variants: "ngân hàng di động|ngan hang di dong"
+      - keyword: "internet banking"
+        variants: "ngân hàng trực tuyến|ngan hang truc tuyen"
+      - keyword: "open banking"
+        variants: "ngân hàng mở|ngan hang mo"
+      - keyword: "neobank"
+        variants: "neobanks|neo bank|ngân hàng thuần số"
+      - keyword: "banking as a service"
+        variants: "baas"
+      - keyword: "core banking"
+        variants: "hệ thống lõi ngân hàng"
+
+  payment:
+    display_name: "Thanh toán số"
+    keywords:
+      - keyword: "thanh toán điện tử"
+        variants: "thanh toan dien tu|electronic payment|e-payment"
+        language: "vi"
+      - keyword: "ví điện tử"
+        variants: "vi dien tu|e-wallet|digital wallet"
+        language: "vi"
+      - keyword: "qr code"
+        variants: "mã qr|ma qr|qr pay"
+      - keyword: "contactless payment"
+        variants: "thanh toán không tiếp xúc|thanh toan khong tiep xuc"
+      - keyword: "momo"
+        variants: "ví momo|vi momo"
+      - keyword: "zalopay"
+        variants: "zalo pay"
+      - keyword: "vnpay"
+        variants: "vn pay"
+      - keyword: "payment gateway"
+        variants: "cổng thanh toán|cong thanh toan"
+
+  lending:
+    display_name: "Cho vay số"
+    keywords:
+      - keyword: "peer to peer lending"
+        variants: "p2p lending|cho vay ngang hàng|cho vay ngang hang"
+      - keyword: "credit scoring"
+        variants: "chấm điểm tín dụng|cham diem tin dung"
+      - keyword: "buy now pay later"
+        variants: "bnpl|mua trước trả sau|mua truoc tra sau"
+      - keyword: "microfinance"
+        variants: "tài chính vi mô|tai chinh vi mo"
+
+  insurtech:
+    display_name: "Bảo hiểm số"
+    keywords:
+      - keyword: "insurtech"
+        variants: "insurance technology|công nghệ bảo hiểm|cong nghe bao hiem"
+      - keyword: "bảo hiểm trực tuyến"
+        variants: "bao hiem truc tuyen|online insurance"
+        language: "vi"
+
+  regtech:
+    display_name: "Công nghệ Pháp quy"
+    keywords:
+      - keyword: "regtech"
+        variants: "regulatory technology|công nghệ pháp quy"
+      - keyword: "kyc"
+        variants: "know your customer|ekyc|e-kyc|xác thực khách hàng"
+      - keyword: "aml"
+        variants: "anti money laundering|chống rửa tiền|chong rua tien"
+
+  ai_data:
+    display_name: "AI & Dữ liệu"
+    keywords:
+      - keyword: "artificial intelligence"
+        variants: "ai|trí tuệ nhân tạo|tri tue nhan tao"
+      - keyword: "machine learning"
+        variants: "học máy|hoc may|ml"
+      - keyword: "big data"
+        variants: "dữ liệu lớn|du lieu lon"
+      - keyword: "robo advisor"
+        variants: "robo-advisor|tư vấn tự động|tu van tu dong"
+      - keyword: "chatbot"
+        variants: "chat bot|trợ lý ảo|tro ly ao"
+
+exclusions: []
+
+classification_rules:
+  adoption:
+    name: "Fintech Adoption"
+    trigger_keywords:
+      - "triển khai"
+      - "ứng dụng"
+      - "tích hợp"
+      - "ra mắt"
+      - "launched"
+      - "implemented"
+      - "deployed"
+      - "partnered"
+  talk:
+    name: "Fintech Discussion"
+    description: "Mặc định"

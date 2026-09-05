@@ -1,0 +1,327 @@
+name: Blockchain Dictionary
+version: 1.0.0
+categories:
+  core:
+    description: Category core
+    keywords:
+    - keyword: blockchain
+      weight: 1.0
+      variants:
+      - block chain
+      - block-chain
+      language: en
+    - keyword: chuỗi khối
+      weight: 1.0
+      variants:
+      - chuoi khoi
+      - chuổi khối
+      - chuỗi khôi
+      language: vi
+    - keyword: distributed ledger
+      weight: 1.0
+      variants:
+      - distributed ledger technology
+      - distributed-ledger
+      language: en
+    - keyword: dlt
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: sổ cái phân tán
+      weight: 1.0
+      variants:
+      - so cai phan tan
+      language: vi
+    - keyword: tài sản số
+      weight: 1.0
+      variants:
+      - tai san so
+      language: vi
+    - keyword: tài sản mã hóa
+      weight: 1.0
+      variants:
+      - tai san ma hoa
+      - tài sản mã hoá
+      language: vi
+    - keyword: digital asset
+      weight: 1.0
+      variants:
+      - digital assets
+      language: en
+    - keyword: vũ trụ số
+      weight: 1.0
+      variants:
+      - vu tru so
+      - metaverse
+      language: vi
+  financial:
+    description: Category financial
+    keywords:
+    - keyword: cryptocurrency
+      weight: 1.0
+      variants:
+      - cryptocurrencies
+      - crypto currency
+      - crypto currencies
+      - crypto-currency
+      language: en
+    - keyword: tiền mã hóa
+      weight: 1.0
+      variants:
+      - tien ma hoa
+      - tiền mã hoá
+      language: vi
+    - keyword: bitcoin
+      weight: 1.0
+      variants:
+      - bitcoins
+      - bit coin
+      - bit-coin
+      language: en
+    - keyword: ethereum
+      weight: 1.0
+      variants:
+      - eth
+      - ether
+      language: en
+    - keyword: crypto
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: tiền ảo
+      weight: 1.0
+      variants:
+      - tien ao
+      - tiền ảnh
+      language: vi
+    - keyword: stablecoin
+      weight: 1.0
+      variants:
+      - stablecoins
+      - stable coin
+      - stable coins
+      - stable-coin
+      language: en
+    - keyword: initial coin offering
+      weight: 1.0
+      variants:
+      - ico
+      language: en
+    - keyword: tokenization
+      weight: 1.0
+      variants:
+      - tokenisation
+      language: en
+    - keyword: chứng khoán hóa tài sản
+      weight: 1.0
+      variants:
+      - chung khoan hoa tai san
+      - chứng khoán hoá tài sản
+      language: vi
+    - keyword: central bank digital currency
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: cbdc
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: nft
+      weight: 1.0
+      variants:
+      - nfts
+      - non-fungible token
+      - non fungible token
+      language: en
+    - keyword: defi
+      weight: 1.0
+      variants:
+      - decentralized finance
+      - de-fi
+      - de fi
+      language: en
+    - keyword: tài chính số
+      weight: 1.0
+      variants:
+      - tai chinh so
+      - digital finance
+      language: vi
+    - keyword: tài chính phi tập trung
+      weight: 1.0
+      variants:
+      - tai chinh phi tap trung
+      language: vi
+    - keyword: altcoin
+      weight: 1.0
+      variants:
+      - altcoins
+      - alt coin
+      - alt-coin
+      - alt coins
+      language: en
+    - keyword: dogecoin
+      weight: 1.0
+      variants:
+      - dogecoins
+      - doge coin
+      - doge-coin
+      - doge
+      language: en
+    - keyword: litecoin
+      weight: 1.0
+      variants:
+      - litecoins
+      - lite coin
+      - lite-coin
+      - ltc
+      language: en
+    - keyword: usdt
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: bnb
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: xrp
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: tether
+      weight: 1.0
+      variants: []
+      language: en
+  technical:
+    description: Category technical
+    keywords:
+    - keyword: smart contract
+      weight: 1.0
+      variants:
+      - smart contracts
+      - smart-contract
+      - smart-contracts
+      language: en
+    - keyword: hợp đồng thông minh
+      weight: 1.0
+      variants:
+      - hop dong thong minh
+      language: vi
+    - keyword: phi tập trung
+      weight: 1.0
+      variants:
+      - phi tap trung
+      - phân quyền
+      - phan quyen
+      language: vi
+    - keyword: truy xuất nguồn gốc
+      weight: 1.0
+      variants:
+      - truy xuat nguon goc
+      language: vi
+    - keyword: hyperledger
+      weight: 1.0
+      variants:
+      - hyperledgers
+      - hyper ledger
+      - hyper-ledger
+      language: en
+    - keyword: ethereum virtual machine
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: evm
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: proof of work
+      weight: 1.0
+      variants:
+      - proof-of-work
+      language: en
+    - keyword: proof of stake
+      weight: 1.0
+      variants:
+      - proof-of-stake
+      language: en
+    - keyword: web3
+      weight: 1.0
+      variants:
+      - web 3
+      - web3.0
+      - web 3.0
+      language: en
+    - keyword: solidity
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: solana
+      weight: 1.0
+      variants:
+      - sol
+      language: en
+    - keyword: cardano
+      weight: 1.0
+      variants:
+      - ada
+      language: en
+    - keyword: polygon
+      weight: 1.0
+      variants:
+      - matic
+      language: en
+    - keyword: polkadot
+      weight: 1.0
+      variants:
+      - polka dot
+      - polka-dot
+      - dot
+      language: en
+    - keyword: erc20
+      weight: 1.0
+      variants:
+      - erc-20
+      - erc 20
+      language: en
+    - keyword: erc721
+      weight: 1.0
+      variants:
+      - erc-721
+      - erc 721
+      language: en
+    - keyword: binance
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: coinbase
+      weight: 1.0
+      variants: []
+      language: en
+    - keyword: metamask
+      weight: 1.0
+      variants:
+      - meta mask
+      - meta-mask
+      language: en
+    - keyword: uniswap
+      weight: 1.0
+      variants:
+      - uni swap
+      - uni-swap
+      language: en
+    - keyword: airdrop
+      weight: 1.0
+      variants:
+      - airdrops
+      - air drop
+      - air drops
+      language: en
+    - keyword: trust wallet
+      weight: 1.0
+      variants:
+      - trustwallet
+      - trust-wallet
+      language: en
+    - keyword: layer 2
+      weight: 1.5
+      variants: []
+      language: vi

@@ -1,0 +1,30 @@
+# Blockchain Keywords
+# File này có thể dùng trực tiếp: arminer scan report.pdf --dict keywords.txt
+# Chỉ cần ghi 1 keyword/dòng. Dùng [Tên nhóm] để phân loại.
+
+[Core]
+blockchain
+distributed ledger
+smart contract
+chuỗi khối
+sổ cái phân tán
+hợp đồng thông minh
+
+[Financial]
+cryptocurrency
+bitcoin
+ethereum
+DeFi
+NFT
+stablecoin
+tokenization
+CBDC
+tiền mã hóa
+tiền ảo
+
+[Technical]
+proof of work
+proof of stake
+hyperledger
+web3
+solidity

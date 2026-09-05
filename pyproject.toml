@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vn-annual-report-miner"
+version = "0.1.0"
+description = "Công cụ khai phá dữ liệu Báo cáo Thường niên Doanh nghiệp niêm yết Việt Nam — hỗ trợ bất kỳ chủ đề nghiên cứu nào."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "NCKH Team"},
+]
+keywords = [
+    "annual-report", "text-mining", "vietnam", "financial-research",
+    "ocr", "nlp", "panel-data", "corporate-finance",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "click>=8.1",
+    "pandas>=2.0",
+    "pyarrow>=14.0",
+    "numpy>=1.24",
+    "sqlalchemy>=2.0",
+    "pyyaml>=6.0",
+    "python-Levenshtein>=0.21",
+    "PyMuPDF>=1.23",
+    "loguru>=0.7",
+    "rich>=13.0",
+    "pydantic>=2.0",
+    "tqdm>=4.66",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+financial = ["vnfinancialdata>=0.1"]
+ocr = ["pytesseract>=0.3.10", "opencv-python>=4.8", "Pillow>=10.0", "pdf2image>=1.16"]
+gpu = ["easyocr>=1.7"]
+nlp = ["underthesea>=6.8", "scikit-learn>=1.3", "regex>=2023.0"]
+stata = ["pyreadstat>=1.2"]
+full = ["vn-annual-report-miner[financial,ocr,gpu,nlp,stata]"]
+dev = ["pytest>=7.4", "pytest-cov>=4.0"]
+
+[project.scripts]
+arminer = "arminer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/nckh-team/vn-annual-report-miner"
+Documentation = "https://github.com/nckh-team/vn-annual-report-miner#readme"
+Issues = "https://github.com/nckh-team/vn-annual-report-miner/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+arminer = [
+    "templates/*.yaml",
+    "data/fixtures/*",
+    "ui/static/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

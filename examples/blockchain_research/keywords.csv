@@ -1,0 +1,16 @@
+keyword,category,variants
+blockchain,core,block chain|block-chain
+distributed ledger,core,distributed ledger technology|DLT
+smart contract,core,smart contracts|smart-contract
+chuỗi khối,core,chuoi khoi
+cryptocurrency,finance,cryptocurrencies|crypto currency
+bitcoin,finance,bitcoins|bit coin
+ethereum,finance,eth|ether
+DeFi,finance,decentralized finance|de-fi
+NFT,finance,non-fungible token|nfts
+stablecoin,finance,stablecoins|stable coin
+CBDC,finance,central bank digital currency
+tiền mã hóa,finance,tien ma hoa|tiền mã hoá
+proof of work,technical,proof-of-work
+proof of stake,technical,proof-of-stake
+web3,technical,web 3|web3.0

@@ -1,0 +1,2 @@
+﻿# arminer.ocr
+
