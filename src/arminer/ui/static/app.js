@@ -597,6 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const dictTableBody = document.getElementById('dictTableBody');
   const btnAddKeyword = document.getElementById('btnAddKeyword');
   const newKwInput = document.getElementById('newKwInput');
+  const newKwVariants = document.getElementById('newKwVariants');
   const newKwCategory = document.getElementById('newKwCategory');
   const btnCreateNewTopic = document.getElementById('btnCreateNewTopic');
   const btnDeleteTopic = document.getElementById('btnDeleteTopic');
@@ -686,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dictTableBody.innerHTML = '';
     if (filtered.length === 0) {
       dictTableBody.innerHTML = `
-        <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
           Không có từ khóa nào khớp với bộ lọc.
         </td></tr>
       `;
@@ -695,18 +696,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filtered.forEach((k, idx) => {
       const tr = document.createElement('tr');
+      const varText = k.variants ? `<span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(k.variants)}</span>` : '<span style="color: var(--text-muted); font-style: italic; font-size: 11px;">—</span>';
       tr.innerHTML = `
         <td class="tabular" style="color: var(--text-muted);">${idx + 1}</td>
         <td><strong style="color: var(--text-primary);">${escapeHtml(k.keyword)}</strong></td>
+        <td>${varText}</td>
         <td><span class="badge badge-cat">${escapeHtml(k.category)}</span></td>
         <td style="text-align: right;">
-          <button class="btn btn-secondary btn-sm btn-edit-kw" data-kw="${escapeHtml(k.keyword)}" data-cat="${escapeHtml(k.category)}">Sửa</button>
+          <button class="btn btn-secondary btn-sm btn-edit-kw" data-kw="${escapeHtml(k.keyword)}" data-cat="${escapeHtml(k.category)}" data-var="${escapeHtml(k.variants || '')}">Sửa</button>
           <button class="btn btn-danger btn-sm btn-del-kw" data-kw="${escapeHtml(k.keyword)}">Xóa</button>
         </td>
       `;
 
       tr.querySelector('.btn-edit-kw').addEventListener('click', () => {
-        handleEditKeyword(k.keyword, k.category);
+        handleEditKeyword(k.keyword, k.category, k.variants || '');
       });
 
       tr.querySelector('.btn-del-kw').addEventListener('click', () => {
@@ -719,6 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleAddKeyword() {
     const kw = newKwInput.value.trim();
+    const variants = newKwVariants ? newKwVariants.value.trim() : '';
     const cat = newKwCategory.value.trim() || 'default';
 
     if (!kw) {
@@ -730,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`/api/dictionaries/${currentDictData.id}/keyword`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: kw, category: cat, weight: 1.0 })
+        body: JSON.stringify({ keyword: kw, category: cat, weight: 1.0, variants: variants })
       });
 
       if (!res.ok) {
@@ -739,6 +743,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       newKwInput.value = '';
+      if (newKwVariants) newKwVariants.value = '';
       await loadDictionaryDetail(currentDictData.id);
       loadDictionariesList();
     } catch (err) {
@@ -746,9 +751,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function handleEditKeyword(oldKw, oldCat) {
+  async function handleEditKeyword(oldKw, oldCat, oldVariants = '') {
     const newKw = prompt('Nhập từ khóa mới:', oldKw);
     if (!newKw || newKw.trim() === '') return;
+
+    const newVariants = prompt('Nhập biến thể (variants, cách nhau dấu |):', oldVariants);
+    if (newVariants === null) return;
 
     const newCat = prompt('Nhập nhóm phân loại (Category):', oldCat) || oldCat;
 
@@ -760,7 +768,8 @@ document.addEventListener('DOMContentLoaded', () => {
           old_keyword: oldKw,
           new_keyword: newKw.trim(),
           category: newCat.trim(),
-          weight: 1.0
+          weight: 1.0,
+          variants: newVariants.trim()
         })
       });
 
@@ -904,27 +913,31 @@ document.addEventListener('DOMContentLoaded', () => {
     rows.forEach(r => {
       const tr = document.createElement('tr');
       let freq = 0;
-      let div = 0;
-      let score = 0;
+      let logFreq = 0;
+      let mention = 0;
+      let density = 0;
+      let wordCount = r.Word_Count ?? r.total_words ?? 0;
 
       for (const [k, v] of Object.entries(r)) {
-        if (k.endsWith('_frequency')) freq = v;
-        else if (k.endsWith('_diversity')) div = v;
-        else if (k.endsWith('_score')) score = v;
+        const kLower = k.toLowerCase();
+        if (kLower.endsWith('_frequency') && !kLower.endsWith('_log_frequency')) freq = v;
+        else if (kLower.endsWith('_log_frequency')) logFreq = v;
+        else if (kLower.endsWith('_mention')) mention = v;
+        else if (kLower.endsWith('_density')) density = v;
       }
 
       tr.innerHTML = `
         <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${r.ticker || '—'}</strong></td>
         <td class="tabular">${r.year || '—'}</td>
         <td><span class="badge badge-cat">${escapeHtml(r.icb_level1 || '—')}</span></td>
-        <td style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(r.icb_level2 || '—')}</td>
-        <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(r.file || '')}">
+        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(r.file || '')}">
           ${escapeHtml(r.file || '')}
         </td>
-        <td style="text-align: right;" class="tabular">${(r.total_words || 0).toLocaleString()}</td>
+        <td style="text-align: right;" class="tabular">${(wordCount || 0).toLocaleString()}</td>
         <td style="text-align: right; font-weight: 700; color: ${freq > 0 ? 'var(--color-success)' : 'inherit'};" class="tabular">${freq}</td>
-        <td style="text-align: right;" class="tabular">${div}</td>
-        <td style="text-align: right;" class="tabular">${typeof score === 'number' ? score.toFixed(4) : score}</td>
+        <td style="text-align: right; font-weight: 700; color: #3b82f6;" class="tabular">${typeof logFreq === 'number' ? logFreq.toFixed(4) : logFreq}</td>
+        <td style="text-align: center;">${mention > 0 ? '<span style="color: var(--color-success); font-weight: bold;">✓</span>' : '<span style="color: var(--text-muted);">0</span>'}</td>
+        <td style="text-align: right;" class="tabular">${typeof density === 'number' ? density.toFixed(4) : density}%</td>
       `;
       panelDataTableBody.appendChild(tr);
     });

@@ -186,6 +186,7 @@ class AddKeywordRequest(BaseModel):
     keyword: str
     category: str = "default"
     weight: float = 1.0
+    variants: str = ""
 
 
 @app.post("/api/dictionaries/{topic_id}/keyword")
@@ -197,6 +198,7 @@ def add_keyword(topic_id: str, req: AddKeywordRequest):
             keyword=req.keyword,
             category=req.category,
             weight=req.weight,
+            variants=req.variants,
         )
         return {"success": True, "added": item}
     except ValueError as e:
@@ -210,6 +212,7 @@ class UpdateKeywordRequest(BaseModel):
     new_keyword: str
     category: str
     weight: float = 1.0
+    variants: Optional[str] = None
 
 
 @app.put("/api/dictionaries/{topic_id}/keyword")
@@ -222,6 +225,7 @@ def update_keyword(topic_id: str, req: UpdateKeywordRequest):
             new_keyword=req.new_keyword,
             category=req.category,
             weight=req.weight,
+            variants=req.variants,
         )
         return {"success": True, "updated": updated}
     except ValueError as e:
@@ -348,6 +352,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
 
     rows = []
     all_snippets = []
+    all_raw_keywords = []
 
     for item in target_items:
         p = item["path"]
@@ -375,6 +380,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
             matches, total_words,
             category_names=flex_dict.categories,
             topic_prefix=req.topic or "topic",
+            total_dict_keywords=len(flex_dict.entries),
             classification_rules=flex_dict.classification_rules,
         )
 
@@ -388,6 +394,22 @@ def scan_selected_reports(req: ScanSelectedRequest):
             **vars_r,
         }
         rows.append(row)
+
+        # Collect raw keyword counts for this firm-year (Sheet 1: Raw_Keywords)
+        kw_counts = {}
+        for m in matches:
+            kw = m.get("keyword_canonical", m.get("keyword_found", ""))
+            cat = m.get("category", "default")
+            kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
+
+        for (kw, cat), cnt in kw_counts.items():
+            all_raw_keywords.append({
+                "Firm": item["ticker"],
+                "Year": item["year"],
+                "Keyword": kw,
+                "Category": cat,
+                "Frequency": cnt,
+            })
 
         # Collect sample snippets (up to 3 per file)
         text_len = len(text)
@@ -412,11 +434,12 @@ def scan_selected_reports(req: ScanSelectedRequest):
     df = df[first_cols + other_cols]
 
     # Generate research pack
+    raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
     generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-    generator.generate_all(df)
+    generator.generate_all(df, raw_keywords_df=raw_df)
 
     p_name = (req.topic or "topic").lower()
-    freq_col = f"{p_name}_frequency"
+    freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
     total_mentions = int(df[freq_col].sum()) if freq_col in df.columns else 0
     firms_with_hits = int((df[freq_col] > 0).sum()) if freq_col in df.columns else 0
 
@@ -530,6 +553,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         rows = []
         all_snippets = []
+        all_raw_keywords = []
         total = len(target_items)
 
         for idx, item in enumerate(target_items):
@@ -568,6 +592,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                 matches, total_words,
                 category_names=flex_dict.categories,
                 topic_prefix=req.topic or "topic",
+                total_dict_keywords=len(flex_dict.entries),
                 classification_rules=flex_dict.classification_rules,
             )
 
@@ -581,6 +606,22 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                 **vars_r,
             }
             rows.append(row)
+
+            # Collect raw keyword counts for this firm-year (Sheet 1: Raw_Keywords)
+            kw_counts = {}
+            for m in matches:
+                kw = m.get("keyword_canonical", m.get("keyword_found", ""))
+                cat = m.get("category", "default")
+                kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
+
+            for (kw, cat), cnt in kw_counts.items():
+                all_raw_keywords.append({
+                    "Firm": item["ticker"],
+                    "Year": item["year"],
+                    "Keyword": kw,
+                    "Category": cat,
+                    "Frequency": cnt,
+                })
 
             text_len = len(text)
             for m in matches[:3]:
@@ -612,11 +653,12 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         other_cols = [c for c in df.columns if c not in first_cols]
         df = df[first_cols + other_cols]
 
+        raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
         generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-        generator.generate_all(df)
+        generator.generate_all(df, raw_keywords_df=raw_df)
 
         p_name = (req.topic or "topic").lower()
-        freq_col = f"{p_name}_frequency"
+        freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
         total_mentions = int(df[freq_col].sum()) if freq_col in df.columns else 0
         firms_with_hits = int((df[freq_col] > 0).sum()) if freq_col in df.columns else 0
 
@@ -930,6 +972,8 @@ async def scan_folder(
         raise HTTPException(status_code=400, detail="Không tìm thấy file PDF hoặc TXT nào trong thư mục.")
 
     rows = []
+    all_raw_keywords = []
+
     for f in files:
         text = ""
         n_pages = 1
@@ -955,18 +999,37 @@ async def scan_folder(
             matches, total_words,
             category_names=flex_dict.categories,
             topic_prefix=topic or "topic",
+            total_dict_keywords=len(flex_dict.entries),
             classification_rules=flex_dict.classification_rules,
         )
 
         parsed = PDFSource.parse_filename(f)
+        ticker_val = parsed[0] if parsed else None
+        year_val = parsed[1] if parsed else None
+
         row = {
-            "ticker": parsed[0] if parsed else None,
-            "year": parsed[1] if parsed else None,
+            "ticker": ticker_val,
+            "year": year_val,
             "file": f.name,
             "pages": n_pages,
             **vars_r,
         }
         rows.append(row)
+
+        kw_counts = {}
+        for m in matches:
+            kw = m.get("keyword_canonical", m.get("keyword_found", ""))
+            cat = m.get("category", "default")
+            kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
+
+        for (kw, cat), cnt in kw_counts.items():
+            all_raw_keywords.append({
+                "Firm": ticker_val or f.stem,
+                "Year": year_val or "N/A",
+                "Keyword": kw,
+                "Category": cat,
+                "Frequency": cnt,
+            })
 
     if not rows:
         raise HTTPException(status_code=400, detail="Không xử lý được file nào.")
@@ -976,11 +1039,12 @@ async def scan_folder(
     other_cols = [c for c in df.columns if c not in first_cols]
     df = df[first_cols + other_cols]
 
+    raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
     generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-    generator.generate_all(df)
+    generator.generate_all(df, raw_keywords_df=raw_df)
 
     p_name = (topic or "topic").lower()
-    freq_col = f"{p_name}_frequency"
+    freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
     df_sorted = df.sort_values(by=freq_col, ascending=False) if freq_col in df.columns else df
 
     return {

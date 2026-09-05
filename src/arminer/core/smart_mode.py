@@ -485,17 +485,20 @@ class FlexibleDictionary:
 
 class SmartVariableCalculator:
     """
-    Tự tính TẤT CẢ biến nghiên cứu chuẩn.
+    Tính biến nghiên cứu chuẩn quốc tế cho textual analysis.
 
-    Nhà nghiên cứu chỉ cần cung cấp từ khóa.
-    Tool tự sinh output đầy đủ cho bài báo:
-    - frequency, diversity, score, intensity, binary, classification
-    - Per-category breakdown
-    - Descriptive stats, correlation matrix
+    Output 6 biến chuẩn (dựa trên Wu et al. 2021, Baier et al. 2020,
+    Fang et al. 2024, PLOS ONE, Emerald, BJM):
+
+    - Frequency:        Σ keyword occurrences (raw count)
+    - Log_Frequency:    ln(1 + Frequency)  ← BIẾN CHÍNH cho regression
+    - Mention:          1 nếu Frequency > 0, else 0
+    - Substantive:      1 nếu Frequency > 2, else 0 (BJM biodiversity)
+    - Density:          Frequency / Word_Count × 100 (%)
+    - Coverage:         Unique Keywords Used / Total Dict Keywords
+
+    + Per-category _Freq breakdown (Fang et al. 2024)
     """
-
-    def __init__(self, normalization: int = 10_000):
-        self.normalization = normalization
 
     def calculate_all(
         self,
@@ -503,6 +506,7 @@ class SmartVariableCalculator:
         total_words: int,
         category_names: List[str],
         topic_prefix: str = "topic",
+        total_dict_keywords: int = 0,
         classification_rules: Optional[Dict] = None,
     ) -> Dict[str, Any]:
         """Tính TẤT CẢ biến cho 1 báo cáo → 1 dòng panel."""
@@ -515,48 +519,29 @@ class SmartVariableCalculator:
             for m in matches
         )
 
-        result[f"{p}_frequency"] = freq
-        result[f"{p}_diversity"] = len(unique_kws)
-        result[f"{p}_score"] = (
-            round((freq / total_words) * self.normalization, 6)
+        # === 6 biến chuẩn quốc tế ===
+        result[f"{p}_Frequency"] = freq
+        result[f"{p}_Log_Frequency"] = round(math.log(1 + freq), 6)
+        result[f"{p}_Mention"] = 1 if freq > 0 else 0
+        result[f"{p}_Substantive"] = 1 if freq > 2 else 0
+        result[f"{p}_Density"] = (
+            round((freq / total_words) * 100, 4)
             if total_words > 0 else 0.0
         )
-        result[f"{p}_intensity"] = round(math.log(1 + freq), 6)
-        result[f"{p}_has_mention"] = 1 if freq > 0 else 0
-        result[f"{p}_adoption"] = self._classify(matches, classification_rules)
+        result[f"{p}_Unique_Keywords"] = len(unique_kws)
+        result[f"{p}_Coverage"] = (
+            round(len(unique_kws) / total_dict_keywords, 4)
+            if total_dict_keywords > 0 else 0.0
+        )
 
-        # Per-category
+        # === Per-category frequency only (Fang et al. 2024) ===
         for cat in category_names:
             cat_matches = [m for m in matches if m.get("category") == cat]
             cc = cat.lower().replace(" ", "_")
-            cat_freq = len(cat_matches)
-            cat_unique = set(
-                m.get("keyword_canonical", m.get("keyword_found", ""))
-                for m in cat_matches
-            )
-            result[f"{p}_{cc}_freq"] = cat_freq
-            result[f"{p}_{cc}_div"] = len(cat_unique)
-            result[f"{p}_{cc}_score"] = (
-                round((cat_freq / total_words) * self.normalization, 6)
-                if total_words > 0 else 0.0
-            )
+            result[f"{p}_{cc}_Freq"] = len(cat_matches)
 
-        result["total_words"] = total_words
+        result["Word_Count"] = total_words
         return result
-
-    def _classify(self, matches, rules):
-        if not rules or not matches:
-            return 0
-        adoption = rules.get("adoption") or rules.get("implemented")
-        if not adoption:
-            return 0
-        triggers = [k.lower() for k in adoption.get("trigger_keywords", [])]
-        for m in matches:
-            kw = m.get("keyword_found", "").lower()
-            for t in triggers:
-                if t in kw:
-                    return 1
-        return 0
 
 
 # =====================================================================
@@ -613,143 +598,137 @@ def auto_generate_codebook(df: pd.DataFrame) -> List[Dict[str, str]]:
             desc = "Mã chứng khoán niêm yết (HOSE, HNX, UPCoM)"
             vtype = "Mã định danh (Identifier)"
             formula = "Mã cổ phiếu chuẩn 3 chữ cái"
+            ref = ""
         elif c_lower == "year":
             desc = "Năm công bố báo cáo thường niên / tài chính"
             vtype = "Biến thời gian (Time ID)"
             formula = "Năm dương lịch (YYYY)"
+            ref = ""
         elif c_lower == "icb_level1":
             desc = "Ngành cấp 1 theo chuẩn phân ngành ICB"
             vtype = "Biến phân loại (Categorical)"
             formula = "10 ngành cấp 1 (Tài chính, Công nghệ, Bất động sản...)"
+            ref = ""
         elif c_lower == "icb_level2":
             desc = "Ngành cấp 2 theo chuẩn phân ngành ICB"
             vtype = "Biến phân loại (Categorical)"
             formula = "Ngành chi tiết cấp 2"
+            ref = ""
         elif c_lower == "file":
             desc = "Tên tệp tin báo cáo thường niên gốc"
             vtype = "Thông tin tệp (Metadata)"
             formula = "Tên file PDF/TXT phân tích"
+            ref = ""
         elif c_lower == "pages":
             desc = "Độ dài báo cáo thường niên (tổng số trang)"
             vtype = "Định lượng (Continuous)"
             formula = "Tổng số trang của file PDF"
-        elif c_lower == "total_words":
+            ref = ""
+        elif c_lower == "word_count":
             desc = "Tổng số từ trong toàn văn báo cáo thường niên"
             vtype = "Định lượng (Continuous)"
             formula = "Tổng số từ trích xuất sau khi làm sạch văn bản"
+            ref = ""
+        # === 6 biến chuẩn quốc tế ===
         elif c_lower.endswith("_frequency"):
-            topic = col[:-10]
+            topic = col.rsplit("_", 1)[0]
             desc = f"Tổng tần suất xuất hiện các từ khóa liên quan đến {topic}"
             vtype = "Đếm số lần (Count)"
-            formula = "Tổng số lần từ khóa thuộc chủ đề xuất hiện trong báo cáo"
-        elif c_lower.endswith("_diversity"):
-            topic = col[:-10]
-            desc = f"Độ phong phú từ vựng chủ đề {topic} (số từ khóa phân biệt)"
-            vtype = "Đếm số lượng (Count)"
-            formula = "Số lượng từ khóa chuyên biệt khác nhau xuất hiện ít nhất 1 lần"
-        elif c_lower.endswith("_score"):
-            topic = col[:-6]
-            desc = f"Tần suất chuẩn hóa (Normalized Disclosure Score) cho {topic}"
-            vtype = "Chỉ số liên tục (Continuous Index)"
-            formula = "(Tổng tần suất từ khóa / Tổng số từ) * 10,000"
-        elif c_lower.endswith("_intensity"):
-            topic = col[:-10]
-            desc = f"Cường độ công bố thông tin (Log Intensity) về {topic}"
-            vtype = "Biến Logarit (Continuous Log)"
-            formula = "ln(1 + frequency)"
-        elif c_lower.endswith("_has_mention"):
-            topic = col[:-12]
+            formula = "Σ keyword occurrences"
+            ref = "Wu et al. (2021)"
+        elif c_lower.endswith("_log_frequency"):
+            topic = col.rsplit("_", 2)[0]
+            desc = f"Chỉ số công bố thông tin chủ đề {topic} (biến chính)"
+            vtype = "Biến logarit liên tục (Continuous Log) — BIẾN CHÍNH"
+            formula = "ln(1 + Frequency)"
+            ref = "Wu et al. (2021), MDPI (2026), Springer (2026 VN)"
+        elif c_lower.endswith("_mention"):
+            topic = col.rsplit("_", 1)[0]
             desc = f"Biến giả nhận diện công bố thông tin về {topic}"
-            vtype = "Biến giả (Dummy 0/1)"
-            formula = "1 nếu frequency > 0, ngược lại bằng 0"
-        elif c_lower.endswith("_adoption"):
-            topic = col[:-9]
-            desc = f"Mức độ áp dụng thực tế (Action-Oriented Adoption) về {topic}"
-            vtype = "Biến giả (Dummy 0/1)"
-            formula = "1 nếu có từ khóa hành động/thực thi, ngược lại bằng 0"
-        elif "_freq" in c_lower:
+            vtype = "Biến giả (Dummy 0/1) — Robustness"
+            formula = "1 nếu Frequency > 0, ngược lại bằng 0"
+            ref = "Baier et al. (2020)"
+        elif c_lower.endswith("_substantive"):
+            topic = col.rsplit("_", 1)[0]
+            desc = f"Biến giả công bố thực chất (Substantive Disclosure) về {topic}"
+            vtype = "Biến giả (Dummy 0/1) — Robustness"
+            formula = "1 nếu Frequency > 2, ngược lại bằng 0"
+            ref = "British Journal of Management (2025)"
+        elif c_lower.endswith("_density"):
+            topic = col.rsplit("_", 1)[0]
+            desc = f"Mật độ từ khóa chủ đề {topic} (Keyword Density)"
+            vtype = "Tỷ lệ liên tục (%) — Robustness"
+            formula = "(Frequency / Word_Count) × 100"
+            ref = "PLOS ONE (2022), Emerald, Wiley (2025)"
+        elif c_lower.endswith("_unique_keywords"):
+            topic = col.rsplit("_", 2)[0]
+            desc = f"Số từ khóa phân biệt (distinct) xuất hiện cho {topic}"
+            vtype = "Đếm số lượng (Count)"
+            formula = "Số lượng từ khóa khác nhau xuất hiện ít nhất 1 lần"
+            ref = ""
+        elif c_lower.endswith("_coverage"):
+            topic = col.rsplit("_", 1)[0]
+            desc = f"Phạm vi sử dụng từ vựng chủ đề {topic} (Keyword Coverage)"
+            vtype = "Tỷ lệ [0,1] — Robustness bổ sung"
+            formula = "Unique Keywords Used / Total Dictionary Keywords"
+            ref = ""
+        elif c_lower.endswith("_freq"):
             desc = f"Tần suất từ khóa theo nhóm danh mục {col}"
             vtype = "Đếm số lần (Count)"
-            formula = "Số lần xuất hiện từ khóa trong nhóm"
-        elif "_div" in c_lower:
-            desc = f"Độ phong phú từ khóa theo nhóm danh mục {col}"
-            vtype = "Đếm số lượng (Count)"
-            formula = "Số từ khóa phân biệt trong nhóm"
-        elif "_score" in c_lower:
-            desc = f"Tần suất chuẩn hóa theo nhóm danh mục {col}"
-            vtype = "Chỉ số liên tục"
-            formula = "(Tần suất từ khóa nhóm / Tổng số từ) * 10,000"
+            formula = "Σ keyword occurrences trong nhóm category"
+            ref = "Fang et al. (2024)"
+        # === Financial ratios ===
         elif c_lower == "roa":
             desc = "Tỷ suất sinh lời trên tổng tài sản (Return on Assets)"
             vtype = "Tỷ số tài chính (Financial Ratio)"
             formula = "Lợi nhuận sau thuế / Tổng tài sản"
+            ref = ""
         elif c_lower == "roe":
             desc = "Tỷ suất sinh lời trên vốn chủ sở hữu (Return on Equity)"
             vtype = "Tỷ số tài chính (Financial Ratio)"
             formula = "Lợi nhuận sau thuế / Vốn chủ sở hữu"
+            ref = ""
         elif c_lower == "size":
             desc = "Quy mô doanh nghiệp (Firm Size)"
             vtype = "Biến kiểm soát (Control Variable)"
             formula = "ln(Tổng tài sản)"
+            ref = ""
         elif c_lower == "leverage":
             desc = "Hệ số đòn bẩy tài chính (Financial Leverage)"
             vtype = "Biến kiểm soát (Control Variable)"
             formula = "Nợ phải trả / Tổng tài sản"
-        elif c_lower == "gross_margin":
-            desc = "Biên lợi nhuận gộp (Gross Profit Margin)"
+            ref = ""
+        elif c_lower in ("gross_margin", "net_margin", "ebit_margin",
+                         "current_ratio", "quick_ratio", "debt_to_equity",
+                         "equity_multiplier", "asset_turnover"):
+            desc = f"Chỉ số tài chính: {col.replace('_', ' ').title()}"
             vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "Lợi nhuận gộp / Doanh thu thuần"
-        elif c_lower == "net_margin":
-            desc = "Biên lợi nhuận ròng (Net Profit Margin)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "Lợi nhuận sau thuế / Doanh thu thuần"
-        elif c_lower == "ebit_margin":
-            desc = "Biên EBIT (EBIT Margin)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "EBIT / Doanh thu thuần"
-        elif c_lower == "current_ratio":
-            desc = "Hệ số thanh toán hiện hành (Current Ratio)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "Tài sản ngắn hạn / Nợ ngắn hạn"
-        elif c_lower == "quick_ratio":
-            desc = "Hệ số thanh toán nhanh (Quick Ratio)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "(Tài sản ngắn hạn - Hàng tồn kho) / Nợ ngắn hạn"
-        elif c_lower == "debt_to_equity":
-            desc = "Tỷ số nợ trên vốn chủ sở hữu (Debt-to-Equity D/E)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "Nợ phải trả / Vốn chủ sở hữu"
-        elif c_lower == "equity_multiplier":
-            desc = "Đòn bẩy vốn chủ sở hữu (Equity Multiplier)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "Tổng tài sản / Vốn chủ sở hữu"
-        elif c_lower == "asset_turnover":
-            desc = "Vòng quay tổng tài sản (Asset Turnover)"
-            vtype = "Tỷ số tài chính (Financial Ratio)"
-            formula = "Doanh thu thuần / Tổng tài sản"
-        elif c_lower.startswith("bs_"):
-            desc = f"Chỉ tiêu Bảng cân đối kế toán: {col}"
+            formula = "Xem vnfinancialdata"
+            ref = ""
+        elif c_lower.startswith(("bs_", "is_", "cf_")):
+            prefix_map = {"bs_": "Bảng cân đối kế toán",
+                          "is_": "Kết quả hoạt động kinh doanh",
+                          "cf_": "Lưu chuyển tiền tệ"}
+            pfx = c_lower[:3]
+            desc = f"Chỉ tiêu {prefix_map.get(pfx, 'BCTC')}: {col}"
             vtype = "Chỉ tiêu kế toán (VNĐ)"
             formula = "Báo cáo tài chính từ vnfinancialdata"
-        elif c_lower.startswith("is_"):
-            desc = f"Chỉ tiêu Kết quả hoạt động kinh doanh: {col}"
-            vtype = "Chỉ tiêu kế toán (VNĐ)"
-            formula = "Báo cáo tài chính từ vnfinancialdata"
-        elif c_lower.startswith("cf_"):
-            desc = f"Chỉ tiêu Lưu chuyển tiền tệ: {col}"
-            vtype = "Chỉ tiêu kế toán (VNĐ)"
-            formula = "Báo cáo tài chính từ vnfinancialdata"
+            ref = ""
         else:
             desc = f"Biến nghiên cứu: {col}"
             vtype = "Biến số (Variable)"
             formula = "Trích xuất từ báo cáo"
+            ref = ""
 
-        codebook.append({
+        entry = {
             "Biến": col,
             "Phân loại": vtype,
             "Mô tả chi tiết": desc,
             "Công thức / Nguồn": formula,
-        })
+        }
+        if ref:
+            entry["Tham chiếu"] = ref
+        codebook.append(entry)
     return codebook
 
 
@@ -764,60 +743,60 @@ class ResearchOutputGenerator:
         self.output_dir = output_dir
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    def generate_all(self, panel_df: pd.DataFrame,
-                     variable_info: Optional[List[Dict]] = None) -> Dict[str, Path]:
+    def generate_all(
+        self,
+        panel_df: pd.DataFrame,
+        variable_info: Optional[List[Dict]] = None,
+        raw_keywords_df: Optional[pd.DataFrame] = None,
+    ) -> Dict[str, Path]:
         outputs = {}
 
         if variable_info is None:
             variable_info = auto_generate_codebook(panel_df)
 
-        # Panel data (Excel, CSV, Parquet, Stata)
+        # Raw keywords CSV if available
+        if raw_keywords_df is not None and not raw_keywords_df.empty:
+            rk_csv = self.output_dir / "raw_keywords.csv"
+            raw_keywords_df.to_csv(rk_csv, index=False, encoding="utf-8-sig")
+            outputs["raw_keywords_csv"] = rk_csv
+
+        # Panel data (Excel 3 sheets, CSV, Parquet, Stata)
         for fmt in ("excel", "csv", "parquet", "stata"):
             try:
-                outputs[f"panel_{fmt}"] = self._export(panel_df, fmt, variable_info)
+                outputs[f"panel_{fmt}"] = self._export(panel_df, fmt, variable_info, raw_keywords_df)
             except Exception as e:
                 logger.warning(f"Failed exporting format {fmt}: {e}")
 
-        # Descriptive statistics
-        outputs["desc_stats"] = self._descriptive(panel_df)
-
-        # Correlation matrix
-        outputs["correlation"] = self._correlation(panel_df)
-
-        # Variable codebook
+        # Variable codebook CSV
         outputs["codebook"] = self._codebook(variable_info)
 
-        # Summary
+        # Summary report
         outputs["report"] = self._report(panel_df, outputs)
 
         return outputs
 
-    def _export(self, df: pd.DataFrame, fmt: str, variable_info=None) -> Path:
+    def _export(
+        self,
+        df: pd.DataFrame,
+        fmt: str,
+        variable_info: Optional[List[Dict]] = None,
+        raw_keywords_df: Optional[pd.DataFrame] = None,
+    ) -> Path:
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
             with pd.ExcelWriter(p, engine="openpyxl") as writer:
-                # Sheet 1: Panel Data
+                # Sheet 1: Raw_Keywords (Reproducibility & transparency)
+                if raw_keywords_df is not None and not raw_keywords_df.empty:
+                    raw_keywords_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
+                else:
+                    pd.DataFrame(columns=["Firm", "Year", "Keyword", "Category", "Frequency"]).to_excel(
+                        writer, sheet_name="Raw_Keywords", index=False
+                    )
+
+                # Sheet 2: Panel_Data (Main regression variables)
                 df.to_excel(writer, sheet_name="Panel_Data", index=False)
 
-                # Sheet 2: Descriptive Statistics
-                num = df.select_dtypes(include=["number"])
-                if not num.empty:
-                    desc = num.describe().T
-                    desc["N"] = num.count()
-                    desc["missing"] = num.isna().sum()
-                    desc.index.name = "Variable"
-                    cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
-                    desc[cols_desc].round(4).to_excel(writer, sheet_name="Descriptive_Stats")
-
-                    # Sheet 3: Correlation Matrix
-                    skip_corr = {"year", "pages"}
-                    cols = [c for c in num.columns if c not in skip_corr and not c.startswith(("year_", "ind_")) and num[c].std() > 0]
-                    if len(cols) > 1:
-                        corr = num[cols].corr().round(4)
-                        corr.index.name = "Variable"
-                        corr.to_excel(writer, sheet_name="Correlation")
-
-                # Sheet 4: Variable Codebook
+                # Sheet 3: Codebook (Variable explanations & citations)
                 if variable_info:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 
@@ -837,33 +816,6 @@ class ResearchOutputGenerator:
             except Exception as e:
                 logger.warning(f"Stata export with labels failed ({e}), retrying without labels")
                 sdf.to_stata(p, write_index=False, version=118)
-        return p
-
-    def _descriptive(self, df: pd.DataFrame) -> Path:
-        p = self.output_dir / "descriptive_statistics.csv"
-        num = df.select_dtypes(include=["number"])
-        if num.empty:
-            pd.DataFrame().to_csv(p, encoding="utf-8-sig")
-            return p
-        desc = num.describe().T
-        desc["N"] = num.count()
-        desc["missing"] = num.isna().sum()
-        desc.index.name = "Variable"
-        cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
-        desc[cols_desc].round(4).to_csv(p, encoding="utf-8-sig")
-        return p
-
-    def _correlation(self, df: pd.DataFrame) -> Path:
-        p = self.output_dir / "correlation_matrix.csv"
-        num = df.select_dtypes(include=["number"])
-        skip_corr = {"year", "pages"}
-        cols = [c for c in num.columns if c not in skip_corr and not c.startswith(("year_", "ind_")) and num[c].std() > 0]
-        if len(cols) > 1:
-            corr = num[cols].corr().round(4)
-            corr.index.name = "Variable"
-            corr.to_csv(p, encoding="utf-8-sig")
-        else:
-            pd.DataFrame().to_csv(p, encoding="utf-8-sig")
         return p
 
     def _codebook(self, info: List[Dict]) -> Path:

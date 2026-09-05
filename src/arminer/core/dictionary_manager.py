@@ -92,12 +92,14 @@ class DictionaryManager:
         d = FlexibleDictionary.load(p)
         keywords = []
         for idx, entry in enumerate(d.entries):
+            v_val = entry.get("variants") or []
+            v_str = " | ".join(v_val) if isinstance(v_val, list) else str(v_val)
             keywords.append({
                 "id": idx + 1,
                 "keyword": entry.get("keyword", ""),
                 "category": entry.get("category", "default"),
                 "weight": entry.get("weight", 1.0),
-                "variants": entry.get("variants") or "",
+                "variants": v_str,
                 "language": entry.get("language", "vi"),
             })
 
@@ -121,10 +123,18 @@ class DictionaryManager:
             if cat not in categories:
                 categories[cat] = []
             
+            v_raw = kw.get("variants", "")
+            if isinstance(v_raw, list):
+                v_list = [str(x).strip() for x in v_raw if str(x).strip()]
+            elif isinstance(v_raw, str):
+                v_list = [x.strip() for x in v_raw.split("|") if x.strip()]
+            else:
+                v_list = []
+
             categories[cat].append({
                 "keyword": str(kw.get("keyword", "")).strip().lower(),
                 "weight": float(kw.get("weight", 1.0)),
-                "variants": [v.strip() for v in str(kw.get("variants", "")).split("|") if v.strip()] if kw.get("variants") else [],
+                "variants": v_list,
                 "language": kw.get("language", "vi"),
             })
 
@@ -146,7 +156,7 @@ class DictionaryManager:
         logger.info(f"Saved dictionary {topic_id} ({len(keywords)} keywords) to {custom_path}")
         return custom_path
 
-    def add_keyword(self, topic_id: str, keyword: str, category: str = "default", weight: float = 1.0) -> Dict[str, Any]:
+    def add_keyword(self, topic_id: str, keyword: str, category: str = "default", weight: float = 1.0, variants: str = "") -> Dict[str, Any]:
         """Thêm từ khóa mới vào từ điển."""
         dict_data = self.get_dictionary(topic_id)
         kw_clean = keyword.strip().lower()
@@ -163,7 +173,7 @@ class DictionaryManager:
             "keyword": kw_clean,
             "category": category.strip().lower() or "default",
             "weight": float(weight),
-            "variants": "",
+            "variants": variants.strip(),
             "language": "vi",
         }
         dict_data["keywords"].append(new_entry)
@@ -171,7 +181,7 @@ class DictionaryManager:
         self.save_dictionary(topic_id, dict_data["name"], dict_data["keywords"])
         return new_entry
 
-    def update_keyword(self, topic_id: str, old_keyword: str, new_keyword: str, category: str, weight: float = 1.0) -> Dict[str, Any]:
+    def update_keyword(self, topic_id: str, old_keyword: str, new_keyword: str, category: str, weight: float = 1.0, variants: Optional[str] = None) -> Dict[str, Any]:
         """Sửa một từ khóa hiện có."""
         dict_data = self.get_dictionary(topic_id)
         found = False
@@ -182,6 +192,8 @@ class DictionaryManager:
                 item["keyword"] = new_keyword.strip().lower()
                 item["category"] = category.strip().lower() or "default"
                 item["weight"] = float(weight)
+                if variants is not None:
+                    item["variants"] = variants.strip()
                 found = True
                 updated = item
                 break
