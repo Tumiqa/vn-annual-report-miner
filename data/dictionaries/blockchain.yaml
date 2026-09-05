@@ -92,7 +92,6 @@ categories:
       weight: 1.0
       variants:
       - tien ao
-      - tiền ảnh
       language: vi
     - keyword: stablecoin
       weight: 1.0
@@ -105,7 +104,8 @@ categories:
     - keyword: initial coin offering
       weight: 1.0
       variants:
-      - ico
+      - ICO
+      - initial coin offerings
       language: en
     - keyword: tokenization
       weight: 1.0
@@ -210,8 +210,6 @@ categories:
       weight: 1.0
       variants:
       - phi tap trung
-      - phân quyền
-      - phan quyen
       language: vi
     - keyword: truy xuất nguồn gốc
       weight: 1.0
@@ -256,13 +254,11 @@ categories:
       language: en
     - keyword: solana
       weight: 1.0
-      variants:
-      - sol
+      variants: []
       language: en
     - keyword: cardano
       weight: 1.0
-      variants:
-      - ada
+      variants: []
       language: en
     - keyword: polygon
       weight: 1.0
@@ -274,7 +270,6 @@ categories:
       variants:
       - polka dot
       - polka-dot
-      - dot
       language: en
     - keyword: erc20
       weight: 1.0
@@ -325,3 +320,22 @@ categories:
       weight: 1.5
       variants: []
       language: vi
+
+exclusions:
+  - keyword: token
+    note: Dễ nhầm với thẻ OTP ngân hàng
+  - keyword: pos
+    note: Dễ nhầm với Point of Sale
+  - keyword: pow
+    note: Dễ nhầm với power
+  - keyword: btc
+    note: Trùng với Bộ Tài chính, Báo cáo tài chính
+  - keyword: fungible
+    note: Dùng chỉ tính thay thế tài sản truyền thống
+  - keyword: phân quyền
+    note: Phân cấp phân quyền quản trị doanh nghiệp
+  - keyword: phân cấp
+    note: Phân cấp tổ chức
+  - keyword: together
+    note: Từ tiếng Anh thông dụng, không phải Tether
+

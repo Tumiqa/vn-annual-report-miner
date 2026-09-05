@@ -213,3 +213,25 @@ class DictionaryManager:
         kws = initial_keywords or []
         self.save_dictionary(clean_id, name, kws)
         return self.get_dictionary(clean_id)
+
+    def delete_topic(self, topic_id: str) -> bool:
+        """Xóa hoàn toàn một bộ từ điển (custom hoặc template)."""
+        clean_id = re.sub(r"[^a-z0-9_]", "_", topic_id.strip().lower())
+        custom_file = self.custom_dir / f"{clean_id}.yaml"
+        template_file = self.templates_dir / f"{clean_id}_dictionary.yaml"
+
+        deleted = False
+        if custom_file.exists():
+            custom_file.unlink()
+            deleted = True
+
+        if not deleted and template_file.exists():
+            template_file.unlink()
+            deleted = True
+
+        if not deleted:
+            raise FileNotFoundError(f"Không tìm thấy bộ từ điển: '{topic_id}'")
+
+        logger.info(f"Deleted dictionary topic: {clean_id}")
+        return True
+

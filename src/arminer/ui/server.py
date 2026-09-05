@@ -243,6 +243,19 @@ def create_topic(req: CreateTopicRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.delete("/api/dictionaries/{topic_id}")
+def delete_topic(topic_id: str):
+    """Xóa hoàn toàn một bộ từ điển."""
+    try:
+        dict_mgr.delete_topic(topic_id)
+        return {"success": True, "deleted": topic_id}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 # =====================================================================
 # Mining Execution Endpoints
 # =====================================================================

@@ -19,6 +19,25 @@ from loguru import logger
 from arminer.core.dictionary import Dictionary
 
 
+# Danh sách từ vựng thông dụng (tiếng Anh & tiếng Việt) tuyệt đối không được match nhầm dạng fuzzy
+# với thuật ngữ chuyên sâu (ví dụ: together vs tether, finance vs binance, bảo đảm vs tiền ảo).
+COMMON_GENERAL_WORDS = {
+    # English common stopwords and business terms
+    "together", "whether", "weather", "gather", "gathering", "another", "brother",
+    "mother", "father", "other", "rather", "further", "either", "neither",
+    "leather", "nether", "bother", "finance", "financial", "general", "company",
+    "annual", "report", "market", "meeting", "system", "service", "management",
+    "operation", "business", "statement", "audited", "executive", "director",
+    "shareholder", "capital", "revenue", "profit", "investment", "growth",
+    "overview", "quarter", "forward", "between", "through", "without",
+    # Vietnamese common words and administrative/financial phrases
+    "bảo đảm", "dòng tiền", "tiền mặt", "bảo hiểm", "bảo toàn", "bảo vệ",
+    "bảo lãnh", "phân cấp", "phân quyền", "hội đồng", "quản trị", "ban giám đốc",
+    "cổ đông", "kế hoạch", "kinh doanh", "lợi nhuận", "doanh thu", "tăng trưởng",
+    "vốn chủ", "sở hữu", "tài chính", "ngân sách", "ngân hàng", "kiểm soát",
+}
+
+
 class GenericFuzzyMatcher:
     """
     Khớp nối mờ từ khóa trong văn bản OCR.
@@ -61,9 +80,17 @@ class GenericFuzzyMatcher:
                 if kw:
                     self.exclusions.add(kw.strip().lower())
 
+        # Safety exclusions: Tránh nhầm lẫn phân cấp quản trị doanh nghiệp và từ tiếng Anh thông dụng
+        self.exclusions.add("phân quyền")
+        self.exclusions.add("phan quyen")
+        self.exclusions.add("phân cấp")
+        self.exclusions.add("together")
+
         # Pre-index theo word count + char length (tối ưu sliding window)
         self._kw_by_wc_len: Dict[int, Dict[int, List[str]]] = {}
         for kw in self.keywords:
+            if kw in self.exclusions:
+                continue
             wc = len(kw.split())
             cl = len(kw)
             self._kw_by_wc_len.setdefault(wc, {}).setdefault(cl, []).append(kw)
@@ -83,6 +110,9 @@ class GenericFuzzyMatcher:
         text_lower = text.lower()
 
         for keyword in self.keywords:
+            if keyword in self.exclusions:
+                continue
+
             start = 0
             while True:
                 pos = text_lower.find(keyword, start)
@@ -95,6 +125,24 @@ class GenericFuzzyMatcher:
                 after_ok = (end_pos >= len(text_lower)) or (not text_lower[end_pos].isalnum())
 
                 if before_ok and after_ok:
+                    # Guard cho từ viết tắt ngắn (<= 3 ký tự, e.g. 'ico', 'dlt', 'nft', 'evm', 'bnb', 'xrp'):
+                    # Trong báo cáo thường niên, thuật ngữ viết tắt tiếng Anh bắt buộc phải viết HOA (ICO, NFT, DLT).
+                    # Chữ thường xuất hiện trong văn bản OCR quét kém hoặc từ thông dụng là nhiễu.
+                    if len(keyword) <= 3 and keyword.isascii():
+                        actual_chunk = text[pos:end_pos]
+                        if not actual_chunk.isupper():
+                            start = pos + 1
+                            continue
+
+                        # OCR noise check: Nếu ngữ cảnh xung quanh chứa nhiều ký tự lỗi OCR, bỏ qua
+                        c_start = max(0, pos - 25)
+                        c_end = min(len(text), end_pos + 25)
+                        snippet_context = text[c_start:c_end]
+                        noise_chars = sum(1 for c in snippet_context if c in "@#%^*~`'{}/\\")
+                        if noise_chars >= 2:
+                            start = pos + 1
+                            continue
+
                     canonical = self.canonical_map.get(keyword, keyword)
                     results.append({
                         "keyword_found": keyword,
@@ -112,37 +160,53 @@ class GenericFuzzyMatcher:
 
     def fuzzy_search(self, text: str) -> List[Dict]:
         """
-        Tìm kiếm mờ bằng sliding window trên n-gram duy nhất.
+        Tìm kiếm mờ bằng sliding window trên n-gram duy nhất có bảo vệ ranh giới câu.
 
-        Thuật toán tối ưu (kế thừa từ blockchain_pipeline):
-        1. Chia text → tokens
-        2. Gom n-gram duy nhất + vị trí xuất hiện
-        3. So khớp Levenshtein theo nhóm độ dài từ khóa
+        Thuật toán tối ưu:
+        1. Chia text → tokens, ghi nhận ranh giới dấu ngắt câu (, ; : . ! ? ...)
+        2. Gom n-gram duy nhất (không nối qua dấu ngắt vế/câu)
+        3. So khớp Levenshtein theo nhóm độ dài từ khóa với bộ lọc từ thông dụng
         4. Ánh xạ kết quả lại tất cả vị trí xuất hiện
         """
         results: List[Dict] = []
-        words = text.lower().split()
+        raw_tokens = text.lower().split()
 
-        if not words:
+        if not raw_tokens:
             return results
 
-        # Tính vị trí char cho mỗi word
-        word_positions: List[int] = []
+        tokens: List[str] = []
+        token_positions: List[int] = []
+        has_break_after: List[bool] = []
         pos = 0
         text_lower = text.lower()
-        for word in words:
-            idx = text_lower.find(word, pos)
-            word_positions.append(idx)
-            pos = idx + len(word)
+
+        for raw_tok in raw_tokens:
+            idx = text_lower.find(raw_tok, pos)
+            pos = idx + len(raw_tok)
+
+            ends_with_break = any(
+                raw_tok.endswith(p)
+                for p in [",", ";", ":", ".", "!", "?", "\n", "—", "–", ")", "]", "}", "\"", "”"]
+            )
+            clean_tok = raw_tok.strip(".,;:!?()[]{}\"'“”—–/\\")
+            if clean_tok:
+                tokens.append(clean_tok)
+                token_positions.append(idx)
+                has_break_after.append(ends_with_break)
 
         # Gom n-gram duy nhất: {n_words: {ngram_str: [indices]}}
         ngram_occurrences: Dict[int, Dict[str, List[int]]] = {}
         for n_words in self._kw_by_wc_len:
-            if n_words > len(words):
+            if n_words > len(tokens):
                 continue
             ngram_occurrences[n_words] = {}
-            for i in range(len(words) - n_words + 1):
-                window = " ".join(words[i:i + n_words]) if n_words > 1 else words[i]
+            for i in range(len(tokens) - n_words + 1):
+                # Không nối n-gram vượt qua ranh giới dấu phẩy/chấm ngắt vế câu
+                # Ví dụ: "dòng tiền," và "bảo đảm" không được nối thành cụm "tiền bảo"
+                if n_words > 1 and any(has_break_after[j] for j in range(i, i + n_words - 1)):
+                    continue
+
+                window = " ".join(tokens[i:i + n_words])
                 ngram_occurrences[n_words].setdefault(window, []).append(i)
 
         # Fuzzy match trên n-gram duy nhất
@@ -164,37 +228,59 @@ class GenericFuzzyMatcher:
                         if len_k < 6:
                             continue
 
-                        # False-positive guard: Không nhầm lẫn thương hiệu Binance với từ thông dụng Finance
-                        if keyword == "binance" and window == "finance":
+                        # Guard 1: Từ vựng thông dụng tiếng Anh/tiếng Việt không thể là fuzzy match
+                        # của từ khóa chuyên sâu (ví dụ: together vs tether, finance vs binance)
+                        if window in COMMON_GENERAL_WORDS and window != keyword:
                             continue
+
+                        # Guard 2: Exclusions từ cấu hình từ điển
                         if window in self.exclusions:
                             continue
+
+                        # Guard 3: Ràng buộc khoảng cách Levenshtein và độ lệch độ dài cho từ đơn (n_words == 1)
+                        if n_words == 1:
+                            len_diff = abs(len_w - len_k)
+                            if len_k <= 8 and len_diff > 1:
+                                continue
+                            dist = lev_distance(window, keyword)
+                            if len_k <= 7 and dist > 1:
+                                continue
+                            if len_k <= 10 and dist > 2:
+                                continue
+                        else:
+                            dist = lev_distance(window, keyword)
 
                         sim = lev_ratio(window, keyword) * 100
 
                         if sim >= self.threshold and sim < 100:
-                            # Ràng buộc từng word cho cụm từ
+                            # Guard 4: Ràng buộc từng word cho cụm từ nhiều từ (n_words > 1)
                             if n_words > 1:
                                 kw_words = keyword.split()
                                 w_words = window.split()
-                                if any(
-                                    w != k and (
-                                        # Chênh lệch độ dài > 40% → từ khác, không phải lỗi OCR
-                                        min(len(w), len(k)) / max(len(w), len(k)) <= 0.6
-                                        # Ngưỡng per-word similarity:
-                                        #   Từ ngắn (≤4 chars): 0.60 (lỗi OCR dấu tiếng Việt)
-                                        #   Từ dài (>4 chars): 0.75
-                                        or lev_ratio(w, k) < (0.60 if min(len(w), len(k)) <= 4 else 0.75)
-                                    )
-                                    for w, k in zip(w_words, kw_words)
-                                ):
+                                skip_ngram = False
+                                for w, k in zip(w_words, kw_words):
+                                    if w == k:
+                                        continue
+                                    len_min = min(len(w), len(k))
+                                    len_max = max(len(w), len(k))
+
+                                    # Từ rất ngắn (<= 3 ký tự, e.g. "ảo", "vũ", "số"):
+                                    # Phải bằng độ dài tuyệt đối, không được chênh ký tự (chống "bảo" vs "ảo")
+                                    if len_min <= 3:
+                                        if len_min != len_max or lev_ratio(w, k) < 0.85:
+                                            skip_ngram = True
+                                            break
+                                    else:
+                                        if (len_min / len_max <= 0.65) or lev_ratio(w, k) < 0.75:
+                                            skip_ngram = True
+                                            break
+                                if skip_ngram:
                                     continue
 
-                            dist = lev_distance(window, keyword)
                             canonical = self.canonical_map.get(keyword, keyword)
 
                             for idx in indices:
-                                w_pos = word_positions[idx] if idx < len(word_positions) else 0
+                                w_pos = token_positions[idx] if idx < len(token_positions) else 0
                                 results.append({
                                     "keyword_found": window,
                                     "keyword_canonical": canonical,

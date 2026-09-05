@@ -600,6 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const newKwCategory = document.getElementById('newKwCategory');
   const newKwWeight = document.getElementById('newKwWeight');
   const btnCreateNewTopic = document.getElementById('btnCreateNewTopic');
+  const btnDeleteTopic = document.getElementById('btnDeleteTopic');
   const uploadTopicSelect = document.getElementById('uploadTopicSelect');
 
   async function loadDictionariesList() {
@@ -828,6 +829,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function handleDeleteTopic() {
+    if (!currentDictData || !currentDictData.id) {
+      alert('Chưa chọn bộ từ điển nào để xóa.');
+      return;
+    }
+
+    const topicId = currentDictData.id;
+    const topicName = currentDictData.name || topicId;
+
+    if (!confirm(`Bạn có chắc chắn muốn XÓA HOÀN TOÀN bộ từ điển "${topicName}" (${topicId}) không?\nThao tác này sẽ xóa vĩnh viễn tệp từ điển này khỏi hệ thống!`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/dictionaries/${topicId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Không thể xóa bộ từ điển');
+      }
+
+      alert(`Đã xóa thành công bộ từ điển "${topicName}"!`);
+      await loadDictionariesList();
+    } catch (err) {
+      alert(`Lỗi khi xóa bộ từ điển: ${err.message}`);
+    }
+  }
+
   if (dictSelectTopic) {
     dictSelectTopic.addEventListener('change', () => {
       activeCategoryFilter = 'all';
@@ -846,6 +877,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCreateNewTopic) {
     btnCreateNewTopic.addEventListener('click', handleCreateTopic);
   }
+
+  if (btnDeleteTopic) {
+    btnDeleteTopic.addEventListener('click', handleDeleteTopic);
+  }
+
 
   // --------------------------------------------------------------------------
   // 4. Research Results Rendering
