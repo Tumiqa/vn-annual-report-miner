@@ -50,7 +50,7 @@ Dự án `vn-annual-report-miner` được phát triển trên cơ sở tích h�
 3. **Hệ thống chỉ số tài chính phân tích**:
    - Tham chiếu và chuẩn hóa theo hệ thống công thức phân tích tài chính chuyên sâu của **WiData (WiGroup)**.
 
-Nhóm nghiên cứu xin chân thành cảm ơn tác giả Ngo, Phu Thanh và cộng đồng nghiên cứu UEL đã chia sẻ các nguồn tài nguyên dữ liệu mở quý báu cho nền nghiên cứu tài chính - kinh tế Việt Nam.
+Nhóm nghiên cứu xin chân thành cảm ơn tác giả Ngo Phu Thanh và cộng đồng nghiên cứu UEL đã chia sẻ các nguồn tài nguyên dữ liệu mở quý báu cho nền nghiên cứu tài chính - kinh tế Việt Nam.
 
 ---
 
@@ -418,7 +418,7 @@ Nếu công cụ hoặc dữ liệu hỗ trợ công trình nghiên cứu của 
 ```bibtex
 @software{arminer2026,
   title     = {vn-annual-report-miner: Text Mining and Financial Data Mining Tool for Vietnamese Annual Reports},
-  author    = {NCKH Team Thầy Trung},
+  author    = {Truong Minh Quan},
   year      = {2026},
   url       = {https://github.com/Tumiqa/vn-annual-report-miner},
   license   = {MIT}
@@ -444,6 +444,6 @@ Nếu công cụ hoặc dữ liệu hỗ trợ công trình nghiên cứu của 
 ---
 
 <p align="center">
-  <strong>Được phát triển bởi NCKH Team Thầy Trung</strong><br>
+  <strong>Được phát triển bởi Truong Minh Quan - DUE</strong><br>
   <em>Phục vụ cộng đồng nghiên cứu kinh tế, tài chính và quản trị tại Việt Nam</em>
 </p>
