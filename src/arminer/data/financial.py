@@ -9,9 +9,14 @@ from __future__ import annotations
 
 import math
 from typing import Any, Dict, List, Optional
+import warnings
 
 import pandas as pd
 from loguru import logger
+
+# Suppress harmless Hugging Face Hub unauthenticated warning for public datasets
+warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
+
 
 
 class FinancialDataProvider:

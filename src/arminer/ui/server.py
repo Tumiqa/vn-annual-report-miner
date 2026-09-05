@@ -21,7 +21,12 @@ import time
 import uuid
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+import warnings
 from pydantic import BaseModel
+
+# Suppress harmless Hugging Face Hub unauthenticated warning for public datasets
+warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
+
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
