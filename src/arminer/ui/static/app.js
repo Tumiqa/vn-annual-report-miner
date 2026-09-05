@@ -696,11 +696,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filtered.forEach((k, idx) => {
       const tr = document.createElement('tr');
-      const varText = k.variants ? `<span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(k.variants)}</span>` : '<span style="color: var(--text-muted); font-style: italic; font-size: 11px;">—</span>';
+      let varHtml = '<span style="color: var(--text-muted); font-style: italic; font-size: 11px;">—</span>';
+      if (k.variants && k.variants.trim()) {
+        const parts = k.variants.split('|').map(v => v.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          varHtml = parts.map(p => `<span class="var-chip">${escapeHtml(p)}</span>`).join('');
+        }
+      }
       tr.innerHTML = `
         <td class="tabular" style="color: var(--text-muted);">${idx + 1}</td>
         <td><strong style="color: var(--text-primary);">${escapeHtml(k.keyword)}</strong></td>
-        <td>${varText}</td>
+        <td>${varHtml}</td>
         <td><span class="badge badge-cat">${escapeHtml(k.category)}</span></td>
         <td style="text-align: right;">
           <button class="btn btn-secondary btn-sm btn-edit-kw" data-kw="${escapeHtml(k.keyword)}" data-cat="${escapeHtml(k.category)}" data-var="${escapeHtml(k.variants || '')}">Sửa</button>
@@ -904,6 +910,13 @@ document.addEventListener('DOMContentLoaded', () => {
     statHitsCount.textContent = data.files_with_hits || 0;
     statMentionsCount.textContent = (data.total_mentions || 0).toLocaleString();
 
+    const resultsTabBadge = document.getElementById('resultsTabBadge');
+    if (resultsTabBadge) {
+      const n = data.total_files || (data.top_rows ? data.top_rows.length : 0);
+      resultsTabBadge.textContent = n;
+      resultsTabBadge.style.display = n > 0 ? 'inline-flex' : 'none';
+    }
+
     if (btnDlExcel) btnDlExcel.href = data.excel_download;
     if (btnDlStata) btnDlStata.href = data.stata_download;
     if (btnDlCsv) btnDlCsv.href = data.csv_download;
@@ -945,20 +958,34 @@ document.addEventListener('DOMContentLoaded', () => {
     snippetsContainer.innerHTML = '';
     const snips = data.snippets || [];
     if (snips.length === 0) {
-      snippetsContainer.innerHTML = '<p style="color: var(--text-muted); font-style: italic;">Không tìm thấy câu văn nào chứa từ khóa trong các tài liệu đã quét.</p>';
+      snippetsContainer.innerHTML = '<p style="color: var(--text-muted); font-style: italic; padding: 12px 0;">Không tìm thấy câu văn nào chứa từ khóa trong các tài liệu đã quét.</p>';
     } else {
       snips.forEach((s, idx) => {
         const item = document.createElement('div');
         item.className = 'snippet-box';
         item.innerHTML = `
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span style="font-weight: 600; font-family: var(--font-mono);">${s.ticker || 'DN'} (${s.year || '—'})</span>
-            <span class="badge badge-cat">${escapeHtml(s.category)}</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; font-family: var(--font-mono); color: var(--text-primary);">${s.ticker || 'DN'} (${s.year || '—'})</span>
+              <span class="badge badge-cat">${escapeHtml(s.category)}</span>
+            </div>
+            <button class="btn btn-secondary btn-sm btn-copy-snippet" title="Sao chép đoạn trích dẫn này">Sao chép</button>
           </div>
           <p style="color: var(--text-secondary); line-height: 1.6;">
             "...${escapeHtml(s.context).replace(new RegExp(escapeRegExp(escapeHtml(s.keyword)), 'gi'), `<span class="snippet-kw">${escapeHtml(s.keyword)}</span>`)}..."
           </p>
         `;
+        const copyBtn = item.querySelector('.btn-copy-snippet');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(s.context).then(() => {
+              copyBtn.textContent = 'Đã chép!';
+              setTimeout(() => { copyBtn.textContent = 'Sao chép'; }, 1500);
+            }).catch(() => {
+              copyBtn.textContent = 'Lỗi copy';
+            });
+          });
+        }
         snippetsContainer.appendChild(item);
       });
     }

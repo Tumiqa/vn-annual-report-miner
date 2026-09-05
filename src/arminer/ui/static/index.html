@@ -39,6 +39,7 @@
       </button>
       <button class="tab-btn" data-tab="tab-results">
         <span>Kết quả</span>
+        <span id="resultsTabBadge" class="tab-badge" style="display: none;">0</span>
       </button>
     </nav>
 
@@ -118,47 +119,42 @@
 
         <!-- Sticky Action Bar for Selected Reports -->
         <div class="action-banner">
-          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+          <!-- Zone 1: Selection & File Tools -->
+          <div class="action-zone">
             <label style="display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;">
               <input type="checkbox" id="chkSelectAll" class="custom-chk">
-              <span>Chọn tất cả đang hiển thị</span>
+              <span>Chọn tất cả hiển thị</span>
             </label>
             <span style="color: var(--text-muted);">|</span>
             <span id="selectedCountLabel" style="font-weight: 600; color: var(--brand-primary);">Đã chọn: 0 báo cáo</span>
+            <span style="color: var(--text-muted);">|</span>
+            <!-- ZIP export tools -->
+            <select id="catZipStructure" class="form-select" style="padding: 5px 8px; font-size: 12px;" title="Cấu trúc phân cấp thư mục trong file ZIP">
+              <option value="ticker">Thư mục: Mã CK</option>
+              <option value="sector">Thư mục: Phân Ngành</option>
+              <option value="year">Thư mục: Năm</option>
+            </select>
+            <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Tự động xóa file PDF đệm sau khi nén ZIP để tiết kiệm ổ đĩa">
+              <input type="checkbox" id="chkZipCleanupCache">
+              <span>Xóa file đệm</span>
+            </label>
+            <button id="btnDownloadSelectedZip" class="btn btn-secondary btn-sm" disabled title="Tải về file PDF gốc đã chọn dạng file nén .zip">
+              <span id="btnZipText">Tải ZIP</span>
+            </button>
+            <button id="btnClearZenodoCache" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 7px;" title="Xóa toàn bộ file PDF đệm trong zenodo_cache để giải phóng dung lượng ổ đĩa">
+              Dọn Cache
+            </button>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <!-- Cấu trúc phân cấp thư mục file ZIP -->
-            <select id="catZipStructure" class="form-select" style="padding: 6px 10px; font-size: 13px;" title="Cấu trúc phân cấp thư mục trong file ZIP">
-              <option value="ticker">Phân thư mục theo Mã CK (Mã CK / Tên file)</option>
-              <option value="sector">Phân thư mục theo Ngành (Ngành / Mã CK / Tên file)</option>
-              <option value="year">Phân thư mục theo Năm (Năm / Mã CK / Tên file)</option>
-            </select>
-
-            <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Tự động xóa file PDF đệm sau khi nén ZIP để tránh tốn dung lượng ổ đĩa">
-              <input type="checkbox" id="chkZipCleanupCache">
-              <span>Xóa file đệm sau khi nén</span>
-            </label>
-
-            <!-- Nút Tải Về File Gốc .zip -->
-            <button id="btnDownloadSelectedZip" class="btn btn-secondary" disabled title="Tải về toàn bộ file PDF gốc đã chọn và tự động nén ZIP phân thư mục">
-              <span id="btnZipText">Tải Về File Gốc (.zip)</span>
-            </button>
-
-            <button id="btnClearZenodoCache" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 8px;" title="Xóa toàn bộ file PDF đệm trong thư mục zenodo_cache để giải phóng dung lượng ổ đĩa">
-              Dọn Dẹp Cache
-            </button>
-
-            <span style="color: var(--text-muted);">|</span>
-
-            <span style="font-size: 13px; color: var(--text-secondary);">Bộ từ điển:</span>
-            <select id="catTopicSelect" class="form-select" style="padding: 6px 10px; font-size: 13px;">
+          <!-- Zone 2: Primary Mining Execution -->
+          <div class="action-zone action-zone-primary">
+            <span style="font-size: 13px; font-weight: 500; color: var(--text-primary);">Từ điển:</span>
+            <select id="catTopicSelect" class="form-select" style="padding: 6px 10px; font-size: 13px; font-weight: 500;">
               <option value="blockchain">Blockchain &amp; Web3 (55 từ)</option>
               <option value="esg">ESG &amp; Phát triển bền vững (36 từ)</option>
               <option value="fintech">Fintech &amp; Ngân hàng số (29 từ)</option>
             </select>
-
-            <button id="btnExecuteSelectedScan" class="btn btn-primary" disabled>
+            <button id="btnExecuteSelectedScan" class="btn btn-primary" disabled style="padding: 7px 16px; font-weight: 600;">
               <span id="btnScanText">Khai Phá Báo Cáo Đã Chọn</span>
             </button>
           </div>
@@ -537,10 +533,10 @@
             <h2 class="card-title">Bảng Dữ Liệu Nghiên Cứu Định Lượng (Panel Data)</h2>
             <p class="card-desc" id="resSummarySubtitle">Biến chính: Log_Frequency = ln(1+Freq). Robustness: Mention, Substantive, Density (%), Coverage. Tải file Excel 3 sheets đầy đủ.</p>
           </div>
-          <div style="display: flex; gap: 8px;">
-            <a id="btnDlExcel" href="#" class="btn btn-secondary btn-sm" download>Xuất Excel (3 Sheets)</a>
-            <a id="btnDlStata" href="#" class="btn btn-secondary btn-sm" download>Xuất File Stata (.dta)</a>
-            <a id="btnDlCsv" href="#" class="btn btn-secondary btn-sm" download>Xuất CSV</a>
+          <div class="btn-group">
+            <a id="btnDlExcel" href="#" class="btn btn-secondary btn-sm" download title="Xuất file Excel gồm 3 sheet: Raw_Keywords, Panel_Data, Codebook">Xuất Excel (3 Sheets)</a>
+            <a id="btnDlStata" href="#" class="btn btn-secondary btn-sm" download title="Xuất file định dạng Stata 118 (.dta) sẵn sàng cho hồi quy">File Stata (.dta)</a>
+            <a id="btnDlCsv" href="#" class="btn btn-secondary btn-sm" download title="Xuất file định dạng CSV chuẩn UTF-8-BOM">CSV</a>
           </div>
         </div>
 
@@ -568,11 +564,11 @@
                 <th style="width: 55px;">Năm</th>
                 <th style="width: 130px;">Ngành (L1)</th>
                 <th>Tên File</th>
-                <th style="width: 85px; text-align: right;">Số Từ</th>
-                <th style="width: 85px; text-align: right;">Frequency</th>
-                <th style="width: 95px; text-align: right; color: var(--brand-primary);">Log (Main)</th>
-                <th style="width: 75px; text-align: center;">Mention</th>
-                <th style="width: 95px; text-align: right;">Density (%)</th>
+                <th style="width: 85px; text-align: right;" title="Tổng số từ trong báo cáo (Word Count)">Số Từ</th>
+                <th style="width: 85px; text-align: right;" class="th-hint" title="Frequency: Tổng số lần xuất hiện từ khóa (Raw count - Wu et al. 2021)">Frequency</th>
+                <th style="width: 100px; text-align: right; color: #60a5fa;" class="th-hint" title="⭐ Biến chính mô hình: ln(1 + Frequency) (Wu et al. 2021, MDPI 2026)">Log (Main) ⭐</th>
+                <th style="width: 75px; text-align: center;" class="th-hint" title="Mention: Biến giả 1 nếu Frequency > 0, ngược lại 0 (Baier et al. 2020)">Mention</th>
+                <th style="width: 95px; text-align: right;" class="th-hint" title="Density: Frequency / Word_Count * 100% (PLOS ONE, Emerald)">Density (%)</th>
               </tr>
             </thead>
             <tbody id="panelDataTableBody">
