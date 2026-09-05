@@ -4,7 +4,7 @@
     <strong>Công cụ khai phá dữ liệu Báo cáo Thường niên & Báo cáo Tài chính Doanh nghiệp niêm yết Việt Nam</strong>
   </p>
   <p align="center">
-    Tự động quét từ khóa văn bản BCTN, tải tệp PDF gốc từ kho lưu trữ Zenodo, phân tích 702 chỉ tiêu BCTC và 75 tỷ số tài chính chuẩn WiData, xuất Panel Data chuẩn cho hồi quy kinh tế lượng (OLS, FEM, REM, GMM).
+    Tự động quét từ khóa văn bản BCTN, tải tệp PDF gốc từ kho lưu trữ Zenodo, phân tích 702 chỉ tiêu BCTC và 75 tỷ số tài chính chuẩn, xuất Panel Data chuẩn cho hồi quy kinh tế lượng (OLS, FEM, REM, GMM).
   </p>
 </p>
 
@@ -24,19 +24,44 @@ Dự án được thiết kế chuyên biệt phục vụ các **nhà nghiên c�
 - **Không yêu cầu kỹ năng lập trình phức tạp**: Cung cấp giao diện đồ họa Web Studio tương tác trực quan cùng công cụ dòng lệnh CLI.
 - **Tự chủ hoàn toàn biến số nghiên cứu**: Tự do nhập từ khóa nghiên cứu thông qua file văn bản TXT, bảng tính Excel, CSV hoặc YAML cho mọi chủ đề (ESG, Chuyển đổi số, Fintech, Trí tuệ nhân tạo AI, Blockchain, Trách nhiệm xã hội CSR...).
 - **Kho lưu trữ 14,000+ Báo cáo Thường niên gốc**: Tích hợp danh mục BCTN từ kho Zenodo (giai đoạn 2000 - 2025), hỗ trợ trích xuất và tải về các file PDF gốc được đóng gói phân cấp theo Mã CK, Ngành hoặc Năm.
-- **Dữ liệu Báo cáo Tài chính toàn diện**: Hỗ trợ 702 chỉ tiêu kế toán chuẩn mực phân bổ vào 13 nhóm và 75 chỉ số tài chính chuyên sâu chuẩn WiData (bao gồm các chỉ tiêu đặc thù CTCK như nghiệp vụ ký quỹ Margin, tài sản FVTPL, AFS, HTM).
+- **Dữ liệu Báo cáo Tài chính toàn diện**: Hỗ trợ 702 chỉ tiêu kế toán chuẩn mực phân bổ vào 13 nhóm và 75 chỉ số tài chính chuyên sâu chuẩn (bao gồm các chỉ tiêu đặc thù CTCK như nghiệp vụ ký quỹ Margin, tài sản FVTPL, AFS, HTM).
 - **Hỗ trợ tự động lọc thông minh bằng VBA Macro trong Excel**: Cung cấp file `.xlsm` có sẵn Macro cho phép chọn mã chứng khoán để tự động lọc và đồng bộ dữ liệu giữa các sheet.
 - **Đầu ra chuẩn mực cho nghiên cứu định lượng**: Xuất dữ liệu bảng Panel Data (Firm x Year) sẵn sàng đưa trực tiếp vào Stata (`.dta`), R, Python, SPSS hoặc Excel.
 
 ---
 
+## Nguồn dữ liệu tích hợp & Lời cảm ơn (Data Sources & Acknowledgments)
+
+Dự án `vn-annual-report-miner` được phát triển trên cơ sở tích hợp và kế thừa 2 bộ dữ liệu học thuật mở vô cùng giá trị do tác giả **Ngo Phu Thanh (Trường Đại học Kinh tế - Luật, ĐHQG TP.HCM - UEL)** xây dựng và công bố cho cộng đồng nghiên cứu:
+
+1. **Kho Báo cáo Thường niên PDF (Zenodo Dataset)**:
+   - **Tên bộ dữ liệu**: *Vietnam Listed Companies Annual Reports PDF Dataset, 2000–2025*
+   - **Tác giả**: Ngo, Phu Thanh (University of Economics and Law - UEL, ORCID: [0000-0002-9174-4747](https://orcid.org/0000-0002-9174-4747))
+   - **DOI**: [10.5281/zenodo.20949551](https://doi.org/10.5281/zenodo.20949551)
+   - **Quy mô**: Gần 14,000 tệp PDF báo cáo thường niên gốc của các công ty niêm yết trên thị trường chứng khoán Việt Nam từ năm 2000 đến 2025, kèm theo bảng chỉ mục tổng hợp và mã băm SHA256.
+
+2. **Dữ liệu Báo cáo Tài chính dạng bảng (Hugging Face & vnfinancialdata)**:
+   - **Tên bộ dữ liệu**: *Vietnam Listed Companies Financial Statements Dataset*
+   - **Thư viện Python**: [`vnfinancialdata`](https://pypi.org/project/vnfinancialdata/) ([GitHub: thanhnp-uel/vnfinancialdata](https://github.com/thanhnp-uel/vnfinancialdata))
+   - **Kho lưu trữ Hugging Face**: [`thanhnp-uel/vietnam-listed-companies-financial-statements`](https://huggingface.co/datasets/thanhnp-uel/vietnam-listed-companies-financial-statements)
+   - **Tác giả**: Ngo, Phu Thanh (`thanhnp-uel`, UEL)
+   - **Quy mô**: Dữ liệu tài chính chuẩn hóa của 692 công ty niêm yết trên 2 sàn HSX và HNX, bao gồm 702 chỉ tiêu kế toán (Bảng cân đối kế toán, Kết quả kinh doanh, Lưu chuyển tiền tệ) giai đoạn 2014–2024.
+
+3. **Hệ thống chỉ số tài chính phân tích**:
+   - Tham chiếu và chuẩn hóa theo hệ thống công thức phân tích tài chính chuyên sâu của **WiData (WiGroup)**.
+
+Nhóm nghiên cứu xin chân thành cảm ơn tác giả Ngo, Phu Thanh và cộng đồng nghiên cứu UEL đã chia sẻ các nguồn tài nguyên dữ liệu mở quý báu cho nền nghiên cứu tài chính - kinh tế Việt Nam.
+
+---
+
 ## Mục lục
 
+- [Nguồn dữ liệu & Lời cảm ơn](#nguồn-dữ-liệu-tích-hợp--lời-cảm-ơn-data-sources--acknowledgments)
 - [Cài đặt](#cài-đặt)
 - [Bắt đầu nhanh trong 60 giây](#bắt-đầu-nhanh-trong-60-giây)
 - [Giao diện Web Studio UI](#giao-diện-web-studio-ui)
 - [Tải về Báo cáo Thường niên gốc dạng ZIP](#tải-về-báo-cáo-thường-niên-gốc-dạng-zip)
-- [Hệ thống Báo cáo Tài chính & 75 Chỉ số WiData](#hệ-thống-báo-cáo-tài-chính--75-chỉ-số-widata)
+- [Hệ thống Báo cáo Tài chính & 75 Chỉ số](#hệ-thống-báo-cáo-tài-chính--75-chỉ-số)
 - [File Excel Macro VBA và Hướng dẫn Lọc](#file-excel-macro-vba-và-hướng-dẫn-lọc)
 - [Lệnh CLI đầy đủ](#lệnh-cli-đầy-đủ)
 - [Định dạng từ khóa linh hoạt](#định-dạng-từ-khóa-linh-hoạt)
@@ -64,7 +89,7 @@ pip install -e ".[full]"
 ### Cài đặt từng module chuyên biệt
 
 ```bash
-pip install -e ".[financial]"   # Dữ liệu BCTC & WiData (vnfinancialdata)
+pip install -e ".[financial]"   # Dữ liệu BCTC  (vnfinancialdata)
 pip install -e ".[stata]"       # Hỗ trợ xuất file định dạng Stata .dta
 pip install -e ".[ocr]"         # OCR nâng cao (Tesseract + OpenCV)
 pip install -e ".[gpu]"         # EasyOCR xử lý GPU
@@ -173,7 +198,7 @@ Nằm tại thư mục gốc của tệp ZIP, được tạo với định dạn
 
 ---
 
-## Hệ thống Báo cáo Tài chính & 75 Chỉ số WiData
+## Hệ thống Báo cáo Tài chính & 75 Chỉ số 
 
 ### 1. Phân loại 702 chỉ tiêu kế toán thành 13 nhóm chuẩn mực
 
@@ -193,7 +218,7 @@ Hệ thống cam kết xuất đầy đủ **100% (702 dòng)** chỉ tiêu cho 
 12. `NGOẠI BẢNG. B TÀI SẢN VÀ CÁC KHOẢN PHẢI TRẢ VỀ TÀI SẢN QUẢN LÝ CAM KẾT VỚI KHÁCH HÀNG`: Tiền gửi của khách hàng về giao dịch chứng khoán, các nghĩa vụ cam kết.
 13. `THUYẾT MINH. CÁC LOẠI TÀI SẢN TÀI CHÍNH`: Chi tiết tài sản tài chính FVTPL, HTM, AFS, các khoản cho vay và phải thu.
 
-### 2. Hệ thống 75 tỷ số tài chính chuẩn WiData
+### 2. Hệ thống 75 tỷ số tài chính chuẩn 
 
 Được chia thành 6 nhóm phân tích học thuật:
 
@@ -217,7 +242,7 @@ Khi xuất dữ liệu tài chính từ Web Studio, hệ thống tự động si
 ### Cấu trúc 5 Sheet trong Workbook
 
 1. **`Bao_Cao_Tai_Chinh`**: Trình bày theo chiều dọc, cột phân loại 13 nhóm kế toán, các cột năm tài chính, có ô lọc tại `B2`.
-2. **`Ty_So_Tai_Chinh`**: Trình bày 75 chỉ số WiData, kèm cột phân nhóm, mã chỉ số, tên tiếng Việt và công thức tính toán.
+2. **`Ty_So_Tai_Chinh`**: Trình bày 75 chỉ số, kèm cột phân nhóm, mã chỉ số, tên tiếng Việt và công thức tính toán.
 3. **`Panel_Data_Goc`**: Dữ liệu bảng phẳng chuẩn hóa (779 cột: `ticker`, `year`, 702 chỉ tiêu kế toán, 75 tỷ số tài chính).
 4. **`Codebook`**: Bảng từ điển mã biến phục vụ tra cứu định nghĩa, công thức và nguồn dữ liệu.
 5. **`Huong_Dan_VBA`**: Bảng hướng dẫn sử dụng phím tắt và thao tác lọc mã chứng khoán.
@@ -248,7 +273,7 @@ arminer --help
 |---|---|
 | `arminer studio` / `arminer ui` | Khởi chạy giao diện Web Studio trên trình duyệt |
 | `arminer scan` | Quét từ khóa trực tiếp trên file PDF hoặc thư mục chứa nhiều file |
-| `arminer financial` | Tải dữ liệu BCTC và tỷ số WiData, ghép nối panel data |
+| `arminer financial` | Tải dữ liệu BCTC và tỷ số, ghép nối panel data |
 | `arminer catalog` | Tìm kiếm và duyệt danh mục 14,000+ BCTN từ kho Zenodo |
 | `arminer dict` | Kiểm tra, thống kê và xuất khẩu từ điển nghiên cứu |
 | `arminer init` | Khởi tạo thư mục dự án nghiên cứu mới theo cấu trúc chuẩn |
@@ -358,7 +383,7 @@ vn-annual-report-miner/
 │   │   ├── industry.py         # Phân loại ngành doanh nghiệp theo chuẩn ICB
 │   │   └── zenodo_downloader.py# Tải file PDF trực tiếp từ Zenodo bằng Range Request
 │   ├── export/
-│   │   ├── financial_excel.py  # Xuất bản báo cáo tài chính 13 nhóm và 75 chỉ số WiData
+│   │   ├── financial_excel.py  # Xuất bản báo cáo tài chính 13 nhóm và 75 chỉ số
 │   │   ├── zip_export.py       # Đóng gói và phân cấp thư mục tệp ZIP BCTN gốc
 │   │   └── excel.py            # Xuất bản bảng dữ liệu Text Mining đa sheet
 │   ├── ui/
@@ -388,15 +413,31 @@ Dự án phát hành theo giấy phép tự do [MIT License](LICENSE), cho phép
 
 ### Trích dẫn học thuật
 
-Nếu công cụ hỗ trợ công trình nghiên cứu hoặc bài báo khoa học của bạn, vui lòng trích dẫn theo định dạng:
+Nếu công cụ hoặc dữ liệu hỗ trợ công trình nghiên cứu của bạn, vui lòng trích dẫn đầy đủ công cụ và các bộ dữ liệu nguồn theo định dạng:
 
 ```bibtex
 @software{arminer2026,
   title     = {vn-annual-report-miner: Text Mining and Financial Data Mining Tool for Vietnamese Annual Reports},
   author    = {NCKH Team Thầy Trung},
   year      = {2026},
-  url       = {https://github.com/nckh-team/vn-annual-report-miner},
+  url       = {https://github.com/Tumiqa/vn-annual-report-miner},
   license   = {MIT}
+}
+
+@dataset{ngo_phu_thanh_2025_zenodo,
+  author       = {Ngo, Phu Thanh},
+  title        = {Vietnam Listed Companies Annual Reports PDF Dataset, 2000–2025},
+  year         = {2025},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.20949551},
+  url          = {https://doi.org/10.5281/zenodo.20949551}
+}
+
+@software{ngo_phu_thanh_2025_vnfinancialdata,
+  author       = {Ngo, Phu Thanh},
+  title        = {vnfinancialdata: A Python Package for Accessing Vietnamese Listed Companies Financial Statements},
+  year         = {2025},
+  url          = {https://github.com/thanhnp-uel/vnfinancialdata}
 }
 ```
 
