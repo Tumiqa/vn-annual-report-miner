@@ -27,6 +27,18 @@ from pydantic import BaseModel
 # Suppress harmless Hugging Face Hub unauthenticated warning for public datasets
 warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
 
+# Auto-load HF_TOKEN from .env if present
+_env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+if _env_file.exists() and "HF_TOKEN" not in os.environ:
+    try:
+        for _line in _env_file.read_text(encoding="utf-8").splitlines():
+            if _line.strip().startswith("HF_TOKEN="):
+                os.environ["HF_TOKEN"] = _line.split("=", 1)[1].strip()
+                break
+    except Exception:
+        pass
+
+
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
