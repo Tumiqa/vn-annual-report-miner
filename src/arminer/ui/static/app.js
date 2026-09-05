@@ -598,7 +598,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAddKeyword = document.getElementById('btnAddKeyword');
   const newKwInput = document.getElementById('newKwInput');
   const newKwCategory = document.getElementById('newKwCategory');
-  const newKwWeight = document.getElementById('newKwWeight');
   const btnCreateNewTopic = document.getElementById('btnCreateNewTopic');
   const btnDeleteTopic = document.getElementById('btnDeleteTopic');
   const uploadTopicSelect = document.getElementById('uploadTopicSelect');
@@ -687,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dictTableBody.innerHTML = '';
     if (filtered.length === 0) {
       dictTableBody.innerHTML = `
-        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
           Không có từ khóa nào khớp với bộ lọc.
         </td></tr>
       `;
@@ -700,15 +699,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="tabular" style="color: var(--text-muted);">${idx + 1}</td>
         <td><strong style="color: var(--text-primary);">${escapeHtml(k.keyword)}</strong></td>
         <td><span class="badge badge-cat">${escapeHtml(k.category)}</span></td>
-        <td style="text-align: right;" class="tabular">${k.weight}</td>
         <td style="text-align: right;">
-          <button class="btn btn-secondary btn-sm btn-edit-kw" data-kw="${escapeHtml(k.keyword)}" data-cat="${escapeHtml(k.category)}" data-w="${k.weight}">Sửa</button>
+          <button class="btn btn-secondary btn-sm btn-edit-kw" data-kw="${escapeHtml(k.keyword)}" data-cat="${escapeHtml(k.category)}">Sửa</button>
           <button class="btn btn-danger btn-sm btn-del-kw" data-kw="${escapeHtml(k.keyword)}">Xóa</button>
         </td>
       `;
 
       tr.querySelector('.btn-edit-kw').addEventListener('click', () => {
-        handleEditKeyword(k.keyword, k.category, k.weight);
+        handleEditKeyword(k.keyword, k.category);
       });
 
       tr.querySelector('.btn-del-kw').addEventListener('click', () => {
@@ -722,7 +720,6 @@ document.addEventListener('DOMContentLoaded', () => {
   async function handleAddKeyword() {
     const kw = newKwInput.value.trim();
     const cat = newKwCategory.value.trim() || 'default';
-    const weight = parseFloat(newKwWeight.value) || 1.0;
 
     if (!kw) {
       alert('Vui lòng nhập từ khóa!');
@@ -733,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`/api/dictionaries/${currentDictData.id}/keyword`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: kw, category: cat, weight: weight })
+        body: JSON.stringify({ keyword: kw, category: cat, weight: 1.0 })
       });
 
       if (!res.ok) {
@@ -749,13 +746,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function handleEditKeyword(oldKw, oldCat, oldWeight) {
+  async function handleEditKeyword(oldKw, oldCat) {
     const newKw = prompt('Nhập từ khóa mới:', oldKw);
     if (!newKw || newKw.trim() === '') return;
 
     const newCat = prompt('Nhập nhóm phân loại (Category):', oldCat) || oldCat;
-    const newWeightStr = prompt('Nhập trọng số (Weight):', oldWeight) || oldWeight;
-    const newWeight = parseFloat(newWeightStr) || 1.0;
 
     try {
       const res = await fetch(`/api/dictionaries/${currentDictData.id}/keyword`, {
@@ -765,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
           old_keyword: oldKw,
           new_keyword: newKw.trim(),
           category: newCat.trim(),
-          weight: newWeight
+          weight: 1.0
         })
       });
 
