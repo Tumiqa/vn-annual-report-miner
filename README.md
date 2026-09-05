@@ -74,22 +74,37 @@ Nhóm nghiên cứu xin chân thành cảm ơn tác giả Ngo Phu Thanh và cộ
 
 ## Cài đặt
 
-### Cài đặt bản cơ bản
+### Bước 1: Clone mã nguồn từ GitHub
 
 ```bash
-pip install -e .
+git clone https://github.com/Tumiqa/vn-annual-report-miner.git
+cd vn-annual-report-miner
 ```
 
-### Cài đặt đầy đủ tất cả các tính năng
+### Bước 2: Cài đặt gói thư viện
+
+Khuyến nghị cài đặt bản chuẩn kèm module Báo cáo tài chính (`vnfinancialdata`):
+
+```bash
+pip install -e ".[financial]"
+```
+
+Hoặc cài đặt đầy đủ tất cả module nâng cao (OCR, Stata .dta, GPU, NLP):
 
 ```bash
 pip install -e ".[full]"
 ```
 
-### Cài đặt từng module chuyên biệt
+Hoặc cài đặt nhanh qua file `requirements.txt`:
 
 ```bash
-pip install -e ".[financial]"   # Dữ liệu BCTC  (vnfinancialdata)
+pip install -r requirements.txt
+```
+
+### Cài đặt từng module chuyên biệt (tùy chọn)
+
+```bash
+pip install -e ".[financial]"   # Dữ liệu BCTC 702 chỉ tiêu (vnfinancialdata)
 pip install -e ".[stata]"       # Hỗ trợ xuất file định dạng Stata .dta
 pip install -e ".[ocr]"         # OCR nâng cao (Tesseract + OpenCV)
 pip install -e ".[gpu]"         # EasyOCR xử lý GPU

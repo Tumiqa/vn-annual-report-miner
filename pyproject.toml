@@ -43,6 +43,11 @@ dependencies = [
     "pydantic>=2.0",
     "tqdm>=4.66",
     "requests>=2.31",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "sse-starlette>=1.6.0",
+    "openpyxl>=3.1.0",
+    "python-multipart>=0.0.6",
 ]
 
 [project.optional-dependencies]
@@ -58,9 +63,9 @@ dev = ["pytest>=7.4", "pytest-cov>=4.0"]
 arminer = "arminer.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/nckh-team/vn-annual-report-miner"
-Documentation = "https://github.com/nckh-team/vn-annual-report-miner#readme"
-Issues = "https://github.com/nckh-team/vn-annual-report-miner/issues"
+Homepage = "https://github.com/Tumiqa/vn-annual-report-miner"
+Documentation = "https://github.com/Tumiqa/vn-annual-report-miner#readme"
+Issues = "https://github.com/Tumiqa/vn-annual-report-miner/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
