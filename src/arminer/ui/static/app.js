@@ -1322,9 +1322,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!ratios || ratios.length === 0) continue;
 
         const groupDiv = document.createElement('div');
+        groupDiv.className = 'fin-ratio-group';
         groupDiv.style.marginBottom = '12px';
 
         const titleDiv = document.createElement('div');
+        titleDiv.className = 'fin-ratio-group-title';
+        titleDiv.dataset.groupName = groupName;
+        titleDiv.dataset.total = ratios.length;
         titleDiv.style.fontSize = '11px';
         titleDiv.style.fontWeight = '600';
         titleDiv.style.color = 'var(--text-muted)';
@@ -1343,6 +1347,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const isChecked = defaultChecked.has(r.code);
           const lbl = document.createElement('label');
           lbl.className = 'fin-ratio-chk';
+          lbl.dataset.code = r.code;
           lbl.title = `${r.name}: ${r.formula}`;
           lbl.innerHTML = `<input type="checkbox" value="${r.code}" ${isChecked ? 'checked' : ''}> ${escapeHtml(r.name)}`;
           listDiv.appendChild(lbl);
@@ -1525,8 +1530,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnFinSelectAllRatios = document.getElementById('btnFinSelectAllRatios');
   if (btnFinSelectAllRatios) {
     btnFinSelectAllRatios.addEventListener('click', () => {
-      document.querySelectorAll('#finRatiosContainer input[type="checkbox"]').forEach(chk => {
-        chk.checked = true;
+      document.querySelectorAll('#finRatiosContainer .fin-ratio-chk').forEach(lbl => {
+        if (lbl.style.display !== 'none') {
+          const chk = lbl.querySelector('input[type="checkbox"]');
+          if (chk) chk.checked = true;
+        }
       });
     });
   }
@@ -1844,6 +1852,41 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnFinSelectAll702) {
           btnFinSelectAll702.textContent = `Chọn tất cả (${visibleCount})`;
         }
+
+        // Apply filter to WiData ratios based on calculable prerequisites
+        if (data.available_ratios) {
+          const availRatiosSet = new Set(data.available_ratios);
+          const ratioContainer = document.getElementById('finRatiosContainer');
+          if (ratioContainer) {
+            ratioContainer.querySelectorAll('.fin-ratio-group').forEach(group => {
+              let groupVisible = 0;
+              group.querySelectorAll('.fin-ratio-chk').forEach(lbl => {
+                const code = lbl.dataset.code;
+                if (availRatiosSet.has(code)) {
+                  lbl.style.display = 'inline-flex';
+                  groupVisible++;
+                } else {
+                  lbl.style.display = 'none';
+                  const chk = lbl.querySelector('input[type="checkbox"]');
+                  if (chk) chk.checked = false;
+                }
+              });
+              const titleEl = group.querySelector('.fin-ratio-group-title');
+              if (groupVisible === 0) {
+                group.style.display = 'none';
+              } else {
+                group.style.display = 'block';
+                if (titleEl) {
+                  titleEl.textContent = `${titleEl.dataset.groupName} (${groupVisible}/${titleEl.dataset.total})`;
+                }
+              }
+            });
+            const finRatiosCount = document.getElementById('finRatiosCount');
+            if (finRatiosCount) {
+              finRatiosCount.textContent = `(${data.total_ratios || data.available_ratios.length}/75 khả dụng)`;
+            }
+          }
+        }
       } catch (err) {
         alert(`Lỗi: ${err.message}`);
       } finally {
@@ -1865,6 +1908,25 @@ document.addEventListener('DOMContentLoaded', () => {
       btnFinShowAll702.style.display = 'none';
       if (finSmartFilterBadge) finSmartFilterBadge.style.display = 'none';
       if (btnFinSelectAll702) btnFinSelectAll702.textContent = 'Chọn tất cả';
+
+      // Reset WiData ratios container
+      const ratioContainer = document.getElementById('finRatiosContainer');
+      if (ratioContainer) {
+        ratioContainer.querySelectorAll('.fin-ratio-group').forEach(group => {
+          group.style.display = 'block';
+          group.querySelectorAll('.fin-ratio-chk').forEach(lbl => {
+            lbl.style.display = 'inline-flex';
+          });
+          const titleEl = group.querySelector('.fin-ratio-group-title');
+          if (titleEl) {
+            titleEl.textContent = `${titleEl.dataset.groupName} (${titleEl.dataset.total})`;
+          }
+        });
+        const finRatiosCount = document.getElementById('finRatiosCount');
+        if (finRatiosCount) {
+          finRatiosCount.textContent = `(75 chỉ số)`;
+        }
+      }
     });
   }
 
@@ -1889,7 +1951,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const endYear = parseInt(document.getElementById('finYearTo').value) || 2024;
       const itemCodes = Array.from(finSelectedItems.keys());
       const ratios = [];
-      document.querySelectorAll('.fin-ratio-chk input:checked').forEach(chk => ratios.push(chk.value));
+      document.querySelectorAll('.fin-ratio-chk').forEach(lbl => {
+        if (lbl.style.display !== 'none') {
+          const chk = lbl.querySelector('input[type="checkbox"]:checked');
+          if (chk) ratios.push(chk.value);
+        }
+      });
       const exchange = document.getElementById('finExchangeSelect').value || null;
       const dropEmpty = document.getElementById('finDropEmpty') ? document.getElementById('finDropEmpty').checked : true;
 

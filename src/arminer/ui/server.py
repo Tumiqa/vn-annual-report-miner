@@ -1085,14 +1085,140 @@ def financial_tickers_by_sector():
     return ic.get_taxonomy_tree()
 
 
+def get_available_widata_ratios(code_set: set) -> list[str]:
+    """Determine which WiData financial ratios can actually be calculated from available item codes."""
+    if not code_set:
+        return []
+
+    def has_item(patterns):
+        for p in patterns:
+            for c in code_set:
+                if p.lower() in c.lower():
+                    return True
+        return False
+
+    eat = has_item(["loi_nhuan_sau_thue", "lai_sau_thue", "lai_lo_thuan_sau_thue"])
+    revenue = has_item(["doanh_thu_thuan", "doanh_so_thuan", "doanh_thu_hoat_dong"])
+    ebt = has_item(["loi_nhuan_truoc_thue", "lai_truoc_thue", "lai_lo_rong_truoc_thue", "tong_loi_nhuan_ke_toan_truoc_thue"])
+    tax = has_item(["thue_tndn", "thue_thu_nhap_doanh_nghiep"])
+    ebit = has_item(["is_ebit"])
+    gross_profit = has_item(["loi_nhuan_gop", "lai_gop"])
+    assets = has_item(["tong_tai_san", "tong_cong_tai_san"])
+    equity = has_item(["von_chu_so_huu"])
+    debt = has_item(["no_phai_tra", "tong_no_phai_tra"])
+    curr_assets = has_item(["tai_san_ngan_han"])
+    curr_liab = has_item(["no_ngan_han"])
+    long_debt = has_item(["no_dai_han"])
+    non_curr_assets = has_item(["tai_san_dai_han"])
+    cfo = has_item(["kinh_doanh", "san_xuat_kinh_doanh"]) and any(c.startswith("cf_") for c in code_set)
+    cfi = has_item(["dau_tu"]) and any(c.startswith("cf_") for c in code_set)
+    cff = has_item(["tai_chinh"]) and any(c.startswith("cf_") for c in code_set)
+    margin_loans = has_item(["cac_khoan_cho_vay", "cho_vay_ky_quy"])
+    advances = has_item(["ung_truoc_tien_ban"])
+    fvtpl = has_item(["fvtpl"])
+    htm = has_item(["htm"])
+    afs = has_item(["afs"])
+    cash = has_item(["tien_va_tuong_duong_tien", "bs_tien"])
+    brokerage_rev = has_item(["moi_gioi_chung_khoan"])
+    proprietary_rev = has_item(["tu_doanh_va_kinh_doanh_nguon_von", "fvtpl"])
+    margin_profit = has_item(["cho_vay_va_phai_thu"])
+    ib_rev = has_item(["tu_van_tai_chinh", "ngan_hang_dau_tu"])
+    operating_cost = has_item(["chi_phi_hoat_dong"])
+    other_receivables = has_item(["phai_thu_khac"])
+    broker_services = has_item(["dich_vu_ctck"])
+
+    checks = {
+        "roa": eat and assets,
+        "roe": eat and equity,
+        "gross_margin": gross_profit and revenue,
+        "net_margin": eat and revenue,
+        "ebit_margin": ebit and revenue,
+        "effective_tax_rate": tax and ebt,
+        "asset_turnover": revenue and assets,
+        "cfo_to_net_income": cfo and eat,
+        "cfo_to_avg_assets": cfo and assets,
+        "cfo_to_avg_equity": cfo and equity,
+
+        "debt_to_assets": debt and assets,
+        "debt_to_equity": debt and equity,
+        "equity_to_assets": equity and assets,
+        "equity_multiplier": assets and equity,
+        "current_ratio": curr_assets and curr_liab,
+        "quick_ratio": curr_assets and curr_liab,
+
+        "margin_to_equity": margin_loans and equity,
+        "pct_margin_loans": margin_loans and assets,
+        "pct_advances": advances and assets,
+        "pct_fvtpl": fvtpl and assets,
+        "pct_afs": afs and assets,
+        "pct_htm": htm and assets,
+        "pct_cash": cash and assets,
+        "pct_loans": margin_loans and assets,
+        "pct_brokerage_rev": brokerage_rev and revenue,
+        "pct_proprietary_rev": proprietary_rev and revenue,
+        "pct_margin_profit": margin_profit and ebt,
+        "pct_ib_rev": ib_rev and revenue,
+        "pct_brokerage_cost": has_item(["moi_gioi"]) and operating_cost,
+        "pct_proprietary_cost": has_item(["tu_doanh"]) and operating_cost,
+        "pct_advisory_cost": has_item(["tu_van"]) and operating_cost,
+        "pct_provision_cost": has_item(["du_phong"]) and operating_cost,
+        "pct_other_receivables": other_receivables and assets,
+        "pct_broker_services": broker_services and assets,
+        "brokerage_profit": brokerage_rev and has_item(["moi_gioi"]),
+        "advisory_profit": ib_rev and has_item(["tu_van"]),
+        "margin_profit": margin_profit,
+
+        "rev_growth_yoy": revenue,
+        "ebt_growth_yoy": ebt,
+        "eat_growth_yoy": eat,
+        "eat_parent_growth_yoy": eat,
+        "assets_growth_yoy": assets,
+        "equity_growth_yoy": equity,
+        "debt_growth_yoy": debt,
+        "margin_loans_growth_yoy": margin_loans,
+        "advances_growth_yoy": advances,
+        "brokerage_rev_growth_yoy": brokerage_rev,
+        "proprietary_rev_growth_yoy": proprietary_rev,
+        "cash_growth_yoy": cash,
+        "fvtpl_growth_yoy": fvtpl,
+        "htm_growth_yoy": htm,
+        "afs_growth_yoy": afs,
+        "curr_debt_growth_yoy": curr_liab,
+        "long_debt_growth_yoy": long_debt,
+        "curr_assets_growth_yoy": curr_assets,
+        "non_curr_assets_growth_yoy": non_curr_assets,
+        "oper_cost_growth_yoy": operating_cost,
+        "oper_profit_growth_yoy": operating_cost and revenue,
+
+        "total_assets": assets,
+        "total_debt": debt,
+        "equity": equity,
+        "net_revenue": revenue,
+        "profit_before_tax": ebt,
+        "profit_after_tax": eat,
+        "operating_cash_flow": cfo,
+        "investing_cash_flow": cfi,
+        "financing_cash_flow": cff,
+        "eat_parent": eat,
+        "curr_debt": curr_liab,
+        "long_term_debt": long_debt,
+        "curr_assets": curr_assets,
+        "non_curr_assets": non_curr_assets,
+        "operating_profit": operating_cost and revenue,
+        "operating_cost": operating_cost,
+        "size_ln": assets,
+    }
+    return [k for k, v in checks.items() if v]
+
+
 @app.get("/api/financial/available-items")
 def financial_available_items(
     ticker: str = Query(...),
     exchange: str = Query(""),
 ):
-    """Probe which item_codes actually have data for given ticker(s).
+    """Probe which item_codes and WiData ratios actually have calculable data for given ticker(s).
     Supports comma-separated tickers (e.g. VCB,CTG,BID).
-    Returns a list of item_codes with non-null and non-zero values.
+    Returns lists of available item_codes and available_ratios based on accounting prerequisites.
     """
     if not _check_vnf():
         raise HTTPException(status_code=400, detail="vnfinancialdata chưa được cài đặt.")
@@ -1129,11 +1255,15 @@ def financial_available_items(
             except Exception:
                 pass
 
+    avail_ratios = get_available_widata_ratios(available_codes)
+
     return {
         "tickers": ticker_list,
         "probe_year": probe_year,
         "total_available": len(available_codes),
         "item_codes": sorted(available_codes),
+        "total_ratios": len(avail_ratios),
+        "available_ratios": avail_ratios,
     }
 
 
