@@ -949,7 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td style="text-align: right;" class="tabular">${(wordCount || 0).toLocaleString()}</td>
         <td style="text-align: right; font-weight: 700; color: ${freq > 0 ? 'var(--color-success)' : 'inherit'};" class="tabular">${freq}</td>
         <td style="text-align: right; font-weight: 700; color: #3b82f6;" class="tabular">${typeof logFreq === 'number' ? logFreq.toFixed(4) : logFreq}</td>
-        <td style="text-align: center;">${mention > 0 ? '<span style="color: var(--color-success); font-weight: bold;">✓</span>' : '<span style="color: var(--text-muted);">0</span>'}</td>
+        <td style="text-align: center;">${mention > 0 ? '<span style="color: var(--color-success); font-weight: 700;">1</span>' : '<span style="color: var(--text-muted);">0</span>'}</td>
         <td style="text-align: right;" class="tabular">${typeof density === 'number' ? density.toFixed(4) : density}%</td>
       `;
       panelDataTableBody.appendChild(tr);
@@ -1108,6 +1108,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let finSearchTimer = null;
   let finAllItems = []; // Full 702 items cache
   let finTabInitialized = false;
+  let finSectorTree = []; // ICB L1->L2->tickers
+  let finSelectedTickers = new Set(); // Set of ticker strings
+  let finSmartFilterActive = false;
+  let finAvailableItemCodes = null; // Set<string> or null
 
   async function loadFinancialStatus() {
     const badge = document.getElementById('finStatusBadge');
@@ -1116,25 +1120,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/financial/status');
       const data = await res.json();
       if (data.available) {
-        const ips = data.items_per_statement || {};
-        badge.innerHTML = `<span class="badge" style="background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border);">vnfinancialdata v${data.version} | ${data.total_items} chi tieu (BS:${ips.balance_sheet || '?'} IS:${ips.income_statement || '?'} CF:${ips.cash_flow || '?'})</span>`;
-
-        // Show metadata panel
-        const metaPanel = document.getElementById('finMetadataPanel');
-        if (metaPanel) {
-          metaPanel.style.display = 'block';
-          document.getElementById('finMetaRevision').textContent = `Dataset: ${data.dataset_revision || '?'}`;
-          document.getElementById('finMetaSchema').textContent = `Schema: ${data.schema_version || '?'}`;
-          document.getElementById('finMetaExchanges').textContent = `Sàn: ${(data.supported_exchanges || []).join(', ')}`;
-          const accessEl = document.getElementById('finMetaAccess');
-          if (data.access) {
-            accessEl.textContent = `Access: OK`;
-          }
-        }
+        badge.innerHTML = `<span class="badge" style="background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border);">vnfinancialdata v${data.version}</span>`;
 
         loadFinancialPresets();
         loadFinAllItems();
         loadFinancialRatios();
+        loadFinSectors();
       } else {
         badge.innerHTML = `<span class="badge" style="background: rgba(239,68,68,0.1); color: #ef4444;">Chưa cài: ${data.install_cmd}</span>`;
       }
@@ -1480,11 +1471,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Select all 702 items
+  // Select all items (respecting smart filter if active)
   const btnFinSelectAll702 = document.getElementById('btnFinSelectAll702');
   if (btnFinSelectAll702) {
     btnFinSelectAll702.addEventListener('click', () => {
-      finAllItems.forEach(item => {
+      const itemsToSelect = (finSmartFilterActive && finAvailableItemCodes)
+        ? finAllItems.filter(item => finAvailableItemCodes.has(item.item_code))
+        : finAllItems;
+
+      itemsToSelect.forEach(item => {
         finSelectedItems.set(item.item_code, {
           item_code: item.item_code,
           item_name: item.item_name,
@@ -1625,39 +1620,278 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Quick tag buttons for financial tickers
-  document.querySelectorAll('.fin-tag-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const ticker = btn.getAttribute('data-ticker');
-      const input = document.getElementById('finTickerInput');
-      if (!input || !ticker) return;
-      const current = input.value.trim();
-      const currentTickers = current ? current.split(/[,;\s]+/).map(t => t.trim().toUpperCase()) : [];
-      if (!currentTickers.includes(ticker)) {
-        currentTickers.push(ticker);
-        input.value = currentTickers.join(', ');
+  // ─── Sector Loading & Cascade for BCTC Tab ───
+  async function loadFinSectors() {
+    try {
+      const res = await fetch('/api/financial/tickers-by-sector');
+      const data = await res.json();
+      finSectorTree = data.sectors || [];
+
+      const l1Sel = document.getElementById('finSectorL1');
+      if (!l1Sel) return;
+      l1Sel.innerHTML = '<option value="">Tất cả ngành</option>';
+      finSectorTree.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.name;
+        opt.textContent = `${s.name} (${s.total_tickers} mã)`;
+        l1Sel.appendChild(opt);
+      });
+    } catch (e) {
+      console.error('Load fin sectors error:', e);
+    }
+  }
+
+  // L1 → L2 cascade
+  const finSectorL1 = document.getElementById('finSectorL1');
+  if (finSectorL1) {
+    finSectorL1.addEventListener('change', () => {
+      const l2Sel = document.getElementById('finSectorL2');
+      l2Sel.innerHTML = '<option value="">Tất cả phân ngành</option>';
+      const selectedL1 = finSectorL1.value;
+      if (!selectedL1) return;
+      const found = finSectorTree.find(s => s.name === selectedL1);
+      if (found && found.subsectors) {
+        found.subsectors.forEach(sub => {
+          const opt = document.createElement('option');
+          opt.value = sub.name;
+          opt.textContent = `${sub.name} (${sub.ticker_count} mã)`;
+          l2Sel.appendChild(opt);
+        });
       }
-      input.focus();
     });
-  });
+  }
+
+  // "Thêm ngành" button
+  const btnFinAddSector = document.getElementById('btnFinAddSector');
+  if (btnFinAddSector) {
+    btnFinAddSector.addEventListener('click', () => {
+      const l1 = document.getElementById('finSectorL1').value;
+      const l2 = document.getElementById('finSectorL2').value;
+      if (!l1) { alert('Vui lòng chọn ngành ICB L1 trước!'); return; }
+      const found = finSectorTree.find(s => s.name === l1);
+      if (!found) return;
+      let tickersToAdd = [];
+      if (l2) {
+        const sub = found.subsectors.find(s => s.name === l2);
+        if (sub) tickersToAdd = sub.tickers || [];
+      } else {
+        found.subsectors.forEach(sub => {
+          tickersToAdd.push(...(sub.tickers || []));
+        });
+      }
+      tickersToAdd.forEach(t => finSelectedTickers.add(t.toUpperCase()));
+      renderFinTickerPills();
+    });
+  }
+
+  // "+ Tất cả mã" button — Select all tickers from all sectors
+  const btnFinAddAllTickers = document.getElementById('btnFinAddAllTickers');
+  if (btnFinAddAllTickers) {
+    btnFinAddAllTickers.addEventListener('click', () => {
+      finSectorTree.forEach(s => {
+        (s.subsectors || []).forEach(sub => {
+          (sub.tickers || []).forEach(t => {
+            finSelectedTickers.add(t.toUpperCase());
+          });
+        });
+      });
+      renderFinTickerPills();
+    });
+  }
+
+  // Ticker input — Enter to add
+  const finTickerInputEl = document.getElementById('finTickerInput');
+  if (finTickerInputEl) {
+    finTickerInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = finTickerInputEl.value.trim();
+        if (!val) return;
+        const tickers = val.split(/[,;\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+        tickers.forEach(t => finSelectedTickers.add(t));
+        finTickerInputEl.value = '';
+        renderFinTickerPills();
+      }
+    });
+  }
+
+  // Clear all tickers
+  const btnFinClearTickers = document.getElementById('btnFinClearTickers');
+  if (btnFinClearTickers) {
+    btnFinClearTickers.addEventListener('click', () => {
+      finSelectedTickers.clear();
+      renderFinTickerPills();
+    });
+  }
+
+  let finPillsExpanded = false;
+  function renderFinTickerPills() {
+    const container = document.getElementById('finTickerPills');
+    if (!container) return;
+    container.innerHTML = '';
+    if (finSelectedTickers.size === 0) {
+      container.innerHTML = '<span class="fin-pills-placeholder">Chọn ngành hoặc nhập mã CK ở trên để thêm doanh nghiệp</span>';
+      updateFinQuerySummary();
+      return;
+    }
+
+    const tickerArray = Array.from(finSelectedTickers);
+    const maxVisible = finPillsExpanded ? tickerArray.length : 30;
+    const visibleTickers = tickerArray.slice(0, maxVisible);
+
+    // Summary badge
+    const countBadge = document.createElement('span');
+    countBadge.style.cssText = 'font-size: 11px; font-weight: 700; color: var(--brand-primary); background: rgba(99,102,241,0.12); padding: 2px 8px; border-radius: 12px; margin-right: 4px;';
+    countBadge.textContent = `${tickerArray.length} mã`;
+    container.appendChild(countBadge);
+
+    visibleTickers.forEach(ticker => {
+      const pill = document.createElement('span');
+      pill.className = 'fin-ticker-pill';
+      pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}">×</span>`;
+      pill.querySelector('.pill-remove').addEventListener('click', () => {
+        finSelectedTickers.delete(ticker);
+        renderFinTickerPills();
+      });
+      container.appendChild(pill);
+    });
+
+    if (tickerArray.length > 30) {
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btn btn-secondary btn-sm';
+      toggleBtn.style.cssText = 'font-size: 11px; padding: 2px 8px; border-radius: 12px; margin-left: 4px;';
+      toggleBtn.textContent = finPillsExpanded ? 'Thu gọn' : `Xem thêm ${tickerArray.length - 30} mã...`;
+      toggleBtn.addEventListener('click', () => {
+        finPillsExpanded = !finPillsExpanded;
+        renderFinTickerPills();
+      });
+      container.appendChild(toggleBtn);
+    }
+
+    updateFinQuerySummary();
+  }
+
+  function updateFinQuerySummary() {
+    const el = document.getElementById('finQuerySummary');
+    if (!el) return;
+    const nTickers = finSelectedTickers.size;
+    const nItems = finSelectedItems.size;
+    const y1 = document.getElementById('finYearFrom')?.value || '2014';
+    const y2 = document.getElementById('finYearTo')?.value || '2024';
+    if (nTickers === 0) {
+      el.textContent = '';
+    } else {
+      el.textContent = `${nTickers} mã × ${nItems || '?'} chỉ tiêu × (${y1}–${y2})`;
+    }
+  }
+
+  // ─── Smart Filter: Only show items that actually exist for the selected tickers ───
+  const btnFinSmartFilter = document.getElementById('btnFinSmartFilter');
+  const btnFinShowAll702 = document.getElementById('btnFinShowAll702');
+  const finSmartFilterBadge = document.getElementById('finSmartFilterBadge');
+
+  if (btnFinSmartFilter) {
+    btnFinSmartFilter.addEventListener('click', async () => {
+      if (finSelectedTickers.size === 0) {
+        alert('Vui lòng chọn ít nhất 1 mã CK trước!');
+        return;
+      }
+      // Probe up to 10 selected tickers for comprehensive discovery
+      const probeTickers = Array.from(finSelectedTickers).slice(0, 10).join(',');
+      const exchange = document.getElementById('finExchangeSelect').value || '';
+      btnFinSmartFilter.disabled = true;
+      btnFinSmartFilter.textContent = 'Đang dò...';
+
+      try {
+        const res = await fetch(`/api/financial/available-items?ticker=${encodeURIComponent(probeTickers)}&exchange=${exchange}`);
+        const data = await res.json();
+        finAvailableItemCodes = new Set(data.item_codes || []);
+
+        // Apply filter to accordion
+        const container = document.getElementById('finAccordionContainer');
+        container.classList.add('fin-smart-filter-active');
+        let visibleCount = 0;
+
+        container.querySelectorAll('.fin-accordion-section').forEach(section => {
+          const content = section.querySelector('.fin-accordion-content');
+          let sectionVisible = 0;
+          content.querySelectorAll('.fin-accordion-item').forEach(item => {
+            const code = item.dataset.itemcode;
+            if (finAvailableItemCodes.has(code)) {
+              item.classList.remove('fin-item-hidden');
+              sectionVisible++;
+              visibleCount++;
+            } else {
+              item.classList.add('fin-item-hidden');
+            }
+          });
+          if (sectionVisible === 0) {
+            section.classList.add('fin-section-empty');
+          } else {
+            section.classList.remove('fin-section-empty');
+            const countEl = section.querySelector('.fin-accordion-count');
+            if (countEl) countEl.textContent = `${sectionVisible} chỉ tiêu`;
+          }
+        });
+
+        finSmartFilterActive = true;
+        if (btnFinShowAll702) btnFinShowAll702.style.display = 'inline-flex';
+        if (finSmartFilterBadge) {
+          finSmartFilterBadge.style.display = 'inline';
+          const tickerDisplay = probeTickers.length > 20 ? probeTickers.slice(0, 20) + '...' : probeTickers;
+          finSmartFilterBadge.textContent = `Đã lọc: ${visibleCount}/${finAllItems.length} chỉ tiêu có số liệu (${tickerDisplay})`;
+        }
+        if (btnFinSelectAll702) {
+          btnFinSelectAll702.textContent = `Chọn tất cả (${visibleCount})`;
+        }
+      } catch (err) {
+        alert(`Lỗi: ${err.message}`);
+      } finally {
+        btnFinSmartFilter.disabled = false;
+        btnFinSmartFilter.textContent = 'Lọc theo DN';
+      }
+    });
+  }
+
+  if (btnFinShowAll702) {
+    btnFinShowAll702.addEventListener('click', () => {
+      const container = document.getElementById('finAccordionContainer');
+      container.classList.remove('fin-smart-filter-active');
+      container.querySelectorAll('.fin-item-hidden').forEach(el => el.classList.remove('fin-item-hidden'));
+      container.querySelectorAll('.fin-section-empty').forEach(el => el.classList.remove('fin-section-empty'));
+      renderFinAccordion(finAllItems);
+      finSmartFilterActive = false;
+      finAvailableItemCodes = null;
+      btnFinShowAll702.style.display = 'none';
+      if (finSmartFilterBadge) finSmartFilterBadge.style.display = 'none';
+      if (btnFinSelectAll702) btnFinSelectAll702.textContent = 'Chọn tất cả';
+    });
+  }
 
   // Query
   const btnFinQuery = document.getElementById('btnFinQuery');
   if (btnFinQuery) {
     btnFinQuery.addEventListener('click', async () => {
-      const tickerStr = document.getElementById('finTickerInput').value.trim();
-      if (!tickerStr) {
-        alert('Vui lòng nhập ít nhất 1 mã chứng khoán!');
+      const leftover = document.getElementById('finTickerInput').value.trim();
+      if (leftover) {
+        leftover.split(/[,;\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean).forEach(t => finSelectedTickers.add(t));
+        document.getElementById('finTickerInput').value = '';
+        renderFinTickerPills();
+      }
+
+      if (finSelectedTickers.size === 0) {
+        alert('Vui lòng chọn ít nhất 1 mã chứng khoán!');
         return;
       }
 
-      const tickers = tickerStr.split(/[,;\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+      const tickers = Array.from(finSelectedTickers);
       const startYear = parseInt(document.getElementById('finYearFrom').value) || 2014;
       const endYear = parseInt(document.getElementById('finYearTo').value) || 2024;
       const itemCodes = Array.from(finSelectedItems.keys());
       const ratios = [];
       document.querySelectorAll('.fin-ratio-chk input:checked').forEach(chk => ratios.push(chk.value));
       const exchange = document.getElementById('finExchangeSelect').value || null;
+      const dropEmpty = document.getElementById('finDropEmpty') ? document.getElementById('finDropEmpty').checked : true;
 
       if (itemCodes.length === 0) {
         alert('Vui lòng chọn ít nhất 1 chỉ tiêu tài chính hoặc dùng Preset!');
@@ -1679,7 +1913,7 @@ document.addEventListener('DOMContentLoaded', () => {
       pmsg.textContent = `${tickers.length} mã x ${endYear - startYear + 1} năm x ${itemCodes.length} chỉ tiêu`;
 
       try {
-        const body = { tickers, start_year: startYear, end_year: endYear, item_codes: itemCodes, ratios };
+        const body = { tickers, start_year: startYear, end_year: endYear, item_codes: itemCodes, ratios, drop_empty: dropEmpty };
         if (exchange) body.exchange = exchange;
 
         const response = await fetch('/api/financial/query', {
@@ -1744,7 +1978,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(`Lỗi: ${err.message}`);
       } finally {
         btnFinQuery.disabled = false;
-        btnFinQuery.textContent = 'Tải Dữ Liệu';
+        btnFinQuery.textContent = 'Tải Dữ Liệu BCTC';
       }
     });
   }

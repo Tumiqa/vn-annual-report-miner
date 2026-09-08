@@ -1076,6 +1076,67 @@ def _check_vnf():
     return _VNF_AVAILABLE
 
 
+@app.get("/api/financial/tickers-by-sector")
+def financial_tickers_by_sector():
+    """Return ICB L1→L2→tickers tree for the financial tab sector selector."""
+    from arminer.data.industry import IndustryClassifier
+    ic = IndustryClassifier()
+    ic.initialize()
+    return ic.get_taxonomy_tree()
+
+
+@app.get("/api/financial/available-items")
+def financial_available_items(
+    ticker: str = Query(...),
+    exchange: str = Query(""),
+):
+    """Probe which item_codes actually have data for given ticker(s).
+    Supports comma-separated tickers (e.g. VCB,CTG,BID).
+    Returns a list of item_codes with non-null and non-zero values.
+    """
+    if not _check_vnf():
+        raise HTTPException(status_code=400, detail="vnfinancialdata chưa được cài đặt.")
+
+    import vnfinancialdata as vnf
+
+    ticker_list = [t.strip().upper() for t in ticker.split(",") if t.strip()]
+    if not ticker_list:
+        raise HTTPException(status_code=400, detail="Vui lòng cung cấp ít nhất 1 mã chứng khoán.")
+
+    exchanges_to_try = [exchange.strip().upper()] if (isinstance(exchange, str) and exchange.strip()) else ["HSX", "HNX"]
+    available_codes = set()
+    probe_year = None
+
+    for exch in exchanges_to_try:
+        for stmt in ["balance_sheet", "income_statement", "cash_flow"]:
+            try:
+                df = vnf.get(
+                    ticker=ticker_list,
+                    statement=stmt,
+                    exchange=exch,
+                    start=2021,
+                    end=2025,
+                )
+                if df.empty:
+                    continue
+                # Find latest year with data
+                if probe_year is None:
+                    probe_year = int(df["year"].max())
+                # Get item_codes with non-null and non-zero values
+                non_null = df.dropna(subset=["value"])
+                non_null = non_null[non_null["value"] != 0]
+                available_codes.update(non_null["item_code"].unique())
+            except Exception:
+                pass
+
+    return {
+        "tickers": ticker_list,
+        "probe_year": probe_year,
+        "total_available": len(available_codes),
+        "item_codes": sorted(available_codes),
+    }
+
+
 @app.get("/api/financial/status")
 def financial_status():
     """Check vnfinancialdata availability and return full dataset metadata."""
@@ -1084,7 +1145,11 @@ def financial_status():
     if available:
         import vnfinancialdata as vnf
         from vnfinancialdata import config as vnf_cfg
-        result["version"] = getattr(vnf, "__version__", getattr(vnf_cfg, "PACKAGE_VERSION", "unknown"))
+        try:
+            import importlib.metadata
+            result["version"] = importlib.metadata.version("vnfinancialdata")
+        except Exception:
+            result["version"] = getattr(vnf, "__version__", getattr(vnf_cfg, "PACKAGE_VERSION", "0.1.2"))
         result["dataset_revision"] = getattr(vnf_cfg, "DATASET_REVISION", "unknown")
         result["schema_version"] = getattr(vnf_cfg, "DATASET_SCHEMA_VERSION", "unknown")
         result["supported_exchanges"] = sorted(list(getattr(vnf_cfg, "SUPPORTED_EXCHANGES", {"HSX", "HNX"})))
@@ -1387,6 +1452,7 @@ class FinancialQueryRequest(BaseModel):
     item_codes: List[str] = []
     ratios: List[str] = []
     exchange: Optional[str] = None
+    drop_empty: bool = True  # Tự động loại bỏ các chỉ tiêu 100% rỗng để tránh làm đầy Excel
 
 
 @app.post("/api/financial/query")
@@ -1403,7 +1469,7 @@ async def financial_query(req: FinancialQueryRequest):
         exchanges = [req.exchange] if req.exchange else ["HSX", "HNX"]
 
         # Determine which statements we need
-        is_all_items = not req.item_codes or "all" in req.item_codes or len(req.item_codes) >= 50
+        is_all_items = not req.item_codes or "all" in req.item_codes
         if is_all_items:
             needed_statements = {"balance_sheet", "income_statement", "cash_flow"}
         else:
@@ -1500,7 +1566,7 @@ async def financial_query(req: FinancialQueryRequest):
         df_master_items = vnf.list_items(active_only=False)
         item_name_lookup = dict(zip(df_master_items["item_code"], df_master_items["item_name"]))
 
-        # Xac dinh danh sach chi tieu can xuat (100% chi tieu da chon hoac toan bo 702)
+        # Xac dinh danh sach chi tieu can xuat
         if is_all_items:
             target_item_codes = list(df_master_items["item_code"])
         else:
@@ -1508,25 +1574,38 @@ async def financial_query(req: FinancialQueryRequest):
             if not target_item_codes:
                 target_item_codes = list(df_master_items["item_code"])
 
-        # Dam bao 100% chi tieu muc tieu co cot tren pivot (neu doanh nghiep khong co thi gia tri la None)
-        missing_cols = {}
-        for icode in target_item_codes:
-            if icode not in pivot.columns:
-                missing_cols[icode] = [None] * len(pivot)
-
         # Xac dinh danh sach ty so can xuat
         if req.ratios:
             active_ratios = [r for r in req.ratios if r in WIDATA_RATIOS]
         else:
             active_ratios = list(WIDATA_RATIOS.keys())
 
-        for rk in active_ratios:
-            if rk not in pivot.columns:
-                missing_cols[rk] = [None] * len(pivot)
+        if req.drop_empty:
+            # Che do thong minh: Chi giu cac chi tieu thuc su co so lieu trong pivot (loai bo cot toan bo NaN hoac 0)
+            target_item_codes = [c for c in target_item_codes if c in pivot.columns]
+            cols_to_drop = []
+            for col in target_item_codes:
+                col_data = pivot[col].dropna()
+                if col_data.empty or (col_data == 0).all():
+                    cols_to_drop.append(col)
+            if cols_to_drop:
+                pivot = pivot.drop(columns=cols_to_drop)
+                target_item_codes = [c for c in target_item_codes if c not in cols_to_drop]
 
-        if missing_cols:
-            df_missing = pd.DataFrame(missing_cols, index=pivot.index)
-            pivot = pd.concat([pivot, df_missing], axis=1)
+            # Ty so tai chinh WiData: chi giu ratios co it nhat 1 gia tri khac NaN
+            active_ratios = [r for r in active_ratios if r in pivot.columns and not pivot[r].dropna().empty]
+        else:
+            # Che do day du: dam bao toan bo chi tieu muc tieu co cot tren pivot (neu DN khong co thi gia tri la None)
+            missing_cols = {}
+            for icode in target_item_codes:
+                if icode not in pivot.columns:
+                    missing_cols[icode] = [None] * len(pivot)
+            for rk in active_ratios:
+                if rk not in pivot.columns:
+                    missing_cols[rk] = [None] * len(pivot)
+            if missing_cols:
+                df_missing = pd.DataFrame(missing_cols, index=pivot.index)
+                pivot = pd.concat([pivot, df_missing], axis=1)
 
         ratio_cols = {rk: rinfo["name"] for rk, rinfo in WIDATA_RATIOS.items() if rk in active_ratios}
 
