@@ -148,19 +148,25 @@ Hệ thống cho phép tải trực tiếp file PDF gốc từ Zenodo về máy 
   - *Cơ cấu tài sản & Chi phí*: % FVTPL, % AFS, % HTM, % Tiền mặt, % Chi phí hoạt động, Chi phí dự phòng...
   - *Tăng trưởng cùng kỳ (YoY)* & *Quy mô*: Tăng trưởng Doanh thu, LNST, Tài sản, VCSH, Quy mô Logarit `ln(Tổng tài sản)`...
 
----
+### 4. File Excel chuyên nghiệp (`.xlsx`) — Chọn mã CK tự động
 
-### 4. File Excel Macro VBA (`.xlsm`) & Hướng dẫn Lọc
+Khi xuất dữ liệu tài chính từ Web Studio, hệ thống tạo file `financial_data.xlsx` gồm 8 sheet:
 
-Khi xuất dữ liệu tài chính từ Web Studio, hệ thống tạo 2 file song song:
-- `financial_data.xlsx`: File Excel tiêu chuẩn (tương thích mọi thiết bị và hệ điều hành).
-- `financial_data.xlsm`: File Excel kích hoạt Macro VBA hỗ trợ tương tác:
-  - **Lọc tự động**: Nhấp vào ô **B2**, chọn mã chứng khoán từ menu thả xuống — bảng tính tự động lọc ngay lập tức.
-  - **Nút bấm trên sheet**: Bấm `[ Lọc Mã CK ]`, `[ Hiện Tất Cả ]` hoặc `[ Đồng Bộ 2 Sheet ]`.
-  - **Phím tắt tiện lợi**:
-    - `Ctrl + Shift + F`: Lọc theo mã đang chọn tại B2.
-    - `Ctrl + Shift + A`: Hủy lọc, hiển thị tất cả mã.
-    - `Ctrl + Shift + S`: Đồng bộ lựa chọn sang cả hai sheet (`Bao_Cao_Tai_Chinh` & `Ty_So_Tai_Chinh`).
+| Sheet | Mô tả |
+|-------|-------|
+| **Trang_Bia** | Trang bìa tổng quan: mã CK, giai đoạn, nguồn dữ liệu |
+| **Bao_Cao_Tai_Chinh** | 702 chỉ tiêu kế toán — **chọn mã CK tại ô B2** |
+| **Ty_So_Tai_Chinh** | 75 tỷ số WiData — **chọn mã CK tại ô B2** |
+| **Panel_Data_Goc** | Bảng phẳng Panel Data (tất cả mã) cho Stata/R/Python |
+| **Codebook** | Từ điển biến, công thức tính toán |
+| **Huong_Dan** | Hướng dẫn sử dụng |
+
+**Cách lọc theo mã chứng khoán:**
+1. Mở sheet `Bao_Cao_Tai_Chinh` hoặc `Ty_So_Tai_Chinh`.
+2. Nhấp vào ô **B2** (viền vàng) → chọn mã CK từ dropdown.
+3. **Toàn bộ dữ liệu tự động cập nhật** — không cần Macro, không cần bật VBA.
+
+> **Hoạt động trên mọi phiên bản Excel** (Windows, macOS, Online, Google Sheets, LibreOffice).
 
 ---
 

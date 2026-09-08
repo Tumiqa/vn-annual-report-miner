@@ -343,7 +343,11 @@ def scan_selected_reports(req: ScanSelectedRequest):
                 })
 
     if not target_items:
-        raise HTTPException(status_code=400, detail="Không có báo cáo nào khả dụng hoặc không thể tải từ Zenodo.")
+        err_msg = "Không có báo cáo nào khả dụng để quét."
+        if zenodo_downloader.circuit_breaker.is_open:
+            err_msg += f" Máy chủ Zenodo (Châu Âu) hiện đang quá tải ({zenodo_downloader.circuit_breaker.last_error})."
+        err_msg += " Bạn có thể đặt file PDF vào thư mục 'data/reports/' để quét offline siêu tốc không phụ thuộc mạng."
+        raise HTTPException(status_code=400, detail=err_msg)
 
     flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
     core_dict = flex_dict.to_core_dictionary()
@@ -511,6 +515,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                 downloaded = zenodo_downloader.download_reports(records)
                 for i, r in enumerate(downloaded):
                     lp = r.get("local_path")
+                    status_flag = r.get("download_status", "unknown")
                     if lp and Path(lp).exists():
                         target_items.append({
                             "path": Path(lp),
@@ -519,10 +524,14 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                             "icb_l1": r.get("icb_l1", "Khác"),
                             "icb_l2": r.get("icb_l2", "Khác"),
                         })
+                        tag = "Sẵn sàng (Local/Cache)" if status_flag == "local_ready" else "Đã tải xong"
+                    else:
+                        tag = "Bỏ qua (Zenodo bận/quá tải)"
+
                     yield {"event": "progress", "data": json.dumps(
                         {"phase": "download", "current": i + 1,
                          "total": len(downloaded),
-                         "message": f"Đã tải {i + 1}/{len(downloaded)}: {r.get('ticker', '?')}/{r.get('year', '?')}"},
+                         "message": f"[{tag}] {i + 1}/{len(downloaded)}: {r.get('ticker', '?')} ({r.get('year', '?')})"},
                         ensure_ascii=False)}
                     await asyncio.sleep(0)  # Yield control
 
@@ -540,8 +549,12 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                     })
 
         if not target_items:
+            err_msg = "Không có báo cáo nào khả dụng để quét."
+            if zenodo_downloader.circuit_breaker.is_open:
+                err_msg += f" Zenodo hiện đang quá tải hoặc từ chối kết nối ({zenodo_downloader.circuit_breaker.last_error})."
+            err_msg += " Gợi ý: Bạn có thể sao chép trực tiếp file PDF vào thư mục 'data/reports/' để hệ thống tự nhận diện và quét offline siêu tốc."
             yield {"event": "error", "data": json.dumps(
-                {"detail": "Không có báo cáo nào khả dụng."},
+                {"detail": err_msg},
                 ensure_ascii=False)}
             return
 
@@ -736,6 +749,9 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                     if lp and Path(lp).exists():
                         r["local_path"] = str(Path(lp).resolve())
                         target_records.append(r)
+                        status_msg = f"[Sẵn sàng] Đã chuẩn bị {idx}/{total_rec}: {r.get('ticker', '?')} ({r.get('year', '?')})"
+                    else:
+                        status_msg = f"[Bỏ qua] Không thể tải {idx}/{total_rec}: {r.get('ticker', '?')} ({r.get('year', '?')}) - Zenodo quá tải"
 
                     yield {
                         "event": "progress",
@@ -744,7 +760,7 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                                 "phase": "download",
                                 "current": idx,
                                 "total": total_rec,
-                                "message": f"Đã chuẩn bị file gốc {idx}/{total_rec}: {r.get('ticker', '?')} ({r.get('year', '?')})",
+                                "message": status_msg,
                             },
                             ensure_ascii=False,
                         ),
@@ -771,10 +787,14 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                     })
 
         if not target_records:
+            err_msg = "Không có báo cáo nào khả dụng để tạo file ZIP."
+            if zenodo_downloader.circuit_breaker.is_open:
+                err_msg += f" Máy chủ Zenodo hiện đang quá tải ({zenodo_downloader.circuit_breaker.last_error})."
+            err_msg += " Bạn có thể sao chép trực tiếp file PDF vào thư mục 'data/reports/' để đóng gói offline."
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"detail": "Không có báo cáo nào khả dụng hoặc không thể tải từ Zenodo."},
+                    {"detail": err_msg},
                     ensure_ascii=False,
                 ),
             }
@@ -1063,6 +1083,7 @@ async def scan_folder(
 # =====================================================================
 
 _VNF_AVAILABLE = None
+_CACHED_VNF_TICKERS: Optional[set[str]] = None
 
 def _check_vnf():
     """Check if vnfinancialdata is installed and importable."""
@@ -1076,13 +1097,83 @@ def _check_vnf():
     return _VNF_AVAILABLE
 
 
+def _get_supported_vnf_tickers() -> set[str]:
+    """Return cached set of uppercase tickers supported by vnfinancialdata."""
+    global _CACHED_VNF_TICKERS
+    if _CACHED_VNF_TICKERS is not None:
+        return _CACHED_VNF_TICKERS
+
+    if not _check_vnf():
+        return set()
+
+    try:
+        import vnfinancialdata.loader as l
+        import pandas as pd
+        p_hsx = l._download_parquet('HSX', 'balance_sheet')
+        p_hnx = l._download_parquet('HNX', 'balance_sheet')
+        s_hsx = set(pd.read_parquet(p_hsx, columns=['ticker'])['ticker'].unique())
+        s_hnx = set(pd.read_parquet(p_hnx, columns=['ticker'])['ticker'].unique())
+        _CACHED_VNF_TICKERS = {str(t).upper().strip() for t in (s_hsx | s_hnx)}
+        logger.info(f"Loaded {len(_CACHED_VNF_TICKERS)} supported tickers from vnfinancialdata")
+    except Exception as e:
+        logger.warning(f"Could not load VNF tickers: {e}")
+        _CACHED_VNF_TICKERS = set()
+    return _CACHED_VNF_TICKERS
+
+
+@app.get("/api/financial/supported-tickers")
+def financial_supported_tickers():
+    """Return all tickers supported by vnfinancialdata and common missing ticker explanations."""
+    valid = _get_supported_vnf_tickers()
+    return {
+        "supported_tickers": sorted(list(valid)),
+        "count": len(valid),
+        "notable_missing": {
+            "SSI": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
+            "SCR": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
+            "SCS": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
+            "OPC": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
+            "AAS": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
+            "ABW": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
+            "ART": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
+            "PHS": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
+            "SBS": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
+        }
+    }
+
+
 @app.get("/api/financial/tickers-by-sector")
 def financial_tickers_by_sector():
-    """Return ICB L1→L2→tickers tree for the financial tab sector selector."""
+    """Return ICB L1→L2→tickers tree for the financial tab sector selector, strictly filtered to only tickers present in vnfinancialdata."""
     from arminer.data.industry import IndustryClassifier
     ic = IndustryClassifier()
     ic.initialize()
-    return ic.get_taxonomy_tree()
+    raw_tree = ic.get_taxonomy_tree()
+    valid_tickers = _get_supported_vnf_tickers()
+
+    if not valid_tickers:
+        return raw_tree
+
+    filtered_sectors = []
+    for sector in raw_tree.get("sectors", []):
+        sub_list = []
+        sector_total = 0
+        for sub in sector.get("subsectors", []):
+            filt_tickers = [t for t in sub.get("tickers", []) if t.upper() in valid_tickers]
+            if filt_tickers:
+                sector_total += len(filt_tickers)
+                sub_list.append({
+                    "name": sub["name"],
+                    "ticker_count": len(filt_tickers),
+                    "tickers": sorted(filt_tickers),
+                })
+        if sub_list:
+            filtered_sectors.append({
+                "name": sector["name"],
+                "total_tickers": sector_total,
+                "subsectors": sub_list,
+            })
+    return {"sectors": filtered_sectors}
 
 
 def get_available_widata_ratios(code_set: set) -> list[str]:
@@ -1679,6 +1770,11 @@ async def financial_query(req: FinancialQueryRequest):
         missing_tickers = [t for t in req.tickers if t.upper() not in found_tickers]
         if missing_tickers:
             logger.warning(f"Các mã sau không có trong vnfinancialdata: {missing_tickers}")
+            yield {"event": "warning", "data": json.dumps({
+                "warning": True,
+                "missing_tickers": missing_tickers,
+                "message": f"⚠️ Các mã {missing_tickers} không có trong cơ sở dữ liệu vnfinancialdata và đã được tự động loại bỏ khỏi kết quả.",
+            }, ensure_ascii=False)}
 
         pivot = all_data.pivot_table(
             index=["ticker", "year"],
@@ -1786,18 +1882,17 @@ async def financial_query(req: FinancialQueryRequest):
                 "Công thức / Nguồn": formula,
             })
 
-        # Save Excel with professional transposed structure + Ratios tab + Codebook + VBA Macro
+        # Save Excel with professional INDEX/MATCH dynamic formulas
         export_xlsx = DOWNLOAD_DIR / "financial_data.xlsx"
-        export_xlsm = DOWNLOAD_DIR / "financial_data.xlsm"
         try:
-            from arminer.export.financial_excel import export_financial_workbooks
-            export_financial_workbooks(
+            from arminer.export.financial_excel import export_financial_workbook
+            export_financial_workbook(
                 all_data=all_data,
                 pivot=pivot,
                 ratio_cols=ratio_cols,
                 fin_codebook=fin_codebook,
                 export_xlsx=export_xlsx,
-                export_xlsm=export_xlsm,
+                missing_tickers=missing_tickers,
             )
         except Exception as e:
             logger.warning(f"Lỗi xuất file Excel nâng cao: {e}, fallback sang cơ bản")
@@ -1805,6 +1900,11 @@ async def financial_query(req: FinancialQueryRequest):
                 pivot.to_excel(writer, sheet_name="Financial_Data", index=False)
                 if fin_codebook:
                     pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
+            try:
+                from arminer.export.excel_style import style_excel_file
+                style_excel_file(export_xlsx)
+            except Exception:
+                pass
 
         # Save Stata .dta
         export_dta = DOWNLOAD_DIR / "financial_data.dta"
@@ -1834,11 +1934,11 @@ async def financial_query(req: FinancialQueryRequest):
             "total_rows": len(pivot),
             "total_tickers": pivot["ticker"].nunique(),
             "year_range": [int(pivot["year"].min()), int(pivot["year"].max())],
+            "missing_tickers": missing_tickers,
             "columns": col_info,
             "preview": records,
             "csv_download": "/api/download/financial_data.csv",
             "xlsx_download": "/api/download/financial_data.xlsx",
-            "xlsm_download": "/api/download/financial_data.xlsm",
             "dta_download": "/api/download/financial_data.dta",
         }, ensure_ascii=False, default=str)}
 
@@ -1878,17 +1978,15 @@ def financial_merge(req: FinancialMergeRequest):
 
     merged = pd.merge(df_mining, df_fin, on=["ticker", "year"], how="left", suffixes=("", "_fin"))
 
-    # Save Excel with AutoFilter and Freeze Panes
+    # Save Excel with premium styling
     out_path = DOWNLOAD_DIR / "merged_panel_data.xlsx"
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         merged.to_excel(writer, sheet_name="Merged_Panel", index=False)
-        try:
-            ws = writer.sheets["Merged_Panel"]
-            from openpyxl.utils import get_column_letter
-            ws.auto_filter.ref = f"A1:{get_column_letter(len(merged.columns))}{len(merged) + 1}"
-            ws.freeze_panes = "C2"
-        except Exception:
-            pass
+    try:
+        from arminer.export.excel_style import style_excel_file
+        style_excel_file(out_path)
+    except Exception:
+        pass
 
     out_csv = DOWNLOAD_DIR / "merged_panel_data.csv"
     merged.to_csv(out_csv, index=False, encoding="utf-8-sig")

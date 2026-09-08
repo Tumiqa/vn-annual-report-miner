@@ -69,6 +69,11 @@ class Exporter:
             elif fmt == "excel":
                 path = self.output_dir / f"{name}.xlsx"
                 df.to_excel(path, index=False, engine="openpyxl")
+                try:
+                    from arminer.export.excel_style import style_excel_file
+                    style_excel_file(path)
+                except Exception:
+                    pass
 
             else:
                 logger.warning(f"Unknown format: {fmt}")

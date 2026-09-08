@@ -800,6 +800,13 @@ class ResearchOutputGenerator:
                 if variable_info:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 
+            # Apply premium styling
+            try:
+                from arminer.export.excel_style import style_excel_file
+                style_excel_file(p)
+            except Exception:
+                pass
+
         elif fmt == "csv":
             p = self.output_dir / "panel_data.csv"
             df.to_csv(p, index=False, encoding="utf-8-sig")

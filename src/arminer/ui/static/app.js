@@ -1629,11 +1629,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ─── Sector Loading & Cascade for BCTC Tab ───
+  window.vnfSupportedTickers = new Set();
+  window.vnfNotableMissing = {};
+
   async function loadFinSectors() {
     try {
-      const res = await fetch('/api/financial/tickers-by-sector');
-      const data = await res.json();
+      // Load both sector taxonomy and full supported tickers set
+      const [secRes, suppRes] = await Promise.all([
+        fetch('/api/financial/tickers-by-sector'),
+        fetch('/api/financial/supported-tickers').catch(() => null)
+      ]);
+      const data = await secRes.json();
       finSectorTree = data.sectors || [];
+
+      if (suppRes && suppRes.ok) {
+        const suppData = await suppRes.json();
+        window.vnfSupportedTickers = new Set(suppData.supported_tickers || []);
+        window.vnfNotableMissing = suppData.notable_missing || {};
+      }
 
       const l1Sel = document.getElementById('finSectorL1');
       if (!l1Sel) return;
@@ -1732,13 +1745,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Button: Remove all missing tickers with 1-click
+  const btnRemoveMissingTickers = document.getElementById('btnRemoveMissingTickers');
+  if (btnRemoveMissingTickers) {
+    btnRemoveMissingTickers.addEventListener('click', () => {
+      if (window.vnfSupportedTickers && window.vnfSupportedTickers.size > 0) {
+        const toDelete = [];
+        finSelectedTickers.forEach(t => {
+          if (!window.vnfSupportedTickers.has(t)) toDelete.push(t);
+        });
+        toDelete.forEach(t => finSelectedTickers.delete(t));
+        renderFinTickerPills();
+      }
+    });
+  }
+
   let finPillsExpanded = false;
   function renderFinTickerPills() {
     const container = document.getElementById('finTickerPills');
     if (!container) return;
     container.innerHTML = '';
+
+    const alertBox = document.getElementById('finMissingTickersAlert');
+
     if (finSelectedTickers.size === 0) {
       container.innerHTML = '<span class="fin-pills-placeholder">Chọn ngành hoặc nhập mã CK ở trên để thêm doanh nghiệp</span>';
+      if (alertBox) alertBox.style.display = 'none';
       updateFinQuerySummary();
       return;
     }
@@ -1747,16 +1779,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxVisible = finPillsExpanded ? tickerArray.length : 30;
     const visibleTickers = tickerArray.slice(0, maxVisible);
 
+    // Detect missing tickers against supported set
+    const missingTickers = [];
+    if (window.vnfSupportedTickers && window.vnfSupportedTickers.size > 0) {
+      tickerArray.forEach(t => {
+        if (!window.vnfSupportedTickers.has(t)) {
+          missingTickers.push(t);
+        }
+      });
+    }
+
+    // Toggle missing alert box
+    if (alertBox) {
+      if (missingTickers.length > 0) {
+        alertBox.style.display = 'block';
+        const cntEl = document.getElementById('finMissingCount');
+        if (cntEl) cntEl.textContent = missingTickers.length;
+        const listEl = document.getElementById('finMissingList');
+        if (listEl) listEl.textContent = missingTickers.join(', ');
+      } else {
+        alertBox.style.display = 'none';
+      }
+    }
+
     // Summary badge
     const countBadge = document.createElement('span');
     countBadge.style.cssText = 'font-size: 11px; font-weight: 700; color: var(--brand-primary); background: rgba(99,102,241,0.12); padding: 2px 8px; border-radius: 12px; margin-right: 4px;';
-    countBadge.textContent = `${tickerArray.length} mã`;
+    countBadge.textContent = `${tickerArray.length} mã${missingTickers.length > 0 ? ` (${missingTickers.length} mã khuyết)` : ''}`;
     container.appendChild(countBadge);
 
     visibleTickers.forEach(ticker => {
+      const isMissing = window.vnfSupportedTickers && window.vnfSupportedTickers.size > 0 && !window.vnfSupportedTickers.has(ticker);
       const pill = document.createElement('span');
       pill.className = 'fin-ticker-pill';
-      pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}">×</span>`;
+
+      if (isMissing) {
+        pill.style.cssText = 'background: rgba(239, 68, 68, 0.1); color: #DC2626; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 600;';
+        pill.title = 'Mã này không có trong vnfinancialdata (sẽ không có số liệu BCTC)';
+        pill.innerHTML = `⚠️ ${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}" style="color: #DC2626;">×</span>`;
+      } else {
+        pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}">×</span>`;
+      }
+
       pill.querySelector('.pill-remove').addEventListener('click', () => {
         finSelectedTickers.delete(ticker);
         renderFinTickerPills();
@@ -2068,19 +2132,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const summary = document.getElementById('finResultsSummary');
     card.style.display = 'block';
 
-    summary.textContent = `${data.total_rows} quan sát (${data.total_tickers} mã x ${data.year_range[0]}-${data.year_range[1]}) | ${data.columns.length} biến`;
+    let summaryText = `${data.total_rows} quan sát (${data.total_tickers} mã x ${data.year_range[0]}-${data.year_range[1]}) | ${data.columns.length} biến`;
+    if (data.missing_tickers && data.missing_tickers.length > 0) {
+      summaryText += ` | ⚠️ Đã tự động bỏ qua ${data.missing_tickers.length} mã không có trong CSDL: ${data.missing_tickers.join(', ')}`;
+    }
+    summary.textContent = summaryText;
 
     document.getElementById('finDlCsv').href = data.csv_download;
     document.getElementById('finDlXlsx').href = data.xlsx_download;
-    const finXlsmEl = document.getElementById('finDlXlsm');
-    if (finXlsmEl) {
-      if (data.xlsm_download) {
-        finXlsmEl.href = data.xlsm_download;
-        finXlsmEl.style.display = 'inline-flex';
-      } else {
-        finXlsmEl.style.display = 'none';
-      }
-    }
     const finDtaEl = document.getElementById('finDlDta');
     if (finDtaEl) finDtaEl.href = data.dta_download || '#';
 

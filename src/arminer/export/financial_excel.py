@@ -745,80 +745,67 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def populate_financial_sheets(
-    wb: openpyxl.Workbook,
-    all_data: pd.DataFrame,
-    pivot: pd.DataFrame,
-    ratio_cols: Dict[str, str],
-    fin_codebook: List[Dict[str, Any]],
-) -> openpyxl.Workbook:
-    """Xay dung va dien du lieu vao cac sheet BCTC theo dung 13 nhom va ty so WiData."""
-    # Tu dong lam giau toan bo he thong ty so WiData
-    pivot = compute_widata_metrics(pivot)
+# =====================================================================
+# PREMIUM STYLING CONSTANTS
+# =====================================================================
 
-    NAVY_FILL = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-    TEAL_FILL = PatternFill(start_color="205375", end_color="205375", fill_type="solid")
-    WHITE_BOLD = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
-    TITLE_FONT = Font(name="Segoe UI", size=14, bold=True, color="1F4E79")
-    SECTION_FONT = Font(name="Segoe UI", size=11, bold=True, color="1F4E79")
-    REG_FONT = Font(name="Segoe UI", size=10)
-    BOLD_FONT = Font(name="Segoe UI", size=10, bold=True)
-    ITALIC_FONT = Font(name="Segoe UI", size=9, italic=True, color="555555")
+_NAVY = "1B3A5C"
+_DARK_NAVY = "0F2440"
+_TEAL = "0D7377"
+_GOLD = "D4A843"
+_WHITE = "FFFFFF"
+_LIGHT_GRAY = "F8FAFB"
+_SECTION_BG = "E1EDF5"
+_DROPDOWN_BG = "FFF8E7"
+_BORDER_COLOR = "E2E8F0"
 
-    THIN_BORDER = Border(
-        left=Side(style="thin", color="D9D9D9"),
-        right=Side(style="thin", color="D9D9D9"),
-        top=Side(style="thin", color="D9D9D9"),
-        bottom=Side(style="thin", color="D9D9D9"),
-    )
+_NAVY_FILL = PatternFill(start_color=_NAVY, end_color=_NAVY, fill_type="solid")
+_TEAL_FILL = PatternFill(start_color=_TEAL, end_color=_TEAL, fill_type="solid")
+_SECTION_FILL = PatternFill(start_color=_SECTION_BG, end_color=_SECTION_BG, fill_type="solid")
+_DROPDOWN_FILL = PatternFill(start_color=_DROPDOWN_BG, end_color=_DROPDOWN_BG, fill_type="solid")
+_ZEBRA_EVEN = PatternFill(start_color=_WHITE, end_color=_WHITE, fill_type="solid")
+_ZEBRA_ODD = PatternFill(start_color=_LIGHT_GRAY, end_color=_LIGHT_GRAY, fill_type="solid")
 
-    tickers = sorted([str(t) for t in pivot["ticker"].dropna().unique().tolist()])
-    years = sorted([int(y) for y in pivot["year"].dropna().unique().tolist()])
+_TITLE_FONT = Font(name="Segoe UI", size=16, bold=True, color=_NAVY)
+_HEADER_FONT = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+_SECTION_FONT = Font(name="Segoe UI", size=11, bold=True, color=_NAVY)
+_BODY_FONT = Font(name="Segoe UI", size=10, color="2D3748")
+_BODY_BOLD = Font(name="Segoe UI", size=10, bold=True, color="2D3748")
+_LABEL_FONT = Font(name="Segoe UI", size=10, bold=True, color="4A5568")
+_SMALL_FONT = Font(name="Segoe UI", size=9, color="718096")
+_COVER_TITLE = Font(name="Segoe UI", size=22, bold=True, color=_NAVY)
+_COVER_LABEL = Font(name="Segoe UI", size=11, bold=True, color=_TEAL)
+_COVER_INFO = Font(name="Segoe UI", size=11, color="2D3748")
 
-    ticker_list_str = '"TẤT CẢ,' + ",".join(tickers) + '"'
-    dv = DataValidation(type="list", formula1=ticker_list_str, allow_blank=True)
+_THIN_BORDER = Border(
+    left=Side(style="thin", color=_BORDER_COLOR),
+    right=Side(style="thin", color=_BORDER_COLOR),
+    top=Side(style="thin", color=_BORDER_COLOR),
+    bottom=Side(style="thin", color=_BORDER_COLOR),
+)
+_GOLD_BORDER = Border(
+    left=Side(style="medium", color=_GOLD),
+    right=Side(style="medium", color=_GOLD),
+    top=Side(style="medium", color=_GOLD),
+    bottom=Side(style="medium", color=_GOLD),
+)
+_SECTION_BORDER = Border(bottom=Side(style="medium", color=_NAVY))
 
-    # -----------------------------------------------------------------
-    # Sheet 1: Bao_Cao_Tai_Chinh
-    # -----------------------------------------------------------------
-    if "Bao_Cao_Tai_Chinh" in wb.sheetnames:
-        ws_bc = wb["Bao_Cao_Tai_Chinh"]
-        if ws_bc.views.sheetView:
-            ws_bc.views.sheetView[0].showGridLines = True
-    else:
-        ws_bc = wb.create_sheet("Bao_Cao_Tai_Chinh")
+_CENTER = Alignment(horizontal="center", vertical="center")
+_LEFT = Alignment(horizontal="left", vertical="center")
+_RIGHT = Alignment(horizontal="right", vertical="center")
 
-    ws_bc["A1"] = "BÁO CÁO TÀI CHÍNH DOANH NGHIỆP"
-    ws_bc["A1"].font = TITLE_FONT
 
-    ws_bc["A2"] = "Lọc theo Mã CK:"
-    ws_bc["A2"].font = BOLD_FONT
-    ws_bc["A2"].alignment = Alignment(horizontal="right")
+# =====================================================================
+# HELPER: Get master item list
+# =====================================================================
 
-    ws_bc["B2"] = "TẤT CẢ"
-    ws_bc["B2"].font = BOLD_FONT
-    ws_bc["B2"].alignment = Alignment(horizontal="center")
-    ws_bc["B2"].fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
-    ws_bc.add_data_validation(dv)
-    dv.add(ws_bc["B2"])
-
-    # Tieu de cot tai dong 4
-    headers_bc = ["Mã CK", "Phân nhóm báo cáo", "Mã chỉ tiêu", "Tên chỉ tiêu"] + [str(y) for y in years]
-    for col_idx, h in enumerate(headers_bc, 1):
-        cell = ws_bc.cell(row=4, column=col_idx, value=h)
-        cell.font = WHITE_BOLD
-        cell.fill = NAVY_FILL
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = THIN_BORDER
-
-    # -----------------------------------------------------------------
-    # Đảm bảo xuất đủ 100% toàn bộ 702 chỉ tiêu cho mỗi mã chứng khoán
-    # -----------------------------------------------------------------
+def _get_master_items(all_data, fin_codebook):
+    """Get the full 702-item master list, classified into 13 categories."""
     try:
         import vnfinancialdata as vnf
         df_master = vnf.list_items(active_only=False).copy()
-    except Exception as e:
-        logger.warning(f"Không thể tải từ điển vnfinancialdata: {e}")
+    except Exception:
         df_master = pd.DataFrame()
 
     if df_master.empty:
@@ -844,13 +831,16 @@ def populate_financial_sheets(
     df_master["cat_order"] = df_master["category"].map(lambda c: cat_order_map.get(c, 99))
     df_master = df_master.sort_values(["cat_order", "item_order", "item_code"]).reset_index(drop=True)
 
-    # Nếu người dùng chọn riêng một tập hợp chỉ tiêu, lọc chính xác theo tập hợp đó
     if fin_codebook:
         selected_items = {item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Chỉ tiêu kế toán"}
         if selected_items and len(selected_items) < len(df_master):
             df_master = df_master[df_master["item_code"].isin(selected_items)].copy()
 
-    # Bảng tra cứu số liệu thực tế theo (ticker, item_code, year) -> value
+    return df_master
+
+
+def _build_data_lookup(all_data):
+    """Build dict of (ticker, item_code, year) -> value."""
     data_lookup = {}
     if not all_data.empty:
         for _, r in all_data.iterrows():
@@ -863,196 +853,441 @@ def populate_financial_sheets(
             v_val = r.get("value")
             if pd.notna(v_val) and v_val is not None:
                 data_lookup[(t_key, icode_key, y_key)] = v_val
+    return data_lookup
 
-    row_curr = 5
+
+# =====================================================================
+# SHEET: Cover (Trang_Bia)
+# =====================================================================
+
+def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]] = None):
+    """Create a premium cover sheet."""
+    from datetime import datetime
+
+    ws.sheet_properties.tabColor = _NAVY
+    ws.column_dimensions["A"].width = 4
+    ws.column_dimensions["B"].width = 24
+    ws.column_dimensions["C"].width = 65
+
+    row = 3
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+    ws.cell(row=row, column=2, value="BÁO CÁO TÀI CHÍNH").font = _COVER_TITLE
+    row += 1
+
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+    ws.cell(row=row, column=2, value="DOANH NGHIỆP NIÊM YẾT VIỆT NAM").font = Font(
+        name="Segoe UI", size=18, bold=True, color=_TEAL
+    )
+    row += 1
+
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+    ws.cell(row=row, column=2, value="Vietnam Listed Companies Financial Report").font = Font(
+        name="Segoe UI", size=12, italic=True, color="718096"
+    )
+    row += 2
+
+    # Gold divider
+    for col in range(2, 4):
+        ws.cell(row=row, column=col).border = Border(bottom=Side(style="medium", color=_GOLD))
+    row += 2
+
+    # Info section
+    info_items = [
+        ("Mã chứng khoán:", ", ".join(tickers)),
+        ("Giai đoạn:", f"{min(years)} — {max(years)}"),
+        ("Ngày xuất báo cáo:", datetime.now().strftime("%d/%m/%Y %H:%M")),
+        ("Số chỉ tiêu BCTC:", "702 chỉ tiêu (13 nhóm kế toán chuẩn mực)"),
+        ("Số tỷ số tài chính:", f"{len(WIDATA_RATIOS)} chỉ số (chuẩn WiData / WiGroup)"),
+    ]
+    if missing_tickers:
+        info_items.append(("⚠️ Mã không có dữ liệu:", f"{', '.join(missing_tickers)} (Đã tự động loại bỏ)"))
+
+    for label, value in info_items:
+        ws.cell(row=row, column=2, value=label).font = _COVER_LABEL
+        cell_val = ws.cell(row=row, column=3, value=value)
+        if "⚠️" in label:
+            cell_val.font = Font(name="Segoe UI", size=10, bold=True, color="C53030")
+        else:
+            cell_val.font = _COVER_INFO
+        row += 1
+
+    row += 1
+
+    # Navigation guide
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+    ws.cell(row=row, column=2, value="Nội dung bảng tính:").font = _COVER_LABEL
+    row += 1
+
+    nav_items = [
+        ("→ Bao_Cao_Tai_Chinh", "702 chỉ tiêu kế toán — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
+        ("→ Ty_So_Tai_Chinh", "75 tỷ số WiData — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
+        ("→ Panel_Data_Goc", "Bảng phẳng Panel Data (tất cả mã) — sẵn sàng cho Stata / R / Python"),
+        ("→ Codebook", "Từ điển biến, công thức tính toán và nguồn dữ liệu"),
+        ("→ Huong_Dan", "Hướng dẫn sử dụng bộ chọn mã chứng khoán"),
+    ]
+    for sheet_name, desc in nav_items:
+        ws.cell(row=row, column=2, value=sheet_name).font = Font(name="Segoe UI", size=10, bold=True, color=_NAVY)
+        ws.cell(row=row, column=3, value=desc).font = _BODY_FONT
+        row += 1
+
+    row += 1
+
+    # Data sources
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+    ws.cell(row=row, column=2, value="Nguồn dữ liệu:").font = _COVER_LABEL
+    row += 1
+    for src in [
+        "vnfinancialdata — Ngo Phu Thanh (UEL, ĐHQG TP.HCM)",
+        "Hệ thống tỷ số tài chính WiData — WiGroup",
+        "vn-annual-report-miner — github.com/Tumiqa/vn-annual-report-miner",
+    ]:
+        ws.cell(row=row, column=2, value="→").font = Font(name="Segoe UI", size=10, color=_TEAL)
+        ws.cell(row=row, column=3, value=src).font = _SMALL_FONT
+        row += 1
+
+
+# =====================================================================
+# SHEET: Hidden Data_BCTC
+# =====================================================================
+
+def _create_hidden_bctc_sheet(ws, df_master, tickers, years, data_lookup):
+    """Create hidden data sheet for INDEX/MATCH lookup (BCTC)."""
+    ws.sheet_state = "hidden"
+
+    headers = ["key", "ticker", "item_code", "item_name", "category"] + [str(y) for y in years]
+    for col_idx, h in enumerate(headers, 1):
+        ws.cell(row=1, column=col_idx, value=h)
+
+    row = 2
     for t in tickers:
         for _, mrow in df_master.iterrows():
             icode = str(mrow["item_code"])
-            ws_bc.cell(row=row_curr, column=1, value=t).alignment = Alignment(horizontal="center")
-            ws_bc.cell(row=row_curr, column=2, value=str(mrow["category"])).alignment = Alignment(horizontal="left")
-            ws_bc.cell(row=row_curr, column=3, value=icode).alignment = Alignment(horizontal="left")
-            ws_bc.cell(row=row_curr, column=4, value=str(mrow["item_name"])).alignment = Alignment(horizontal="left")
-
-            for y_idx, y in enumerate(years, 5):
+            ws.cell(row=row, column=1, value=f"{t}_{icode}")
+            ws.cell(row=row, column=2, value=t)
+            ws.cell(row=row, column=3, value=icode)
+            ws.cell(row=row, column=4, value=str(mrow["item_name"]))
+            ws.cell(row=row, column=5, value=str(mrow["category"]))
+            for y_idx, y in enumerate(years):
                 val = data_lookup.get((t, icode, y))
-                c = ws_bc.cell(row=row_curr, column=y_idx)
                 if pd.notna(val) and val is not None:
                     try:
-                        c.value = float(val)
-                        c.number_format = "#,##0"
+                        ws.cell(row=row, column=6 + y_idx, value=float(val))
                     except (ValueError, TypeError):
-                        c.value = str(val)
-                c.alignment = Alignment(horizontal="right")
-                c.font = REG_FONT
-                c.border = THIN_BORDER
+                        ws.cell(row=row, column=6 + y_idx, value=str(val))
+            row += 1
 
-            for c_idx in range(1, 5):
-                ws_bc.cell(row=row_curr, column=c_idx).font = REG_FONT
-                ws_bc.cell(row=row_curr, column=c_idx).border = THIN_BORDER
-            row_curr += 1
-
-    max_col_bc = len(headers_bc)
-    max_row_bc = max(row_curr - 1, 4)
-    ws_bc.auto_filter.ref = f"A4:{get_column_letter(max_col_bc)}{max_row_bc}"
-    ws_bc.freeze_panes = "E5"
-
-    ws_bc.column_dimensions["A"].width = 12
-    ws_bc.column_dimensions["B"].width = 32
-    ws_bc.column_dimensions["C"].width = 24
-    ws_bc.column_dimensions["D"].width = 46
-    for y_idx in range(5, max_col_bc + 1):
-        ws_bc.column_dimensions[get_column_letter(y_idx)].width = 18
-
-    # -----------------------------------------------------------------
-    # Sheet 2: Ty_So_Tai_Chinh
-    # -----------------------------------------------------------------
-    if "Ty_So_Tai_Chinh" in wb.sheetnames:
-        ws_ts = wb["Ty_So_Tai_Chinh"]
-        if ws_ts.views.sheetView:
-            ws_ts.views.sheetView[0].showGridLines = True
-    else:
-        ws_ts = wb.create_sheet("Ty_So_Tai_Chinh")
-
-    ws_ts["A1"] = "CÁC TỶ SỐ TÀI CHÍNH PHÂN TÍCH (CHUẨN WIDATA)"
-    ws_ts["A1"].font = TITLE_FONT
-
-    ws_ts["A2"] = "Lọc theo Mã CK:"
-    ws_ts["A2"].font = BOLD_FONT
-    ws_ts["A2"].alignment = Alignment(horizontal="right")
-
-    ws_ts["B2"] = "TẤT CẢ"
-    ws_ts["B2"].font = BOLD_FONT
-    ws_ts["B2"].alignment = Alignment(horizontal="center")
-    ws_ts["B2"].fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
-    ws_ts.add_data_validation(dv)
-    dv.add(ws_ts["B2"])
-
-    headers_ts = ["Mã CK", "Phân nhóm tỷ số", "Mã chỉ số", "Tên chỉ số tài chính", "Công thức tính toán"] + [str(y) for y in years]
-    for col_idx, h in enumerate(headers_ts, 1):
-        cell = ws_ts.cell(row=4, column=col_idx, value=h)
-        cell.font = WHITE_BOLD
-        cell.fill = NAVY_FILL
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = THIN_BORDER
-
-    # Xuất các chỉ số WiData (toàn bộ 75 chỉ số hoặc theo danh sách được chọn)
-    active_ratios = list(WIDATA_RATIOS.keys())
-    if fin_codebook:
-        selected_ratios = [item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Tỷ số tài chính WiData"]
-        if selected_ratios and len(selected_ratios) < len(WIDATA_RATIOS):
-            active_ratios = [r for r in WIDATA_RATIOS if r in selected_ratios]
+    return row - 1  # last data row
 
 
-    row_ts = 5
+# =====================================================================
+# SHEET: Hidden Data_TySo
+# =====================================================================
+
+def _create_hidden_tyso_sheet(ws, pivot, tickers, years, active_ratios):
+    """Create hidden data sheet for INDEX/MATCH lookup (ratios)."""
+    ws.sheet_state = "hidden"
+
+    headers = ["key", "ticker", "ratio_code", "group", "name", "formula"] + [str(y) for y in years]
+    for col_idx, h in enumerate(headers, 1):
+        ws.cell(row=1, column=col_idx, value=h)
+
+    row = 2
     for t in tickers:
         df_t = pivot[pivot["ticker"] == t]
         for rcode in active_ratios:
-            meta = WIDATA_RATIOS.get(rcode, {
-                "name": rcode,
-                "group": "Tỷ số tài chính",
-                "formula": "Tính toán từ BCTC",
-                "fmt": "0.00%",
-            })
-            ws_ts.cell(row=row_ts, column=1, value=t).alignment = Alignment(horizontal="center")
-            ws_ts.cell(row=row_ts, column=2, value=meta["group"]).alignment = Alignment(horizontal="left")
-            ws_ts.cell(row=row_ts, column=3, value=rcode).alignment = Alignment(horizontal="center")
-            ws_ts.cell(row=row_ts, column=4, value=meta["name"]).alignment = Alignment(horizontal="left")
-            ws_ts.cell(row=row_ts, column=5, value=meta["formula"]).alignment = Alignment(horizontal="left")
-
-            for y_idx, y in enumerate(years, 6):
+            meta = WIDATA_RATIOS.get(rcode, {"name": rcode, "group": "Tỷ số tài chính", "formula": "", "fmt": "0.00%"})
+            ws.cell(row=row, column=1, value=f"{t}_{rcode}")
+            ws.cell(row=row, column=2, value=t)
+            ws.cell(row=row, column=3, value=rcode)
+            ws.cell(row=row, column=4, value=meta["group"])
+            ws.cell(row=row, column=5, value=meta["name"])
+            ws.cell(row=row, column=6, value=meta["formula"])
+            for y_idx, y in enumerate(years):
                 row_match = df_t[df_t["year"] == y]
-                val = row_match[rcode].values[0] if len(row_match) > 0 and rcode in row_match else None
-                c = ws_ts.cell(row=row_ts, column=y_idx)
+                val = row_match[rcode].values[0] if len(row_match) > 0 and rcode in row_match.columns else None
                 if pd.notna(val) and val is not None:
-                    c.value = float(val)
-                    c.number_format = meta.get("fmt", "0.00%")
-                c.alignment = Alignment(horizontal="right")
-                c.font = REG_FONT
-                c.border = THIN_BORDER
+                    try:
+                        ws.cell(row=row, column=7 + y_idx, value=float(val))
+                    except (ValueError, TypeError):
+                        pass
+            row += 1
 
-            for c_idx in range(1, 6):
-                ws_ts.cell(row=row_ts, column=c_idx).font = REG_FONT
-                ws_ts.cell(row=row_ts, column=c_idx).border = THIN_BORDER
-            row_ts += 1
+    return row - 1  # last data row
 
-    max_col_ts = len(headers_ts)
-    max_row_ts = max(row_ts - 1, 4)
-    ws_ts.auto_filter.ref = f"A4:{get_column_letter(max_col_ts)}{max_row_ts}"
-    ws_ts.freeze_panes = "F5"
 
-    ws_ts.column_dimensions["A"].width = 12
-    ws_ts.column_dimensions["B"].width = 26
-    ws_ts.column_dimensions["C"].width = 24
-    ws_ts.column_dimensions["D"].width = 46
-    ws_ts.column_dimensions["E"].width = 46
-    for y_idx in range(6, max_col_ts + 1):
-        ws_ts.column_dimensions[get_column_letter(y_idx)].width = 18
+# =====================================================================
+# SHEET: Bao_Cao_Tai_Chinh (Report with INDEX/MATCH formulas)
+# =====================================================================
 
-    # -----------------------------------------------------------------
-    # Sheet 3: Panel_Data_Goc
-    # -----------------------------------------------------------------
-    if "Panel_Data_Goc" in wb.sheetnames:
-        ws_pnl = wb["Panel_Data_Goc"]
-        if ws_pnl.views.sheetView:
-            ws_pnl.views.sheetView[0].showGridLines = True
-    else:
-        ws_pnl = wb.create_sheet("Panel_Data_Goc")
+def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
+    """Create visible BCTC report with dynamic INDEX/MATCH formulas."""
+    ws.sheet_properties.tabColor = _NAVY
+    max_col = 3 + len(years)
+
+    # Row 1: Title
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
+    ws.cell(row=1, column=1, value="BÁO CÁO TÀI CHÍNH DOANH NGHIỆP").font = _TITLE_FONT
+
+    # Row 2: Ticker selector
+    ws.cell(row=2, column=1, value="Chọn Mã CK →").font = _LABEL_FONT
+    ws.cell(row=2, column=1).alignment = Alignment(horizontal="right", vertical="center")
+
+    cell_b2 = ws.cell(row=2, column=2, value=tickers[0])
+    cell_b2.font = Font(name="Segoe UI", size=12, bold=True, color=_NAVY)
+    cell_b2.fill = _DROPDOWN_FILL
+    cell_b2.alignment = _CENTER
+    cell_b2.border = _GOLD_BORDER
+
+    dv = DataValidation(type="list", formula1='"' + ",".join(tickers) + '"', allow_blank=False)
+    dv.prompt = "Chọn mã chứng khoán để xem BCTC"
+    dv.promptTitle = "Mã CK"
+    ws.add_data_validation(dv)
+    dv.add(ws["B2"])
+
+    ws.cell(row=2, column=3, value="← Chọn mã CK, dữ liệu bên dưới tự động cập nhật").font = _SMALL_FONT
+
+    # Row 4: Column headers
+    headers = ["Phân nhóm báo cáo", "Mã chỉ tiêu", "Tên chỉ tiêu"] + [str(y) for y in years]
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col_idx, value=h)
+        cell.font = _HEADER_FONT
+        cell.fill = _NAVY_FILL
+        cell.alignment = _CENTER
+        cell.border = _THIN_BORDER
+
+    # Data rows: section headers + formula rows
+    row = 5
+    current_category = None
+    item_count = 0
+
+    for _, mrow in df_master.iterrows():
+        cat = str(mrow["category"])
+
+        # Section header row when category changes
+        if cat != current_category:
+            current_category = cat
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=max_col)
+            sc = ws.cell(row=row, column=1, value=f"  {cat}")
+            sc.font = _SECTION_FONT
+            sc.fill = _SECTION_FILL
+            sc.alignment = _LEFT
+            sc.border = _SECTION_BORDER
+            row += 1
+
+        # Data row with static labels + INDEX/MATCH formula cells
+        icode = str(mrow["item_code"])
+        iname = str(mrow["item_name"])
+
+        ws.cell(row=row, column=1, value=cat).font = _SMALL_FONT
+        ws.cell(row=row, column=1).alignment = _LEFT
+        ws.cell(row=row, column=2, value=icode).font = _BODY_FONT
+        ws.cell(row=row, column=2).alignment = _LEFT
+        ws.cell(row=row, column=3, value=iname).font = _BODY_FONT
+        ws.cell(row=row, column=3).alignment = _LEFT
+
+        # Formula cells for each year column
+        for y_idx in range(len(years)):
+            dcol = get_column_letter(6 + y_idx)  # Data_BCTC year cols start at F (col 6)
+            formula = (
+                f'=IFERROR(INDEX(Data_BCTC!${dcol}$2:${dcol}${bctc_last_row},'
+                f'MATCH($B$2&"_"&$B{row},Data_BCTC!$A$2:$A${bctc_last_row},0)),"")'
+            )
+            cell = ws.cell(row=row, column=4 + y_idx, value=formula)
+            cell.number_format = "#,##0"
+            cell.font = _BODY_FONT
+            cell.alignment = _RIGHT
+
+        # Zebra striping
+        fill = _ZEBRA_EVEN if item_count % 2 == 0 else _ZEBRA_ODD
+        for col_idx in range(1, max_col + 1):
+            ws.cell(row=row, column=col_idx).fill = fill
+            ws.cell(row=row, column=col_idx).border = _THIN_BORDER
+
+        item_count += 1
+        row += 1
+
+    # Column widths
+    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["B"].width = 28
+    ws.column_dimensions["C"].width = 52
+    for y_idx in range(len(years)):
+        ws.column_dimensions[get_column_letter(4 + y_idx)].width = 20
+
+    ws.freeze_panes = "D5"
+    ws.auto_filter.ref = f"A4:{get_column_letter(max_col)}{row - 1}"
+
+    return row - 1  # last row
+
+
+# =====================================================================
+# SHEET: Ty_So_Tai_Chinh (Report with INDEX/MATCH formulas)
+# =====================================================================
+
+def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
+    """Create visible Ty So report with dynamic INDEX/MATCH formulas."""
+    ws.sheet_properties.tabColor = _TEAL
+    max_col = 4 + len(years)
+
+    # Row 1: Title
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
+    ws.cell(row=1, column=1, value="CÁC TỶ SỐ TÀI CHÍNH PHÂN TÍCH (CHUẨN WIDATA)").font = _TITLE_FONT
+
+    # Row 2: Ticker selector
+    ws.cell(row=2, column=1, value="Chọn Mã CK →").font = _LABEL_FONT
+    ws.cell(row=2, column=1).alignment = Alignment(horizontal="right", vertical="center")
+
+    cell_b2 = ws.cell(row=2, column=2, value=tickers[0])
+    cell_b2.font = Font(name="Segoe UI", size=12, bold=True, color=_TEAL)
+    cell_b2.fill = _DROPDOWN_FILL
+    cell_b2.alignment = _CENTER
+    cell_b2.border = _GOLD_BORDER
+
+    dv = DataValidation(type="list", formula1='"' + ",".join(tickers) + '"', allow_blank=False)
+    dv.prompt = "Chọn mã chứng khoán để xem tỷ số"
+    dv.promptTitle = "Mã CK"
+    ws.add_data_validation(dv)
+    dv.add(ws["B2"])
+
+    ws.cell(row=2, column=3, value="← Chọn mã CK, dữ liệu bên dưới tự động cập nhật").font = _SMALL_FONT
+
+    # Row 4: Headers
+    headers = ["Phân nhóm tỷ số", "Mã chỉ số", "Tên chỉ số tài chính", "Công thức tính toán"] + [str(y) for y in years]
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col_idx, value=h)
+        cell.font = _HEADER_FONT
+        cell.fill = _TEAL_FILL
+        cell.alignment = _CENTER
+        cell.border = _THIN_BORDER
+
+    # Data rows
+    row = 5
+    current_group = None
+    item_count = 0
+
+    for rcode in active_ratios:
+        meta = WIDATA_RATIOS.get(rcode, {"name": rcode, "group": "Tỷ số tài chính", "formula": "", "fmt": "0.00%"})
+        group = meta["group"]
+
+        # Section header
+        if group != current_group:
+            current_group = group
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=max_col)
+            sc = ws.cell(row=row, column=1, value=f"  {group}")
+            sc.font = _SECTION_FONT
+            sc.fill = _SECTION_FILL
+            sc.alignment = _LEFT
+            sc.border = Border(bottom=Side(style="medium", color=_TEAL))
+            row += 1
+
+        # Data row
+        ws.cell(row=row, column=1, value=group).font = _SMALL_FONT
+        ws.cell(row=row, column=1).alignment = _LEFT
+        ws.cell(row=row, column=2, value=rcode).font = _BODY_FONT
+        ws.cell(row=row, column=2).alignment = _LEFT
+        ws.cell(row=row, column=3, value=meta["name"]).font = _BODY_FONT
+        ws.cell(row=row, column=3).alignment = _LEFT
+        ws.cell(row=row, column=4, value=meta["formula"]).font = _SMALL_FONT
+        ws.cell(row=row, column=4).alignment = _LEFT
+
+        # Formula cells
+        num_fmt = meta.get("fmt", "0.00%")
+        for y_idx in range(len(years)):
+            dcol = get_column_letter(7 + y_idx)  # Data_TySo year cols start at G (col 7)
+            formula = (
+                f'=IFERROR(INDEX(Data_TySo!${dcol}$2:${dcol}${tyso_last_row},'
+                f'MATCH($B$2&"_"&$B{row},Data_TySo!$A$2:$A${tyso_last_row},0)),"")'
+            )
+            cell = ws.cell(row=row, column=5 + y_idx, value=formula)
+            cell.number_format = num_fmt
+            cell.font = _BODY_FONT
+            cell.alignment = _RIGHT
+
+        # Zebra striping
+        fill = _ZEBRA_EVEN if item_count % 2 == 0 else _ZEBRA_ODD
+        for col_idx in range(1, max_col + 1):
+            ws.cell(row=row, column=col_idx).fill = fill
+            ws.cell(row=row, column=col_idx).border = _THIN_BORDER
+
+        item_count += 1
+        row += 1
+
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 28
+    ws.column_dimensions["C"].width = 52
+    ws.column_dimensions["D"].width = 44
+    for y_idx in range(len(years)):
+        ws.column_dimensions[get_column_letter(5 + y_idx)].width = 18
+
+    ws.freeze_panes = "E5"
+    ws.auto_filter.ref = f"A4:{get_column_letter(max_col)}{row - 1}"
+
+    return row - 1
+
+
+# =====================================================================
+# SHEET: Panel_Data_Goc (flat panel with actual values)
+# =====================================================================
+
+def _create_panel_sheet(ws, pivot):
+    """Create Panel Data sheet with actual values for Stata/R/Python."""
+    ws.sheet_properties.tabColor = "38A169"
 
     pnl_cols = list(pivot.columns)
     for c_idx, col_name in enumerate(pnl_cols, 1):
-        cell = ws_pnl.cell(row=1, column=c_idx, value=col_name)
-        cell.font = WHITE_BOLD
-        cell.fill = TEAL_FILL
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = THIN_BORDER
+        cell = ws.cell(row=1, column=c_idx, value=col_name)
+        cell.font = _HEADER_FONT
+        cell.fill = PatternFill(start_color="205375", end_color="205375", fill_type="solid")
+        cell.alignment = _CENTER
+        cell.border = _THIN_BORDER
 
     for r_idx, (_, r) in enumerate(pivot.iterrows(), 2):
         for c_idx, col_name in enumerate(pnl_cols, 1):
             val = r[col_name]
-            cell = ws_pnl.cell(row=r_idx, column=c_idx)
+            cell = ws.cell(row=r_idx, column=c_idx)
             if pd.notna(val) and val is not None:
                 if isinstance(val, (int, float)):
                     cell.value = float(val)
                     if col_name == "year":
                         cell.number_format = "0"
-                    elif col_name in ("ticker",):
-                        pass
-                    else:
+                    elif col_name != "ticker":
                         cell.number_format = "#,##0.00" if abs(float(val)) < 100 else "#,##0"
                 else:
                     cell.value = str(val)
-            cell.font = REG_FONT
-            cell.border = THIN_BORDER
+            cell.font = _BODY_FONT
+            cell.border = _THIN_BORDER
 
-    ws_pnl.auto_filter.ref = f"A1:{get_column_letter(len(pnl_cols))}{len(pivot) + 1}"
-    ws_pnl.freeze_panes = "C2"
-    ws_pnl.column_dimensions["A"].width = 14
-    ws_pnl.column_dimensions["B"].width = 12
+        # Zebra
+        fill = _ZEBRA_EVEN if (r_idx - 2) % 2 == 0 else _ZEBRA_ODD
+        for c_idx in range(1, len(pnl_cols) + 1):
+            ws.cell(row=r_idx, column=c_idx).fill = fill
+
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(pnl_cols))}{len(pivot) + 1}"
+    ws.freeze_panes = "C2"
+    ws.column_dimensions["A"].width = 14
+    ws.column_dimensions["B"].width = 12
     for c_idx in range(3, min(len(pnl_cols) + 1, 60)):
-        ws_pnl.column_dimensions[get_column_letter(c_idx)].width = 18
+        ws.column_dimensions[get_column_letter(c_idx)].width = 18
 
-    # -----------------------------------------------------------------
-    # Sheet 4: Codebook
-    # -----------------------------------------------------------------
-    if "Codebook" in wb.sheetnames:
-        ws_cb = wb["Codebook"]
-        if ws_cb.views.sheetView:
-            ws_cb.views.sheetView[0].showGridLines = True
-    else:
-        ws_cb = wb.create_sheet("Codebook")
+
+# =====================================================================
+# SHEET: Codebook
+# =====================================================================
+
+def _create_codebook_sheet(ws, fin_codebook):
+    """Create Codebook sheet with variable definitions."""
+    ws.sheet_properties.tabColor = "805AD5"
 
     cb_headers = ["Biến", "Tên chỉ tiêu", "Phân loại / Nhóm", "Phân loại", "Công thức / Nguồn"]
     for c_idx, h in enumerate(cb_headers, 1):
-        cell = ws_cb.cell(row=1, column=c_idx, value=h)
-        cell.font = WHITE_BOLD
-        cell.fill = TEAL_FILL
-        cell.alignment = Alignment(horizontal="center")
-        cell.border = THIN_BORDER
+        cell = ws.cell(row=1, column=c_idx, value=h)
+        cell.font = _HEADER_FONT
+        cell.fill = PatternFill(start_color="805AD5", end_color="805AD5", fill_type="solid")
+        cell.alignment = _CENTER
+        cell.border = _THIN_BORDER
 
-    # Xay dung codebook bao gom ca chi tieu BCTC va toan bo chi so WiData
+    # Build full codebook including WiData ratios
     cb_full = list(fin_codebook)
     cb_vars = {item.get("Biến") for item in cb_full}
-
     for rk, rinfo in WIDATA_RATIOS.items():
         if rk not in cb_vars:
             cb_full.append({
@@ -1066,71 +1301,172 @@ def populate_financial_sheets(
     for r_idx, item in enumerate(cb_full, 2):
         for c_idx, h in enumerate(cb_headers, 1):
             val = item.get(h, "")
-            cell = ws_cb.cell(row=r_idx, column=c_idx, value=val)
-            cell.font = REG_FONT
-            cell.border = THIN_BORDER
-            if c_idx in (1, 3, 4):
-                cell.alignment = Alignment(horizontal="center")
-            else:
-                cell.alignment = Alignment(horizontal="left")
+            cell = ws.cell(row=r_idx, column=c_idx, value=val)
+            cell.font = _BODY_FONT
+            cell.border = _THIN_BORDER
+            cell.alignment = _CENTER if c_idx in (1, 3, 4) else _LEFT
 
-    ws_cb.auto_filter.ref = f"A1:E{len(cb_full) + 1}"
-    ws_cb.freeze_panes = "A2"
-    ws_cb.column_dimensions["A"].width = 26
-    ws_cb.column_dimensions["B"].width = 46
-    ws_cb.column_dimensions["C"].width = 32
-    ws_cb.column_dimensions["D"].width = 24
-    ws_cb.column_dimensions["E"].width = 46
+        fill = _ZEBRA_EVEN if (r_idx - 2) % 2 == 0 else _ZEBRA_ODD
+        for c_idx in range(1, 6):
+            ws.cell(row=r_idx, column=c_idx).fill = fill
 
-    # -----------------------------------------------------------------
-    # Sheet 5: Huong_Dan_VBA
-    # -----------------------------------------------------------------
-    if "Huong_Dan_VBA" in wb.sheetnames:
-        ws_hb = wb["Huong_Dan_VBA"]
-        if ws_hb.views.sheetView:
-            ws_hb.views.sheetView[0].showGridLines = True
-    else:
-        ws_hb = wb.create_sheet("Huong_Dan_VBA")
+    ws.column_dimensions["D"].width = 26
+    ws.column_dimensions["E"].width = 48
 
-    ws_hb["A1"] = "HƯỚNG DẪN SỬ DỤNG BỘ LỌC VÀ MACRO VBA TRONG EXCEL"
-    ws_hb["A1"].font = TITLE_FONT
+
+# =====================================================================
+# SHEET: Huong_Dan (Guide — no VBA)
+# =====================================================================
+
+def _create_guide_sheet(ws):
+    """Create guide sheet explaining how to use the ticker selector."""
+    ws.sheet_properties.tabColor = _GOLD
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+    ws.cell(row=1, column=1, value="HƯỚNG DẪN SỬ DỤNG BÁO CÁO TÀI CHÍNH").font = _TITLE_FONT
 
     instructions = [
-        ("1. Tổng quan các Tab trong bảng tính:", [
-            "- Bao_Cao_Tai_Chinh: Trình bày toàn bộ 700+ chỉ tiêu BCTC dạng ngang, phân chia theo 13 nhóm chuẩn mực kế toán Việt Nam.",
-            "- Ty_So_Tai_Chinh: Hệ thống chỉ số tài chính toàn diện theo chuẩn WiData (sinh lời, đòn bẩy, CTCK, YoY tăng trưởng).",
-            "- Panel_Data_Goc: Bảng dữ liệu dạng bảng dài/rộng (Panel Data) phù hợp để chạy hồi quy định lượng trên Stata/R/Python.",
-            "- Codebook: Từ điển định nghĩa chi tiết từng biến và nguồn gốc chỉ tiêu.",
+        ("1. Cách chọn mã chứng khoán (Tự động — không cần Macro):", [
+            "Tại sheet 'Bao_Cao_Tai_Chinh' hoặc 'Ty_So_Tai_Chinh', nhấp vào ô B2 (ô viền vàng).",
+            "Một mũi tên nhỏ ▼ sẽ xuất hiện bên phải ô. Nhấp vào mũi tên đó để mở danh sách thả xuống.",
+            "Chọn mã chứng khoán bạn muốn xem (ví dụ: VCB, HPG, VNM...).",
+            "TOÀN BỘ dữ liệu trên sheet sẽ TỰ ĐỘNG cập nhật sang công ty bạn vừa chọn.",
+            "Bạn cũng có thể gõ trực tiếp mã CK vào ô B2 rồi nhấn Enter.",
         ]),
-        ("2. Cách sử dụng bộ lọc mã chứng khoán (VBA Filter):", [
-            "- Lưu ý bảo mật Office: Nếu Excel hiện thanh cảnh báo vàng, bấm 'Enable Content' (Kích hoạt nội dung).",
-            "- Nếu Excel hiện thanh cảnh báo đỏ (Security Risk / Blocked): Đóng file -> Chuột phải vào file .xlsm trong thư mục tải về -> Chọn Properties -> Tích chọn 'Unblock' (Bỏ chặn) ở góc dưới tab General -> Bấm OK rồi mở lại file.",
-            "- Cách 1 (Tự động): Chọn Mã CK tại ô B2 ở sheet 'Bao_Cao_Tai_Chinh' hoặc 'Ty_So_Tai_Chinh'. Bảng sẽ tự động lọc ngay lập tức.",
-            "- Cách 2 (Nút bấm): Bấm nút [ Lọc Mã CK ], [ Hiện Tất Cả ], [ Đồng Bộ 2 Sheet ] được gắn sẵn trực tiếp ở dòng 2.",
-            "- Cách 3 (Lọc gốc Excel không cần Macro): Bấm vào mũi tên AutoFilter trực tiếp tại ô A4 (cột 'Mã CK') để chọn bất kỳ doanh nghiệp nào.",
+        ("2. Tổng quan các Tab trong bảng tính:", [
+            "Bao_Cao_Tai_Chinh: Toàn bộ 702 chỉ tiêu kế toán phân chia theo 13 nhóm chuẩn mực.",
+            "Ty_So_Tai_Chinh: Hệ thống tỷ số tài chính toàn diện theo chuẩn WiData.",
+            "Panel_Data_Goc: Bảng dữ liệu phẳng Panel Data (tất cả mã CK) để chạy hồi quy trên Stata/R/Python.",
+            "Codebook: Từ điển định nghĩa chi tiết từng biến.",
         ]),
-        ("3. Các Macro có sẵn trong Module 'ModFilter':", [
-            "- LocTheoMaCK: Lọc dữ liệu sheet hiện tại theo mã tại ô B2.",
-            "- HienThiTatCa: Hủy lọc và hiển thị tất cả các công ty.",
-            "- DongBoLocTatCaSheet: Lọc đồng thời cả 2 sheet Báo cáo và Tỷ số về cùng 1 mã CK được chọn.",
+        ("3. Sử dụng bộ lọc AutoFilter bổ sung:", [
+            "Tại dòng tiêu đề (dòng 4), mỗi cột đều có mũi tên lọc ▼.",
+            "Bấm vào mũi tên trên cột 'Phân nhóm báo cáo' để lọc theo nhóm kế toán cụ thể.",
+            "Ví dụ: chỉ hiện nhóm 'CĐKT. TÀI SẢN NGẮN HẠN' hoặc 'KQKD. DOANH THU, CHI PHÍ, LỢI NHUẬN'.",
+        ]),
+        ("4. Lưu ý quan trọng:", [
+            "File này KHÔNG sử dụng Macro (VBA). Mọi tính năng đều hoạt động trên mọi phiên bản Excel.",
+            "Tương thích: Windows Excel, macOS Excel, Excel Online, Google Sheets, LibreOffice Calc.",
+            "Khi mở file lần đầu, Excel có thể hỏi 'Enable Editing' — hãy bấm chấp nhận.",
+            "Sheet 'Panel_Data_Goc' chứa dữ liệu gốc của TẤT CẢ mã CK — dùng để import vào Stata (.dta) hoặc R.",
         ]),
     ]
 
     r_idx = 3
     for title, lines in instructions:
-        ws_hb.cell(row=r_idx, column=1, value=title).font = SECTION_FONT
+        ws.cell(row=r_idx, column=1, value=title).font = _SECTION_FONT
         r_idx += 1
         for line in lines:
-            c = ws_hb.cell(row=r_idx, column=1, value="   " + line)
-            c.font = REG_FONT
+            ws.cell(row=r_idx, column=1, value=f"   • {line}").font = _BODY_FONT
             r_idx += 1
         r_idx += 1
 
-    ws_hb.column_dimensions["A"].width = 100
+    ws.column_dimensions["A"].width = 105
+
+
+# =====================================================================
+# MAIN: Populate all sheets
+# =====================================================================
+
+def populate_financial_sheets(
+    wb: openpyxl.Workbook,
+    all_data: pd.DataFrame,
+    pivot: pd.DataFrame,
+    ratio_cols: Dict[str, str],
+    fin_codebook: List[Dict[str, Any]],
+    missing_tickers: Optional[List[str]] = None,
+) -> openpyxl.Workbook:
+    """
+    Populate an openpyxl Workbook with all 8 financial sheets:
+    - Trang_Bia (Cover)
+    - Bao_Cao_Tai_Chinh (702 items + dropdown B2 + INDEX/MATCH)
+    - Ty_So_Tai_Chinh (75 ratios + dropdown B2 + INDEX/MATCH)
+    - Panel_Data_Goc (Flat panel data for all tickers)
+    - Codebook
+    - Huong_Dan
+    - Data_BCTC (Hidden raw data sheet for formulas)
+    - Data_TySo (Hidden ratio data sheet for formulas)
+    """
+    # Compute WiData metrics
+    pivot = compute_widata_metrics(pivot)
+
+    tickers = sorted([str(t) for t in pivot["ticker"].dropna().unique().tolist()])
+    years = sorted([int(y) for y in pivot["year"].dropna().unique().tolist()])
+
+    # Master item list
+    df_master = _get_master_items(all_data, fin_codebook)
+
+    # Data lookup
+    data_lookup = _build_data_lookup(all_data)
+
+    # Active ratios
+    active_ratios = list(WIDATA_RATIOS.keys())
+    if fin_codebook:
+        selected_ratios = [item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Tỷ số tài chính WiData"]
+        if selected_ratios and len(selected_ratios) < len(WIDATA_RATIOS):
+            active_ratios = [r for r in WIDATA_RATIOS if r in selected_ratios]
+
+    # 1. Hidden Data sheets (must be created FIRST for formula references)
+    ws_data_bctc = wb.create_sheet("Data_BCTC")
+    bctc_last_row = _create_hidden_bctc_sheet(ws_data_bctc, df_master, tickers, years, data_lookup)
+
+    ws_data_tyso = wb.create_sheet("Data_TySo")
+    tyso_last_row = _create_hidden_tyso_sheet(ws_data_tyso, pivot, tickers, years, active_ratios)
+
+    # 2. Cover sheet
+    ws_cover = wb.create_sheet("Trang_Bia", 0)  # Insert at position 0 (first)
+    _create_cover_sheet(ws_cover, tickers, years, missing_tickers=missing_tickers)
+
+    # 3. BCTC report (with formulas)
+    ws_bctc = wb.create_sheet("Bao_Cao_Tai_Chinh")
+    _create_bctc_report_sheet(ws_bctc, df_master, tickers, years, bctc_last_row)
+
+    # 4. TySo report (with formulas)
+    ws_tyso = wb.create_sheet("Ty_So_Tai_Chinh")
+    _create_tyso_report_sheet(ws_tyso, tickers, years, active_ratios, tyso_last_row)
+
+    # 5. Panel Data (actual values for Stata/R/Python)
+    ws_panel = wb.create_sheet("Panel_Data_Goc")
+    _create_panel_sheet(ws_panel, pivot)
+
+    # 6. Codebook
+    ws_codebook = wb.create_sheet("Codebook")
+    _create_codebook_sheet(ws_codebook, fin_codebook)
+
+    # 7. Guide
+    ws_guide = wb.create_sheet("Huong_Dan")
+    _create_guide_sheet(ws_guide)
 
     return wb
 
 
+def export_financial_workbook(
+    all_data: pd.DataFrame,
+    pivot: pd.DataFrame,
+    ratio_cols: Dict[str, str],
+    fin_codebook: List[Dict[str, Any]],
+    export_xlsx: Path,
+    missing_tickers: Optional[List[str]] = None,
+) -> Path:
+    """Export a single professional .xlsx file (no VBA/Macro needed)."""
+    wb = openpyxl.Workbook()
+    populate_financial_sheets(wb, all_data, pivot, ratio_cols, fin_codebook, missing_tickers=missing_tickers)
+
+    # Remove the default "Sheet" created by openpyxl
+    if "Sheet" in wb.sheetnames:
+        del wb["Sheet"]
+
+    # Set Trang_Bia as active sheet
+    if "Trang_Bia" in wb.sheetnames:
+        wb.active = wb.sheetnames.index("Trang_Bia")
+
+    wb.save(export_xlsx)
+    wb.close()
+    logger.success(f"Đã xuất file Excel chuyên nghiệp: {export_xlsx.name}")
+    return export_xlsx
+
+
+# Backward-compatible wrapper (server.py may call this with old signature)
 def export_financial_workbooks(
     all_data: pd.DataFrame,
     pivot: pd.DataFrame,
@@ -1139,36 +1475,8 @@ def export_financial_workbooks(
     export_xlsx: Path,
     export_xlsm: Optional[Path] = None,
     template_xlsm: Optional[Path] = None,
+    missing_tickers: Optional[List[str]] = None,
 ) -> Dict[str, Path]:
-    """Xuat song song file .xlsx chuan va file .xlsm co Macro VBA."""
-    results: Dict[str, Path] = {}
-
-    # 1. Tao file .xlsx chuan
-    wb_xlsx = openpyxl.Workbook()
-    populate_financial_sheets(wb_xlsx, all_data, pivot, ratio_cols, fin_codebook)
-    if "Sheet" in wb_xlsx.sheetnames:
-        del wb_xlsx["Sheet"]
-    wb_xlsx.save(export_xlsx)
-    wb_xlsx.close()
-    results["xlsx"] = export_xlsx
-    logger.success(f"Đã xuất file Excel chuẩn: {export_xlsx.name}")
-
-    # 2. Tao file .xlsm co Macro VBA tu template
-    if export_xlsm:
-        if template_xlsm is None:
-            template_xlsm = Path(__file__).resolve().parent.parent / "templates" / "vba_template.xlsm"
-
-        if template_xlsm.exists():
-            try:
-                wb_xlsm = openpyxl.load_workbook(template_xlsm, keep_vba=True)
-                populate_financial_sheets(wb_xlsm, all_data, pivot, ratio_cols, fin_codebook)
-                wb_xlsm.save(export_xlsm)
-                wb_xlsm.close()
-                results["xlsm"] = export_xlsm
-                logger.success(f"Đã xuất file Excel Macro VBA: {export_xlsm.name}")
-            except Exception as e:
-                logger.warning(f"Không thể xuất file .xlsm từ template: {e}")
-        else:
-            logger.warning(f"Không tìm thấy template VBA tại: {template_xlsm}")
-
-    return results
+    """Export .xlsx file. The xlsm parameters are accepted but ignored (deprecated)."""
+    result_path = export_financial_workbook(all_data, pivot, ratio_cols, fin_codebook, export_xlsx, missing_tickers=missing_tickers)
+    return {"xlsx": result_path}

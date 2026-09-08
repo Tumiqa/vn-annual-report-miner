@@ -133,6 +133,13 @@ def _export_dataset(df, output_path: Path, dict_name: str = "Dictionary"):
                 if len(cols) > 1:
                     corr = num[cols].corr().round(4)
                     corr.to_excel(writer, sheet_name="Correlation")
+
+        # Apply premium styling
+        try:
+            from arminer.export.excel_style import style_excel_file
+            style_excel_file(output_path)
+        except Exception:
+            pass
     elif ext == ".csv":
         df.to_csv(output_path, index=False, encoding="utf-8-sig")
     elif ext in (".dta", ".stata"):

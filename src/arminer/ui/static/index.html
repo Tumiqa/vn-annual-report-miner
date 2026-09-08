@@ -345,6 +345,19 @@
               <div id="finTickerPills" class="fin-ticker-pills">
                 <span class="fin-pills-placeholder">Chọn ngành hoặc nhập mã CK ở trên để thêm doanh nghiệp</span>
               </div>
+              <!-- Warning Banner for Missing Tickers -->
+              <div id="finMissingTickersAlert" style="display: none; margin-top: 8px; padding: 10px 14px; border-radius: 8px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                  <div style="color: #B45309; line-height: 1.5;">
+                    <span style="font-weight: 700;">⚠️ Cảnh báo mã bị khuyết dữ liệu (<span id="finMissingCount">0</span> mã):</span>
+                    Các mã sau không có trong cơ sở dữ liệu vnfinancialdata (do sàn UPCoM hoặc khuyết từ nguồn cào):
+                    <span id="finMissingList" style="font-weight: 600; color: #DC2626;"></span>
+                  </div>
+                  <button type="button" id="btnRemoveMissingTickers" class="btn btn-sm" style="background: #F59E0B; color: #fff; border: none; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap;" title="Loại bỏ toàn bộ các mã bị khuyết này khỏi danh sách truy vấn">
+                    ✕ Bỏ các mã khuyết
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -462,8 +475,7 @@
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a id="finDlCsv" class="btn btn-secondary btn-sm" href="#">CSV</a>
-            <a id="finDlXlsx" class="btn btn-secondary btn-sm" href="#" title="File Excel chuẩn gồm 5 sheet">Excel (.xlsx)</a>
-            <a id="finDlXlsm" class="btn btn-secondary btn-sm" href="#" title="File Excel tích hợp Macro VBA lọc theo Mã CK">Excel Macro (.xlsm)</a>
+            <a id="finDlXlsx" class="btn btn-secondary btn-sm" href="#" title="File Excel chuyên nghiệp với bộ chọn mã CK tự động (INDEX/MATCH)">Excel (.xlsx)</a>
             <a id="finDlDta" class="btn btn-secondary btn-sm" href="#">Stata (.dta)</a>
             <button id="btnFinMerge" class="btn btn-primary btn-sm">Kết Hợp Với Mining</button>
           </div>
