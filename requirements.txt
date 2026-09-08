@@ -17,3 +17,4 @@ sse-starlette>=1.6.0
 openpyxl>=3.1.0
 python-multipart>=0.0.6
 vnfinancialdata>=0.1.0
+pyreadstat>=1.2.0
