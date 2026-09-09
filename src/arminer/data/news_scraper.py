@@ -27,10 +27,18 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple
 import urllib.parse
 from urllib.parse import urljoin, urlparse
 
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
+
 from loguru import logger
 import requests
-import trafilatura
+
+try:
+    import trafilatura
+except ImportError:
+    trafilatura = None
 
 # Shared User-Agent and headers
 DEFAULT_HEADERS = {
