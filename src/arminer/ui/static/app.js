@@ -1537,23 +1537,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Select core ratios / Select all ratios / Clear ratios
-  const CORE_RATIOS_SET = new Set([
-    'roa', 'roe', 'gross_margin', 'net_margin',
-    'debt_to_assets', 'debt_to_equity', 'current_ratio', 'size_ln'
-  ]);
-
-  const btnFinSelectCoreRatios = document.getElementById('btnFinSelectCoreRatios');
-  if (btnFinSelectCoreRatios) {
-    btnFinSelectCoreRatios.addEventListener('click', () => {
-      document.querySelectorAll('#finRatiosContainer .fin-ratio-chk').forEach(lbl => {
-        const chk = lbl.querySelector('input[type="checkbox"]');
-        if (chk) {
-          chk.checked = CORE_RATIOS_SET.has(chk.value);
-        }
-      });
-    });
-  }
+  // Select all ratios / Clear ratios
 
   const btnFinSelectAllRatios = document.getElementById('btnFinSelectAllRatios');
   if (btnFinSelectAllRatios) {
