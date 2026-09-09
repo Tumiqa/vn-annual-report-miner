@@ -30,7 +30,7 @@
 - **Tương thích mọi hệ điều hành**: Hoạt động mượt mà trên **Windows**, **macOS** (MacBook chip M1/M2/M3/Intel) và **Linux**.
 - **Kho 14,000+ BCTN gốc (Zenodo 2000–2025)**: Tra cứu và tải các file PDF gốc được tự động phân nhóm theo Mã CK, Ngành hoặc Năm dạng ZIP; khai phá văn bản và hiển thị kết quả tại chỗ.
 - **Khai phá Tin tức Đa nguồn (News Text Mining)**: Thu thập và khai phá toàn văn bài báo từ 8 nguồn tin lớn (CafeF, Tin Nhanh Chứng Khoán, VnEconomy, VnExpress Kinh Doanh, CafeBiz, VietnamNet, Website chính thức ~1,433 doanh nghiệp niêm yết) với bộ lọc năm thông minh và cơ chế bù đắp hạn ngạch tự động.
-- **702 chỉ tiêu BCTC & 75 tỷ số tài chính**: Dữ liệu chuẩn mực của 692 công ty niêm yết (HSX & HNX), phân bổ 13 nhóm kế toán và các tỷ số WiData chuyên sâu (Margin, FVTPL, AFS...).
+- **702 chỉ tiêu BCTC & 116 chỉ số tài chính chuyên sâu**: Dữ liệu chuẩn mực của 692 công ty niêm yết (HSX & HNX), phân bổ 13 nhóm kế toán và hệ thống 116 chỉ số phân tích tài chính học thuật (CFA, VAS/IFRS, Basel III, CAMELS, Altman Z'-Score...).
 - **Excel Macro VBA thông minh (`.xlsm`)**: Tự động lọc mã chứng khoán theo ô `B2` và đồng bộ đa sheet chỉ với 1 click.
 - **Đầu ra chuẩn Panel Data**: Sẵn sàng đưa vào Stata (`.dta`), R, Python (`.csv`, `.parquet`) hoặc Excel (`.xlsx`, `.xlsm`).
 
@@ -161,15 +161,20 @@ Hệ thống cho phép tải trực tiếp file PDF gốc từ Zenodo về máy 
 
 ---
 
-### 4. Hệ thống Báo cáo Tài chính & 75 Tỷ số chuẩn
+### 4. Hệ thống Báo cáo Tài chính & 116 Chỉ số tài chính chuẩn học thuật
 
 - **702 chỉ tiêu BCTC**: Phân bổ chuẩn mực theo 13 nhóm kế toán (Tài sản ngắn/dài hạn, Nợ phải trả ngắn/dài hạn, Vốn CSH, Kết quả KD, 4 nhóm Lưu chuyển tiền tệ, Ngoại bảng CTCK, Thuyết minh FVTPL/HTM/AFS).
-- **75 tỷ số tài chính chuẩn hóa WiData**:
-  - *Sinh lời & Dòng tiền*: ROA, ROE, ROS, Biên EBIT, Thuế suất hiệu dụng, Vòng quay tài sản, CFO/LNST, CFO/Tổng tài sản...
-  - *Đòn bẩy & Thanh toán*: Nợ/VCSH, Nợ/Tổng tài sản, Đòn bẩy tài chính, Thanh toán hiện hành, Thanh toán nhanh...
-  - *Đặc thù CTCK*: Tỷ lệ cho vay Margin/VCSH, % Margin/Tổng tài sản, Lợi nhuận cho vay Margin, Doanh thu môi giới...
-  - *Cơ cấu tài sản & Chi phí*: % FVTPL, % AFS, % HTM, % Tiền mặt, % Chi phí hoạt động, Chi phí dự phòng...
-  - *Tăng trưởng cùng kỳ (YoY)* & *Quy mô*: Tăng trưởng Doanh thu, LNST, Tài sản, VCSH, Quy mô Logarit `ln(Tổng tài sản)`...
+- **116 chỉ số tài chính phân tích chuyên sâu (10 nhóm trụ cột)**:
+  - *Sinh lời & Hiệu quả vốn (15 chỉ số)*: ROA, ROE, ROCE, ROIC, Gross/Operating/Net Margin, DuPont 5 bước...
+  - *Cấu trúc vốn & Đòn bẩy (13 chỉ số)*: Nợ/VCSH, Nợ/Tổng tài sản, Nợ tài chính, Khả năng trả lãi (ICR), CFO/Nợ vay...
+  - *Thanh khoản & Vốn lưu động (8 chỉ số)*: Thanh toán hiện hành, Thanh toán nhanh, Tiền mặt/Tài sản, Vốn lưu động ròng (NWC)...
+  - *Hiệu quả hoạt động & Vòng quay (13 chỉ số)*: Vòng quay tài sản, Vòng quay tồn kho (DIO), Số ngày thu tiền (DSO), Chu kỳ tiền mặt (CCC)...
+  - *Chất lượng dòng tiền & Lợi nhuận (11 chỉ số)*: CFO/LNST, Dòng tiền tự do (FCF), Capex/Doanh thu, Dồn tích kế toán (Accruals)...
+  - *Đặc thù Ngân hàng - CAMELS (10 chỉ số)*: NIM, CIR, Tỷ lệ LDR, Chi phí tín dụng, Tỷ lệ dự phòng bao nợ xấu...
+  - *Đặc thù Công ty Chứng khoán (14 chỉ số)*: Margin/VCSH, % Danh mục FVTPL, % AFS, % Doanh thu môi giới, Doanh thu tự doanh...
+  - *Đặc thù Bất động sản & Xây dựng (6 chỉ số)*: Người mua trả tiền trước/Tồn kho, Tồn kho/Tổng tài sản, Nợ vay/Tồn kho...
+  - *Tốc độ tăng trưởng cùng kỳ (YoY) (14 chỉ số)*: Tăng trưởng Doanh thu, LNST, Tài sản, VCSH, Dòng tiền CFO, Dư nợ cho vay...
+  - *Biến kiểm soát kinh tế lượng & Altman Z'-Score (12 chỉ số)*: Quy mô ln(Tài sản), Thâm dụng vốn (Tangibility), Điểm phá sản Altman Z'-Score...
 
 ### 5. File Excel chuyên nghiệp (`.xlsx`) — Chọn mã CK tự động
 
@@ -179,9 +184,9 @@ Khi xuất dữ liệu tài chính từ Web Studio, hệ thống tạo file `fin
 |-------|-------|
 | **Trang_Bia** | Trang bìa tổng quan: mã CK, giai đoạn, nguồn dữ liệu |
 | **Bao_Cao_Tai_Chinh** | 702 chỉ tiêu kế toán — **chọn mã CK tại ô B2** |
-| **Ty_So_Tai_Chinh** | 75 tỷ số WiData — **chọn mã CK tại ô B2** |
+| **Ty_So_Tai_Chinh** | 116 chỉ số tài chính phân tích — **chọn mã CK tại ô B2** |
 | **Panel_Data_Goc** | Bảng phẳng Panel Data (tất cả mã) cho Stata/R/Python |
-| **Codebook** | Từ điển biến, công thức tính toán |
+| **Codebook** | Từ điển biến, công thức tính toán học thuật |
 | **Huong_Dan** | Hướng dẫn sử dụng |
 
 **Cách lọc theo mã chứng khoán:**
@@ -246,7 +251,7 @@ Dự án `vn-annual-report-miner` được phát triển trên cơ sở kế th�
 2. **Dữ liệu Báo cáo Tài chính chuẩn hóa**:
    - Thư viện Python: [`vnfinancialdata`](https://pypi.org/project/vnfinancialdata/) ([GitHub](https://github.com/thanhnp-uel/vnfinancialdata) / [Hugging Face](https://huggingface.co/datasets/thanhnp-uel/vietnam-listed-companies-financial-statements)).
    - 702 chỉ tiêu kế toán của 692 công ty niêm yết trên HSX và HNX (2014–2024).
-3. **Hệ thống tỷ số tài chính**: Tham chiếu và chuẩn hóa theo phương pháp luận phân tích tài chính của **WiData (WiGroup)**.
+3. **Hệ thống chỉ số tài chính**: Chuẩn hóa theo phương pháp luận phân tích tài chính doanh nghiệp chuẩn học thuật quốc tế (CFA Institute, VAS/IFRS, Basel III, CAMELS, Altman).
 
 ### Trích dẫn nghiên cứu (BibTeX)
 

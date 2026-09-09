@@ -31,7 +31,7 @@ def _make_test_data():
 
     all_data = pd.DataFrame(records)
     pivot = all_data.pivot_table(index=["ticker", "year"], columns="item_code", values="value").reset_index()
-    ratio_cols = {}
+    ratio_cols = {"roa": "ROA - Tỷ suất sinh lời trên tổng tài sản (%)", "roe": "ROE - Tỷ suất sinh lời trên VCSH (%)"}
     fin_codebook = [
         {
             "Biến": "bs_tong_tai_san",
@@ -129,7 +129,7 @@ def test_tyso_report_has_dynamic_formulas(tmp_path: Path):
     wb = openpyxl.load_workbook(export_xlsx)
     ws_ts = wb["Ty_So_Tai_Chinh"]
 
-    assert "WIDATA" in ws_ts["A1"].value
+    assert "HỆ THỐNG CHỈ SỐ TÀI CHÍNH" in ws_ts["A1"].value
     assert ws_ts["B2"].value in ("HPG", "VCB")
 
     # Find first formula row
@@ -163,10 +163,11 @@ def test_full_702_indicators_guarantee(tmp_path: Path):
     ])
     pivot = all_data.pivot_table(index=["ticker", "year"], columns="item_code", values="value").reset_index()
 
+    # When ratios are specified, Data_TySo is exported
     export_xlsx = tmp_path / "vcb_702.xlsx"
     export_financial_workbook(
         all_data=all_data, pivot=pivot,
-        ratio_cols={}, fin_codebook=[],
+        ratio_cols={"roa": "ROA (%)", "roe": "ROE (%)"}, fin_codebook=[],
         export_xlsx=export_xlsx,
     )
 
@@ -178,10 +179,10 @@ def test_full_702_indicators_guarantee(tmp_path: Path):
     data_rows = ws_data.max_row - 1  # minus header row
     assert data_rows == 702, f"Expected 702 data rows, got {data_rows}"
 
-    # Ty_So should have 75 ratios
+    # Ty_So should have exactly 2 active ratios requested
     ws_tyso_data = wb["Data_TySo"]
     tyso_rows = ws_tyso_data.max_row - 1
-    assert tyso_rows == 75, f"Expected 75 ratio rows, got {tyso_rows}"
+    assert tyso_rows == 2, f"Expected 2 ratio rows, got {tyso_rows}"
 
     # BCTC report should have section headers + 702 item rows
     ws_bc = wb["Bao_Cao_Tai_Chinh"]
