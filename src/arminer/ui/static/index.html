@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>arminer Studio — Khai Phá Báo Cáo Thường Niên</title>
+  <title>arminer Studio — Nền Tảng Khai Phá Dữ Liệu Doanh Nghiệp & Nghiên Cứu Định Lượng</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" type="image/png" href="/favicon.png">
+  <link rel="shortcut icon" href="/favicon.ico">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,15 +14,18 @@
     <!-- Header -->
     <header class="app-header">
       <div class="brand-wrapper">
-        <span class="brand-badge">ARMINER</span>
+        <span class="brand-badge" style="display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px;">
+          <img src="/favicon.svg" alt="logo" style="width: 18px; height: 18px; vertical-align: middle;">
+          <span>ARMINER</span>
+        </span>
         <div>
-          <h1 class="brand-title">Hệ Thống Khai Phá Báo Cáo Thường Niên DN Việt Nam</h1>
-          <p class="brand-subtitle">Kho Dữ Liệu Báo Cáo Thường Niên Zenodo (13,982 file | 1,421 mã chứng khoán | 2000-2025)</p>
+          <h1 class="brand-title">Hệ Thống Khai Phá Dữ Liệu Doanh Nghiệp & Nghiên Cứu Định Lượng</h1>
+          <p class="brand-subtitle">Nền Tảng Đa Nguồn: Báo Cáo Thường Niên (13,982+ file) • BCTC & Ratios • Tin Tức Doanh Nghiệp • Panel Data Kinh Tế Lượng</p>
         </div>
       </div>
       <div class="header-status">
         <span class="status-dot"></span>
-        <span id="headerStatText">Zenodo Catalog: 1,421 Mã CK | 13,982 Báo Cáo</span>
+        <span id="headerStatText">Đa Nguồn: BCTN Zenodo • BCTC WiData • Tin Tức Báo Chí</span>
       </div>
     </header>
 
@@ -632,37 +638,45 @@
           </div>
         </div>
 
-        <div class="grid-split" style="margin-bottom: 16px;">
+        <div class="news-config-grid">
           <!-- Left: Tickers & Sources Selection -->
-          <div>
-            <!-- Fast Ticker Input (Comma-separated, instant typing) -->
-            <div class="form-group" style="margin-bottom: 10px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label class="form-label" style="margin-bottom: 0;">Mã Cổ Phiếu Cần Thu Thập:</label>
-                <span id="newsTickerCounter" style="font-weight: 600; color: var(--brand-primary); font-size: 12px;">0 mã đã nhập</span>
+          <div class="news-col-left">
+            <!-- Sector filter & add buttons -->
+            <div style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 12px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 12px;">Ngành ICB L1:</label>
+                  <select id="newsSectorL1" class="form-select" style="width: 100%;">
+                    <option value="">Tất cả ngành (L1)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 12px;">Phân ngành L2:</label>
+                  <select id="newsSectorL2" class="form-select" style="width: 100%;">
+                    <option value="">Tất cả phân ngành (L2)</option>
+                  </select>
+                </div>
               </div>
-              <input type="text" id="newsTickerInput" class="form-input" placeholder="Nhập hoặc dán các mã CK (ví dụ: VCB, BID, CTG, HPG, FPT, SSI, VNM)..." style="font-family: var(--font-mono); font-size: 13px;">
+              <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                <button id="btnNewsAddSector" class="btn btn-secondary btn-sm" type="button" title="Thêm toàn bộ mã CK thuộc ngành đã chọn">
+                  Thêm theo ngành
+                </button>
+              </div>
             </div>
 
-            <!-- Sector filter & add buttons -->
-            <div class="filter-grid" style="grid-template-columns: 1fr 1fr auto auto; margin-bottom: 12px; gap: 8px;">
-              <div class="form-group">
-                <label class="form-label">Ngành ICB L1:</label>
-                <select id="newsSectorL1" class="form-select">
-                  <option value="">Tất cả ngành (L1)</option>
-                </select>
+            <!-- Ticker Input & Pills (Enter để thêm mã như tab BCTC) -->
+            <div class="form-group" style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label class="form-label" style="margin-bottom: 0;">Mã Cổ Phiếu Cần Thu Thập:</label>
+                <span id="newsTickerCounter" style="font-weight: 600; color: var(--brand-primary); font-size: 12px;">0 mã đã chọn</span>
               </div>
-              <div class="form-group">
-                <label class="form-label">Phân ngành L2:</label>
-                <select id="newsSectorL2" class="form-select">
-                  <option value="">Tất cả phân ngành (L2)</option>
-                </select>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <input type="text" id="newsTickerInput" class="form-input" placeholder="Nhập mã CK rồi nhấn Enter (VCB, FPT, HPG... hoặc dán danh sách)" style="flex: 1; font-family: var(--font-mono); font-size: 13px;">
+                <button id="btnClearNewsTickers" class="btn btn-secondary btn-sm" type="button" style="color: var(--color-danger); white-space: nowrap;">Xóa hết mã</button>
               </div>
-              <div class="form-group" style="align-self: flex-end;">
-                <button id="btnNewsAddSector" class="btn btn-secondary btn-sm" type="button" title="Thêm toàn bộ mã CK thuộc ngành đã chọn vào ô nhập">Thêm theo ngành</button>
-              </div>
-              <div class="form-group" style="align-self: flex-end;">
-                <button id="btnClearNewsTickers" class="btn btn-secondary btn-sm" type="button" style="color: var(--color-danger);">Xóa hết mã</button>
+              <!-- Ticker Pills Container -->
+              <div id="newsTickerPills" class="fin-ticker-pills" style="min-height: 42px; max-height: 120px;">
+                <span class="fin-pills-placeholder">Chưa chọn mã nào. Nhập mã CK ở trên rồi nhấn Enter, hoặc chọn theo ngành</span>
               </div>
             </div>
 
@@ -781,7 +795,7 @@
           </div>
 
           <!-- Right: Year Filter, Quota & Mining Dictionary -->
-          <div>
+          <div class="news-col-right">
             <!-- Year Range Filter -->
             <div style="background: var(--bg-surface); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-default); margin-bottom: 14px;">
               <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px;">
@@ -895,7 +909,7 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">Kết Quả Nghiên Cứu Định Lượng Từ Tin Tức (News Panel Data)</h2>
-            <p class="card-desc">Dữ liệu được chuẩn hóa theo cấp độ Doanh nghiệp (Firm Summary) và Cấp độ Bài viết (Articles Panel), xuất được Excel, Stata (.dta), CSV.</p>
+            <p class="card-desc">Dữ liệu bảng chuẩn hóa theo cấp độ Doanh nghiệp - Năm (Firm - Year Panel Data) và Chi tiết từng bài báo (Articles Level), xuất sẵn sàng cho hồi quy Stata (.dta), Excel, CSV.</p>
           </div>
           <div class="btn-group">
             <a id="btnNewsDlExcel" href="#" class="btn btn-secondary btn-sm" download>Xuất Excel (3 Sheets)</a>
@@ -906,23 +920,27 @@
 
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-item-label">Tổng Số Bài Viết (N)</div>
+            <div class="stat-item-label">Tổng Quan Sát (N)</div>
+            <div class="stat-item-value" id="newsStatObsCount">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-item-label">Tổng Số Bài Viết</div>
             <div class="stat-item-value" id="newsStatArticlesCount">0</div>
           </div>
           <div class="stat-item">
-            <div class="stat-item-label">Doanh Nghiệp Có Từ Khóa</div>
+            <div class="stat-item-label">Quan Sát Có Hits (Mention=1)</div>
             <div class="stat-item-value" id="newsStatFirmsHitCount" style="color: var(--color-success);">0</div>
           </div>
           <div class="stat-item">
-            <div class="stat-item-label">Tổng Lượt Xuất Hiện Từ Khóa</div>
+            <div class="stat-item-label">Tổng Lượt Xuất Hiện (Hits)</div>
             <div class="stat-item-value" id="newsStatMentionsCount" style="color: #60a5fa;">0</div>
           </div>
         </div>
 
-        <!-- Tab Toggle for Results: Firm-level vs Article-level -->
+        <!-- Tab Toggle for Results: Firm-Year Panel vs Article-level -->
         <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-default); padding-bottom: 8px;">
-          <button id="btnViewFirmSummary" class="btn btn-secondary btn-sm active" type="button">Tổng Hợp Theo Doanh Nghiệp (Firm Summary)</button>
-          <button id="btnViewArticlePanel" class="btn btn-secondary btn-sm" type="button">Chi Tiết Từng Bài Viết (Articles Panel)</button>
+          <button id="btnViewFirmSummary" class="btn btn-secondary btn-sm active" type="button">Dữ Liệu Bảng (Firm - Year Panel Data)</button>
+          <button id="btnViewArticlePanel" class="btn btn-secondary btn-sm" type="button">Chi Tiết Từng Bài Báo (Articles Level)</button>
         </div>
 
         <div class="table-wrapper" style="max-height: 380px; overflow-y: auto; margin-bottom: 20px;">

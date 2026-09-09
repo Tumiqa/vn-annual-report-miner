@@ -2231,6 +2231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const newsTickerInput = document.getElementById('newsTickerInput');
     const newsTickerCounter = document.getElementById('newsTickerCounter');
+    const newsTickerPills = document.getElementById('newsTickerPills');
     const newsSectorL1 = document.getElementById('newsSectorL1');
     const newsSectorL2 = document.getElementById('newsSectorL2');
     const btnNewsAddSector = document.getElementById('btnNewsAddSector');
@@ -2294,42 +2295,93 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnExecutePasteMining = document.getElementById('btnExecutePasteMining');
     const pasteResultSummary = document.getElementById('pasteResultSummary');
 
-    // 1. Fast Ticker Input Parsing & Live Counter
-    function getEnteredTickers() {
-      if (!newsTickerInput) return [];
-      const val = newsTickerInput.value || '';
-      return Array.from(new Set(
-        val.toUpperCase()
-          .split(/[\s,;]+/)
-          .map(t => t.trim())
-          .filter(t => t.length >= 3 && t.length <= 6)
-      ));
-    }
+    // 1. Ticker Selection & Pills (Học tập tab BCTC: Enter để thêm mã, pills trực quan)
+    let newsSectorTree = [];
+    const newsSelectedTickers = new Set(['VCB', 'HPG', 'FPT', 'SSI', 'VNM']);
+    let newsPillsExpanded = false;
 
-    function updateTickerCounter() {
-      const tickers = getEnteredTickers();
-      if (newsTickerCounter) {
-        newsTickerCounter.textContent = `${tickers.length} mã đã nhập`;
+    function renderNewsTickerPills() {
+      if (!newsTickerPills) return;
+      newsTickerPills.innerHTML = '';
+
+      if (newsSelectedTickers.size === 0) {
+        newsTickerPills.innerHTML = '<span class="fin-pills-placeholder">Chưa chọn mã nào. Nhập mã CK ở trên rồi nhấn Enter, hoặc chọn theo ngành</span>';
+        if (newsTickerCounter) newsTickerCounter.textContent = '0 mã đã chọn';
+        return;
+      }
+
+      const tickerArray = Array.from(newsSelectedTickers);
+      if (newsTickerCounter) newsTickerCounter.textContent = `${tickerArray.length} mã đã chọn`;
+
+      // Summary badge
+      const countBadge = document.createElement('span');
+      countBadge.style.cssText = 'font-size: 11px; font-weight: 700; color: var(--brand-primary); background: rgba(99,102,241,0.12); padding: 2px 8px; border-radius: 12px; margin-right: 4px;';
+      countBadge.textContent = `${tickerArray.length} mã`;
+      newsTickerPills.appendChild(countBadge);
+
+      const maxVisible = newsPillsExpanded ? tickerArray.length : 30;
+      const visibleTickers = tickerArray.slice(0, maxVisible);
+
+      visibleTickers.forEach(ticker => {
+        const pill = document.createElement('span');
+        pill.className = 'fin-ticker-pill';
+        pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}">×</span>`;
+        pill.querySelector('.pill-remove').addEventListener('click', () => {
+          newsSelectedTickers.delete(ticker);
+          renderNewsTickerPills();
+        });
+        newsTickerPills.appendChild(pill);
+      });
+
+      if (tickerArray.length > 30) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'btn btn-secondary btn-sm';
+        toggleBtn.style.cssText = 'font-size: 11px; padding: 2px 8px; border-radius: 12px; margin-left: 4px;';
+        toggleBtn.textContent = newsPillsExpanded ? 'Thu gọn' : `Xem thêm ${tickerArray.length - 30} mã...`;
+        toggleBtn.addEventListener('click', () => {
+          newsPillsExpanded = !newsPillsExpanded;
+          renderNewsTickerPills();
+        });
+        newsTickerPills.appendChild(toggleBtn);
       }
     }
 
+    // Ticker input — Enter to add
     if (newsTickerInput) {
-      if (!newsTickerInput.value) {
-        newsTickerInput.value = 'VCB, HPG, FPT, SSI, VNM';
-      }
-      updateTickerCounter();
-      newsTickerInput.addEventListener('input', updateTickerCounter);
+      newsTickerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = newsTickerInput.value.trim();
+          if (!val) return;
+          const tickers = val.split(/[,;\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+          tickers.forEach(t => newsSelectedTickers.add(t));
+          newsTickerInput.value = '';
+          renderNewsTickerPills();
+        }
+      });
+      newsTickerInput.addEventListener('blur', () => {
+        const val = newsTickerInput.value.trim();
+        if (val) {
+          const tickers = val.split(/[,;\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+          tickers.forEach(t => newsSelectedTickers.add(t));
+          newsTickerInput.value = '';
+          renderNewsTickerPills();
+        }
+      });
     }
+
+    // Initial render of default pills
+    renderNewsTickerPills();
 
     // 1.1 Load sectors into news dropdowns
     async function loadNewsSectors() {
       try {
         const res = await fetch('/api/catalog/sectors');
         const data = await res.json();
-        const sectors = data.sectors || [];
+        newsSectorTree = data.sectors || [];
         if (newsSectorL1) {
           newsSectorL1.innerHTML = '<option value="">Tất cả ngành (L1)</option>';
-          sectors.forEach(s => {
+          newsSectorTree.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.name;
             opt.textContent = `${s.name} (${s.total_tickers} mã)`;
@@ -2347,13 +2399,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedL1 = newsSectorL1.value;
         if (!newsSectorL2) return;
         newsSectorL2.innerHTML = '<option value="">Tất cả phân ngành (L2)</option>';
-        if (selectedL1 && sectorsHierarchy) {
-          const found = sectorsHierarchy.find(s => s.name === selectedL1);
+        if (selectedL1 && newsSectorTree) {
+          const found = newsSectorTree.find(s => s.name === selectedL1);
           if (found && found.subsectors) {
             found.subsectors.forEach(sub => {
               const opt = document.createElement('option');
               opt.value = sub.name;
-              opt.textContent = `${sub.name} (${sub.ticker_count} mã)`;
+              opt.textContent = `${sub.name} (${(sub.tickers || []).length} mã)`;
               newsSectorL2.appendChild(opt);
             });
           }
@@ -2362,38 +2414,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (btnNewsAddSector) {
-      btnNewsAddSector.addEventListener('click', async () => {
+      btnNewsAddSector.addEventListener('click', () => {
         const l1 = newsSectorL1 ? newsSectorL1.value : '';
         const l2 = newsSectorL2 ? newsSectorL2.value : '';
         if (!l1 && !l2) {
           alert('Vui lòng chọn Ngành hoặc Phân ngành trước khi thêm.');
           return;
         }
-        try {
-          btnNewsAddSector.disabled = true;
-          btnNewsAddSector.textContent = 'Đang lấy mã...';
-          const params = new URLSearchParams();
-          if (l1) params.set('sector_l1', l1);
-          if (l2) params.set('sector_l2', l2);
-          params.set('limit', '500');
-          const res = await fetch(`/api/catalog/reports?${params.toString()}`);
-          const data = await res.json();
-          const reports = data.reports || [];
-          const sectorTickers = Array.from(new Set(reports.map(r => r.ticker).filter(Boolean)));
-          if (sectorTickers.length === 0) {
-            alert('Không tìm thấy mã nào trong ngành này.');
-            return;
-          }
-          const existing = getEnteredTickers();
-          const combined = Array.from(new Set([...existing, ...sectorTickers]));
-          newsTickerInput.value = combined.join(', ');
-          updateTickerCounter();
-        } catch (err) {
-          alert(`Lỗi: ${err.message}`);
-        } finally {
-          btnNewsAddSector.disabled = false;
-          btnNewsAddSector.textContent = 'Thêm theo ngành';
+        if (!newsSectorTree || newsSectorTree.length === 0) {
+          alert('Dữ liệu ngành đang được nạp, vui lòng thử lại sau giây lát.');
+          return;
         }
+
+        let tickersToAdd = [];
+        if (l1) {
+          const foundL1 = newsSectorTree.find(s => s.name === l1);
+          if (foundL1) {
+            if (l2) {
+              const sub = (foundL1.subsectors || []).find(s => s.name === l2);
+              if (sub && sub.tickers) tickersToAdd = sub.tickers;
+            } else {
+              (foundL1.subsectors || []).forEach(sub => {
+                if (sub.tickers) tickersToAdd.push(...sub.tickers);
+              });
+            }
+          }
+        } else if (l2) {
+          newsSectorTree.forEach(s => {
+            const sub = (s.subsectors || []).find(sub => sub.name === l2);
+            if (sub && sub.tickers) tickersToAdd.push(...sub.tickers);
+          });
+        }
+
+        if (tickersToAdd.length === 0) {
+          alert('Không tìm thấy mã nào trong ngành này.');
+          return;
+        }
+
+        tickersToAdd.forEach(t => newsSelectedTickers.add(t.toUpperCase()));
+        renderNewsTickerPills();
       });
     }
 
@@ -2401,20 +2460,30 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         const group = btn.getAttribute('data-tickers');
         if (group) {
-          const groupTickers = group.split(',').map(t => t.trim().toUpperCase());
-          const existing = getEnteredTickers();
-          const combined = Array.from(new Set([...existing, ...groupTickers]));
-          newsTickerInput.value = combined.join(', ');
-          updateTickerCounter();
+          const groupTickers = group.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+          groupTickers.forEach(t => newsSelectedTickers.add(t));
+          renderNewsTickerPills();
         }
       });
     });
 
     if (btnClearNewsTickers) {
       btnClearNewsTickers.addEventListener('click', () => {
-        newsTickerInput.value = '';
-        updateTickerCounter();
+        newsSelectedTickers.clear();
+        if (newsTickerInput) newsTickerInput.value = '';
+        renderNewsTickerPills();
       });
+    }
+
+    function getEnteredTickers() {
+      if (newsTickerInput && newsTickerInput.value.trim()) {
+        const val = newsTickerInput.value.trim();
+        const extra = val.split(/[,;\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean);
+        extra.forEach(t => newsSelectedTickers.add(t));
+        newsTickerInput.value = '';
+        renderNewsTickerPills();
+      }
+      return Array.from(newsSelectedTickers);
     }
 
     // 2. Custom URLs toggle
@@ -2675,6 +2744,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderNewsResults(data) {
       if (!newsResultsCard) return;
 
+      const newsStatObsCount = document.getElementById('newsStatObsCount');
+      if (newsStatObsCount) newsStatObsCount.textContent = (data.total_obs || (data.firm_rows ? data.firm_rows.length : 0)).toLocaleString();
       if (newsStatArticlesCount) newsStatArticlesCount.textContent = (data.total_articles || 0).toLocaleString();
       if (newsStatFirmsHitCount) newsStatFirmsHitCount.textContent = `${data.firms_with_hits || 0} / ${data.total_firms || 0}`;
       if (newsStatMentionsCount) newsStatMentionsCount.textContent = (data.total_mentions || 0).toLocaleString();
@@ -2699,34 +2770,41 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!newsPanelThead || !newsPanelTbody) return;
       newsPanelThead.innerHTML = `
         <tr>
-          <th style="width: 80px;">Mã CK</th>
-          <th style="width: 100px; text-align: center;">Giai Đoạn</th>
-          <th style="width: 100px; text-align: right;">Tổng Số Bài</th>
-          <th style="width: 120px; text-align: right;">Bài Có Từ Khóa</th>
-          <th style="width: 110px; text-align: right;">Tỷ Lệ Đề Cập (%)</th>
-          <th style="width: 110px; text-align: right; color: #60a5fa;">Tổng Lượt (Hits)</th>
-          <th style="width: 100px; text-align: right;">Tổng Số Từ</th>
-          <th style="width: 120px; text-align: right;">Mật Độ (/1k từ)</th>
+          <th style="width: 75px;">Mã CK</th>
+          <th style="width: 60px; text-align: center;">Năm</th>
+          <th style="width: 80px; text-align: right;" title="Số lượng bài báo thu thập được trong năm">Số Bài</th>
+          <th style="width: 85px; text-align: right;" title="Số bài báo có chứa ít nhất 1 từ khóa">Bài Có Hits</th>
+          <th style="width: 90px; text-align: right;" title="Tổng số từ của các bài báo trong năm">Tổng Số Từ</th>
+          <th style="width: 95px; text-align: right; color: var(--color-success);" class="th-hint" title="Frequency / Hits: Tổng số lần xuất hiện từ khóa trong năm (Wu et al. 2021)">Frequency</th>
+          <th style="width: 105px; text-align: right; color: #60a5fa;" class="th-hint" title="Biến chính mô hình: ln(1 + Frequency) (Wu et al. 2021, MDPI 2026)">Log (Main)</th>
+          <th style="width: 75px; text-align: center;" class="th-hint" title="Mention: Biến giả 1 nếu Frequency > 0, ngược lại 0 (Baier et al. 2020)">Mention</th>
+          <th style="width: 95px; text-align: right;" class="th-hint" title="Mật độ từ khóa trên 1.000 từ">Mật Độ (/1k)</th>
         </tr>
       `;
 
       newsPanelTbody.innerHTML = '';
       if (!rows || rows.length === 0) {
-        newsPanelTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Không có dữ liệu tổng hợp.</td></tr>';
+        newsPanelTbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Không có dữ liệu bảng (Firm-Year).</td></tr>';
         return;
       }
 
       rows.forEach(r => {
         const tr = document.createElement('tr');
+        const hits = r.total_mentions || 0;
+        const logFreq = typeof r.log_frequency === 'number' ? r.log_frequency.toFixed(4) : (r.log_frequency || '0.0000');
+        const mention = r.mention !== undefined ? r.mention : (hits > 0 ? 1 : 0);
+        const density = typeof r.keyword_density_per_1k === 'number' ? r.keyword_density_per_1k.toFixed(4) : (r.keyword_density_per_1k || '0');
+
         tr.innerHTML = `
-          <td><strong>${escapeHtml(r.ticker)}</strong></td>
-          <td class="tabular" style="text-align: center;">${escapeHtml(r.year_range || '—')}</td>
+          <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${escapeHtml(r.ticker)}</strong></td>
+          <td class="tabular" style="text-align: center; font-weight: 500;">${r.year || '—'}</td>
           <td style="text-align: right;" class="tabular">${(r.total_articles || 0).toLocaleString()}</td>
           <td style="text-align: right;" class="tabular" style="color: ${r.articles_with_hits > 0 ? 'var(--color-success)' : 'inherit'}; font-weight: ${r.articles_with_hits > 0 ? '600' : 'normal'};">${(r.articles_with_hits || 0).toLocaleString()}</td>
-          <td style="text-align: right;" class="tabular">${r.article_hit_ratio_pct || 0}%</td>
-          <td style="text-align: right;" class="tabular" style="color: #60a5fa; font-weight: 600;">${(r.total_mentions || 0).toLocaleString()}</td>
           <td style="text-align: right;" class="tabular">${(r.total_words || 0).toLocaleString()}</td>
-          <td style="text-align: right;" class="tabular">${r.keyword_density_per_1k || 0}</td>
+          <td style="text-align: right;" class="tabular" style="color: ${hits > 0 ? 'var(--color-success)' : 'inherit'}; font-weight: 700;">${hits.toLocaleString()}</td>
+          <td style="text-align: right; color: #3b82f6; font-weight: 700;" class="tabular">${logFreq}</td>
+          <td style="text-align: center;">${mention > 0 ? '<span style="color: var(--color-success); font-weight: 700;">1</span>' : '<span style="color: var(--text-muted);">0</span>'}</td>
+          <td style="text-align: right;" class="tabular">${density}</td>
         `;
         newsPanelTbody.appendChild(tr);
       });

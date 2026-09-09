@@ -963,9 +963,31 @@ body {
 /* ============================================================
    News Mining Tab Styles
    ============================================================ */
+.news-config-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 24px;
+  margin-bottom: 20px;
+  align-items: start;
+}
+
+.news-col-left,
+.news-col-right {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1024px) {
+  .news-config-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
 .source-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 10px;
   margin-top: 6px;
 }

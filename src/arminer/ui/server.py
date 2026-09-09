@@ -19,6 +19,8 @@ import sys
 import tempfile
 import time
 import uuid
+import math
+import re
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 import warnings
@@ -2365,63 +2367,85 @@ async def mine_news_stream(req: NewsMineRequest):
 
         df_articles = pd.DataFrame(article_rows)
 
-        firm_summary = []
-        freq_col = next((c for c in df_articles.columns if "frequency" in c.lower()), None)
-        dummy_col = next((c for c in df_articles.columns if "dummy" in c.lower()), None)
+        # Ensure year is integer
+        df_articles["year"] = pd.to_numeric(df_articles["year"], errors="coerce")
+        df_articles["year"] = df_articles["year"].fillna(req.year_to or 2026).astype(int)
 
-        for ticker, grp in df_articles.groupby("ticker"):
+        freq_col = next((c for c in df_articles.columns if "frequency" in c.lower() and "log" not in c.lower()), None)
+        dummy_col = next((c for c in df_articles.columns if "dummy" in c.lower() or "mention" in c.lower()), None)
+
+        # Category frequency columns
+        cat_cols = [c for c in df_articles.columns if "_freq" in c.lower() and c != freq_col]
+
+        # Aggregate strictly by (ticker, year) — standard Firm-Year Panel Data matching other tabs
+        firm_year_summary = []
+        for (ticker, yr), grp in df_articles.groupby(["ticker", "year"]):
             tot_art = len(grp)
-            tot_words = grp["word_count"].sum()
-            tot_hits = grp[freq_col].sum() if freq_col else 0
-            art_with_hits = (grp[dummy_col] > 0).sum() if dummy_col else 0
-            hit_ratio = round(art_with_hits / tot_art * 100, 2) if tot_art > 0 else 0
-            density = round(tot_hits / tot_words * 1000, 4) if tot_words > 0 else 0
+            tot_words = int(grp["word_count"].sum())
+            tot_hits = int(grp[freq_col].sum()) if freq_col and freq_col in grp else 0
+            art_with_hits = int((grp[dummy_col] > 0).sum()) if dummy_col and dummy_col in grp else 0
+            hit_ratio = round(art_with_hits / tot_art * 100, 2) if tot_art > 0 else 0.0
+            density = round(tot_hits / tot_words * 1000, 4) if tot_words > 0 else 0.0
+            log_freq = round(math.log1p(tot_hits), 4)
 
-            firm_summary.append({
+            row_data = {
                 "ticker": ticker,
-                "year_range": f"{req.year_from or ''}-{req.year_to or ''}",
+                "year": int(yr),
                 "total_articles": tot_art,
-                "articles_with_hits": int(art_with_hits),
+                "articles_with_hits": art_with_hits,
                 "article_hit_ratio_pct": hit_ratio,
-                "total_mentions": int(tot_hits),
-                "total_words": int(tot_words),
+                "total_mentions": tot_hits,
+                "log_frequency": log_freq,
+                "mention": 1 if tot_hits > 0 else 0,
+                "total_words": tot_words,
                 "keyword_density_per_1k": density,
-            })
+            }
+            for cc in cat_cols:
+                row_data[cc] = int(grp[cc].sum())
 
-        df_firms = pd.DataFrame(firm_summary)
+            firm_year_summary.append(row_data)
+
+        df_firm_year = pd.DataFrame(firm_year_summary)
+        if not df_firm_year.empty:
+            df_firm_year = df_firm_year.sort_values(by=["ticker", "year"]).reset_index(drop=True)
+
         raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else pd.DataFrame()
 
         out_xlsx = DOWNLOAD_DIR / "news_panel_data.xlsx"
         try:
             with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
-                df_firms.to_excel(writer, sheet_name="Firm_Summary", index=False)
-                df_articles.to_excel(writer, sheet_name="Articles_Panel", index=False)
+                df_firm_year.to_excel(writer, sheet_name="Firm_Year_Panel", index=False)
+                df_articles.to_excel(writer, sheet_name="Articles_Detail", index=False)
                 if not raw_df.empty:
                     raw_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
+            from arminer.export.excel_style import style_excel_file
+            style_excel_file(out_xlsx)
         except Exception as e:
             logger.error(f"Failed writing news_panel_data.xlsx: {e}")
 
         out_csv = DOWNLOAD_DIR / "news_panel_data.csv"
-        df_articles.to_csv(out_csv, index=False, encoding="utf-8-sig")
+        df_firm_year.to_csv(out_csv, index=False, encoding="utf-8-sig")
 
         out_dta = DOWNLOAD_DIR / "news_panel_data.dta"
         try:
             from arminer.core.smart_mode import sanitize_stata_dataframe
-            stata_df, labels = sanitize_stata_dataframe(df_firms)
+            stata_df, labels = sanitize_stata_dataframe(df_firm_year)
             stata_df.to_stata(out_dta, write_index=False, version=118, variable_labels=labels)
         except Exception as e:
             logger.warning(f"News Stata export failed: {e}")
 
-        total_mentions = int(df_firms["total_mentions"].sum()) if "total_mentions" in df_firms.columns else 0
-        firms_with_hits = int((df_firms["articles_with_hits"] > 0).sum()) if "articles_with_hits" in df_firms.columns else 0
+        total_mentions = int(df_firm_year["total_mentions"].sum()) if not df_firm_year.empty and "total_mentions" in df_firm_year.columns else 0
+        firms_with_hits = int((df_firm_year["articles_with_hits"] > 0).sum()) if not df_firm_year.empty and "articles_with_hits" in df_firm_year.columns else 0
+        unique_firms = len(df_firm_year["ticker"].unique()) if not df_firm_year.empty else 0
 
         yield {"event": "complete", "data": json.dumps({
             "total_articles": len(df_articles),
-            "total_firms": len(df_firms),
+            "total_firms": unique_firms,
+            "total_obs": len(df_firm_year),
             "firms_with_hits": firms_with_hits,
             "total_mentions": total_mentions,
-            "firm_rows": df_firms.to_dict(orient="records"),
-            "article_rows": df_articles.head(50).to_dict(orient="records"),
+            "firm_rows": df_firm_year.to_dict(orient="records"),
+            "article_rows": df_articles.head(100).to_dict(orient="records"),
             "snippets": all_snippets[:50],
             "excel_download": "/api/download/news_panel_data.xlsx",
             "csv_download": "/api/download/news_panel_data.csv",
