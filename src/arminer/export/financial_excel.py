@@ -892,7 +892,7 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
     row += 1
 
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
-    ws.cell(row=row, column=2, value="arminer Studio — NCKH Team Thầy Trung").font = Font(
+    ws.cell(row=row, column=2, value="arminer Studio — Trương Minh Quân").font = Font(
         name="Segoe UI", size=12, italic=True, bold=True, color="1B3A5C"
     )
     row += 2
@@ -904,7 +904,7 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
 
     # Info section
     info_items = [
-        ("Đơn vị phát triển:", "Nhóm Nghiên Cứu Khoa Học (NCKH) — Team Thầy Trung"),
+        ("Tác giả phát triển:", "Trương Minh Quân"),
         ("Công cụ trích xuất:", "arminer Web Studio v2.5 (Corporate Text Mining & Financial Intelligence)"),
         ("Mã chứng khoán:", ", ".join(tickers)),
         ("Giai đoạn:", f"{min(years)} — {max(years)}"),

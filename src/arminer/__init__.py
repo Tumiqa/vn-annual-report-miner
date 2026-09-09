@@ -13,7 +13,7 @@ Usage::
 """
 
 __version__ = "0.1.0"
-__author__ = "NCKH Team"
+__author__ = "Trương Minh Quân"
 
 from arminer.core.dictionary import Dictionary
 from arminer.core.config import ProjectConfig

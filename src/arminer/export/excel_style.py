@@ -4,7 +4,7 @@ arminer.export.excel_style
 ===========================
 Shared premium styling and branding utility for ALL Excel exports.
 Cung cấp bộ nhận diện thương hiệu và styling chuyên nghiệp nhất quán cho mọi file .xlsx xuất ra từ arminer:
-- Tự động tạo Trang_Bia (Cover Sheet) với Logo, thông tin NCKH Team Thầy Trung, mục lục, trích dẫn khoa học.
+- Tự động tạo Trang_Bia (Cover Sheet) với Logo, thông tin Trương Minh Quân, mục lục, trích dẫn khoa học.
 - Header hiện đại, zebra striping mềm mại, căn chỉnh chuẩn kinh tế lượng, định dạng số khoa học.
 - Khóa cột cố định (Freeze Panes cho Ticker, Year), bộ lọc tự động (AutoFilter), tự động giãn độ rộng cột.
 - Cài đặt thông tin bản quyền (Properties), Header & Footer khi in ấn / xuất PDF.
@@ -156,7 +156,7 @@ def add_cover_sheet(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -
     """
     Tạo hoặc bổ sung Trang_Bia (Cover Sheet) đại diện thương hiệu arminer cho toàn bộ file Excel.
     Bao gồm:
-    - Logo arminer và thông tin bản quyền Nhóm NCKH Thầy Trung
+    - Logo arminer và thông tin bản quyền Trương Minh Quân
     - Thời gian xuất dữ liệu và tổng quan kỹ thuật
     - Mục lục giải thích chi tiết mục đích từng Sheet
     - Hướng dẫn khai báo mô hình kinh tế lượng (Stata, R, Python)
@@ -250,7 +250,7 @@ def add_cover_sheet(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -
         ("📊 Nguồn dữ liệu:", "BCTN Zenodo (13,982 file) | BCTC 702 chỉ tiêu WiData | Báo chí kinh tế & Website DN"),
         ("📈 Cấu trúc dữ liệu:", "Chuẩn Dữ Liệu Bảng (Firm - Year Panel Data: Mã CK 'ticker', Năm 'year')"),
         ("🎓 Ứng dụng mô hình:", "Sẵn sàng hồi quy OLS, Fixed Effects, Random Effects, GMM (Stata, Python, R)"),
-        ("🛡️ Mã xác thực dữ liệu:", "ARMINER-VERIFIED-PANEL-DATASET (NCKH Team Thầy Trung)"),
+        ("🛡️ Mã xác thực dữ liệu:", "ARMINER-VERIFIED-PANEL-DATASET (Trương Minh Quân)"),
     ]
 
     for label, val in info_items:
@@ -495,7 +495,7 @@ def style_worksheet(
 
     # --- Page setup / footer ---
     try:
-        ws.oddFooter.left.text = "arminer Studio | NCKH Team Thầy Trung"
+        ws.oddFooter.left.text = "arminer Studio | Trương Minh Quân"
         ws.oddFooter.center.text = "Hệ Thống Dữ Liệu Doanh Nghiệp & Kinh Tế Lượng"
         ws.oddFooter.right.text = "Trang &P / &N"
     except Exception:
@@ -518,11 +518,11 @@ def style_workbook(wb: openpyxl.Workbook, custom_title: Optional[str] = None) ->
 
     # 3. Set Document Core Properties (Brand Attribution)
     try:
-        wb.properties.creator = "arminer Web Studio (NCKH Team Thầy Trung)"
+        wb.properties.creator = "arminer Web Studio (Trương Minh Quân)"
         wb.properties.lastModifiedBy = "arminer Web Studio v2.5"
         wb.properties.title = custom_title or "arminer Research Dataset - Vietnam Listed Companies"
         wb.properties.subject = "Corporate Text Mining & Financial Econometric Panel Data"
-        wb.properties.company = "NCKH Team Thầy Trung"
+        wb.properties.description = "Phát triển bởi Trương Minh Quân - DUE"
         wb.properties.category = "Econometric Panel Data"
     except Exception as e:
         logger.debug(f"Could not set workbook properties: {e}")

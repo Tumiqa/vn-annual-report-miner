@@ -160,7 +160,7 @@ def _create_blank_dictionary(path: Path) -> None:
     """Tạo file từ điển trống mẫu."""
     content = """# Dictionary cho dự án nghiên cứu
 # Chỉnh sửa file này để thêm từ khóa cho chủ đề của bạn.
-# Hướng dẫn: https://github.com/nckh-team/vn-annual-report-miner
+# Hướng dẫn: https://github.com/Tumiqa/vn-annual-report-miner
 
 name: "My Dictionary"
 version: "1.0"
