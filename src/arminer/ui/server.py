@@ -1680,7 +1680,7 @@ class FinancialQueryRequest(BaseModel):
     start_year: int = 2014
     end_year: int = 2024
     item_codes: List[str] = []
-    ratios: List[str] = []
+    ratios: Optional[List[str]] = None
     exchange: Optional[str] = None
     drop_empty: bool = True  # Tự động loại bỏ các chỉ tiêu 100% rỗng để tránh làm đầy Excel
 
@@ -1810,10 +1810,10 @@ async def financial_query(req: FinancialQueryRequest):
                 target_item_codes = list(df_master_items["item_code"])
 
         # Xac dinh danh sach ty so can xuat
-        if req.ratios:
+        if req.ratios is not None:
             active_ratios = [r for r in req.ratios if r in WIDATA_RATIOS]
         else:
-            active_ratios = list(WIDATA_RATIOS.keys())
+            active_ratios = ["roa", "roe", "gross_margin", "net_margin", "debt_to_assets", "debt_to_equity", "current_ratio", "size_ln"]
 
         if req.drop_empty:
             # Che do thong minh: Chi giu cac chi tieu thuc su co so lieu trong pivot (loai bo cot toan bo NaN hoac 0)
@@ -1847,9 +1847,10 @@ async def financial_query(req: FinancialQueryRequest):
         # Replace inf with None
         pivot = pivot.replace([float('inf'), float('-inf')], None)
 
-        # Sap xep thu tu cot khoa hoc: ticker, year, toan bo chi tieu BCTC, toan bo ty so WiData
+        # Sap xep thu tu cot khoa hoc: ticker, year, toan bo chi tieu BCTC da chon, toan bo ty so WiData da chon
+        # TUYET DOI KHONG giu lai cac ty so WiData khong duoc chon trong file xuat!
         ordered_cols = ["ticker", "year"] + [c for c in target_item_codes if c in pivot.columns] + [r for r in active_ratios if r in pivot.columns]
-        other_cols = [c for c in pivot.columns if c not in ordered_cols]
+        other_cols = [c for c in pivot.columns if c not in ordered_cols and c not in WIDATA_RATIOS]
         pivot = pivot[ordered_cols + other_cols]
 
         # Sort theo ticker va year

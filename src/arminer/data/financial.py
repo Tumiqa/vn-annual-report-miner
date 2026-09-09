@@ -27,16 +27,23 @@ class FinancialDataProvider:
     Leverage (Total Debt / Total Assets).
     """
 
-    # Mapping item_name phổ biến
+    # Mapping item_name phổ biến (Đa ngành: Sản xuất/Thương mại, Ngân hàng, Chứng khoán, Bảo hiểm)
     ITEM_MAPPING = {
-        "total_assets": "TỔNG TÀI SẢN",
-        "total_equity": "VỐN CHỦ SỞ HỮU",
-        "total_debt": "NỢ PHẢI TRẢ",
-        "revenue": "Doanh số thuần",
-        "net_income": "Lãi/(lỗ) thuần sau thuế",
-        "cash": "Tiền và tương đương tiền",
-        "ebit": "EBIT",
-        "ebitda": "EBITDA",
+        "total_assets": ["TỔNG TÀI SẢN", "TỔNG CỘNG TÀI SẢN", "Tổng tài sản"],
+        "total_equity": ["VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu", "TỔNG VỐN CHỦ SỞ HỮU", "Vốn và các quỹ"],
+        "total_debt": ["NỢ PHẢI TRẢ", "Tổng nợ phải trả", "Nợ phải trả"],
+        "revenue": ["Doanh số thuần", "Doanh thu thuần", "Tổng thu nhập hoạt động", "Doanh thu hoạt động", "Thu nhập lãi thuần"],
+        "net_income": [
+            "Lãi/(lỗ) thuần sau thuế",
+            "Lợi nhuận sau thuế",
+            "Lợi nhuận kế toán sau thuế",
+            "Lợi nhuận sau thuế thu nhập doanh nghiệp",
+            "Tổng lợi nhuận kế toán sau thuế",
+            "Lợi nhuận sau thuế của cổ đông công ty mẹ",
+        ],
+        "cash": ["Tiền và tương đương tiền", "Tiền mặt, vàng bạc, đá quý", "Tiền"],
+        "ebit": ["EBIT", "Lợi nhuận trước thuế và lãi vay"],
+        "ebitda": ["EBITDA"],
     }
 
     RATIO_FORMULAS = {
@@ -86,23 +93,26 @@ class FinancialDataProvider:
         return self._cache[cache_key]
 
     def get_item_value(self, ticker: str, year: int,
-                       item_name: str, statement: str = "balance_sheet",
+                       item_name: Any, statement: str = "balance_sheet",
                        exchange: str = None) -> Optional[float]:
-        """Lấy 1 giá trị cụ thể cho (ticker, year, item)."""
+        """Lấy 1 giá trị cụ thể cho (ticker, year, item) với hỗ trợ danh sách tên dự phòng đa ngành."""
         exchanges = [exchange] if exchange else ["HSX", "HNX"]
+        names = [item_name] if isinstance(item_name, str) else list(item_name)
 
         for ex in exchanges:
             try:
                 df = self.load_raw(ex, statement)
-                mask = (
-                    (df["ticker"] == ticker) &
-                    (df["year"] == year) &
-                    (df["item_name"] == item_name)
-                )
-                result = df.loc[mask, "value"]
-                if not result.empty:
-                    val = result.iloc[0]
-                    return float(val) if pd.notna(val) else None
+                for name in names:
+                    mask = (
+                        (df["ticker"] == ticker) &
+                        (df["year"] == year) &
+                        (df["item_name"].str.strip() == str(name).strip())
+                    )
+                    result = df.loc[mask, "value"]
+                    if not result.empty:
+                        val = result.iloc[0]
+                        if pd.notna(val):
+                            return float(val)
             except Exception:
                 continue
 

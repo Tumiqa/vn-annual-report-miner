@@ -589,57 +589,105 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
 
     df = df.sort_values(["ticker", "year"]).reset_index(drop=True)
 
-    def find_col(patterns):
+    def coalesce_cols(patterns):
+        res = pd.Series(np.nan, index=df.index, dtype=float)
+        matched_cols = []
+        # Priority 1: Exact case-insensitive match
         for p in patterns:
             for c in df.columns:
-                if c.lower() == p.lower():
-                    return df[c]
+                if c.lower() == p.lower() and c not in matched_cols:
+                    matched_cols.append(c)
+        # Priority 2: Substring match
         for p in patterns:
             for c in df.columns:
-                if p.lower() in c.lower():
-                    return df[c]
-        return pd.Series(np.nan, index=df.index)
+                if p.lower() in c.lower() and c not in matched_cols:
+                    matched_cols.append(c)
+        # Coalesce: first non-null across matched candidate columns per row
+        for c in matched_cols:
+            col_s = pd.to_numeric(df[c], errors="coerce")
+            res = res.combine_first(col_s)
+        return res
 
-    # Core base items
-    total_assets = find_col(["bs_tong_tai_san", "bs_tong_cong_tai_san"])
-    equity = find_col(["bs_von_chu_so_huu", "bs_von_chu_so_huu_4d280b22", "bs_von_chu_so_huu_6cda78ae"])
-    debt = find_col(["bs_no_phai_tra", "bs_tong_no_phai_tra"])
-    curr_assets = find_col(["bs_tai_san_ngan_han"])
-    curr_liab = find_col(["bs_no_ngan_han"])
-    inventory = find_col(["bs_hang_ton_kho"])
-    cash = find_col(["bs_tien_va_tuong_duong_tien", "bs_tien"])
-    revenue = find_col(["is_doanh_thu_thuan", "is_doanh_so_thuan", "is_doanh_thu_hoat_dong"])
-    gross_profit = find_col(["is_loi_nhuan_gop", "is_lai_gop"])
-    ebt = find_col(["is_loi_nhuan_truoc_thue", "is_lai_truoc_thue", "is_tong_loi_nhuan_ke_toan_truoc_thue"])
-    eat = find_col(["is_loi_nhuan_sau_thue", "is_lai_sau_thue", "is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep"])
-    eat_parent = find_col(["is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_loi_nhuan_sau_thue_cty_me"])
-    if eat_parent.isna().all():
-        eat_parent = eat
-    ebit = find_col(["is_ebit"])
-    tax = find_col(["is_chi_phi_thue_tndn", "is_chi_phi_thue_thu_nhap_doanh_nghiep_hien_hanh"])
-    cfo = find_col(["cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh"])
-    cfi = find_col(["cf_luu_chuyen_tien_thuan_tu_hoat_dong_dau_tu"])
-    cff = find_col(["cf_luu_chuyen_tien_thuan_tu_hoat_dong_tai_chinh"])
+    # Core base items (Multi-sector: Commercial/Manufacturing, Banking, Securities, Insurance)
+    total_assets = coalesce_cols(["bs_tong_tai_san", "bs_tong_cong_tai_san"])
+    equity = coalesce_cols([
+        "bs_von_chu_so_huu_4d280b22",
+        "bs_von_chu_so_huu_6cda78ae",
+        "bs_von_chu_so_huu",
+        "bs_tong_von_chu_so_huu",
+        "bs_von_va_cac_quy",
+    ])
+    debt = coalesce_cols(["bs_no_phai_tra", "bs_tong_no_phai_tra"])
+    curr_assets = coalesce_cols(["bs_tai_san_ngan_han", "bs_tong_tai_san_ngan_han"])
+    curr_liab = coalesce_cols(["bs_no_ngan_han", "bs_tong_no_ngan_han"])
+    inventory = coalesce_cols(["bs_hang_ton_kho", "bs_hang_ton_kho_rong"])
+    cash = coalesce_cols(["bs_tien_va_tuong_duong_tien", "bs_tien_mat_vang_bac_da_quy", "bs_tien"])
+    revenue = coalesce_cols([
+        "is_doanh_thu_thuan",
+        "is_doanh_so_thuan",
+        "is_tong_thu_nhap_hoat_dong",
+        "is_doanh_thu_hoat_dong",
+        "is_thu_nhap_lai_thuan",
+    ])
+    gross_profit = coalesce_cols(["is_loi_nhuan_gop", "is_lai_gop", "is_thu_nhap_lai_thuan"])
+    ebt = coalesce_cols([
+        "is_tong_loi_nhuan_ke_toan_truoc_thue",
+        "is_tong_loi_nhuan_truoc_thue",
+        "is_loi_nhuan_truoc_thue",
+        "is_lai_truoc_thue",
+    ])
+    eat = coalesce_cols([
+        "is_lai_lo_thuan_sau_thue",
+        "is_loi_nhuan_sau_thue",
+        "is_loi_nhuan_ke_toan_sau_thue",
+        "is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep",
+        "is_loi_nhuan_sau_thue_phan_bo_cho_chu_so_huu",
+        "is_loi_nhuan_sau_thue_cua_chu_so_huu_tap_doan",
+        "is_tong_loi_nhuan_ke_toan_sau_thue",
+        "is_lai_sau_thue",
+    ])
+    eat_parent = coalesce_cols([
+        "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me",
+        "is_loi_nhuan_cua_co_dong_cua_cong_ty_me",
+        "is_loi_nhuan_sau_thue_phan_bo_cho_chu_so_huu",
+        "is_loi_nhuan_sau_thue_cua_chu_so_huu_tap_doan",
+        "is_loi_nhuan_sau_thue_cty_me",
+        "is_lai_sau_thue_cua_co_dong_cong_ty_me",
+    ])
+    eat_parent = eat_parent.combine_first(eat)
+    ebit = coalesce_cols(["is_ebit"])
+    tax = coalesce_cols([
+        "is_chi_phi_thue_tndn",
+        "is_chi_phi_thue_thu_nhap_doanh_nghiep_hien_hanh",
+        "is_chi_phi_thue_thu_nhap_doanh_nghiep",
+    ])
+    cfo = coalesce_cols([
+        "cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh",
+        "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh",
+        "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh_truoc_thue_thu_nhap_dn",
+    ])
+    cfi = coalesce_cols(["cf_luu_chuyen_tien_thuan_tu_hoat_dong_dau_tu"])
+    cff = coalesce_cols(["cf_luu_chuyen_tien_thuan_tu_hoat_dong_tai_chinh"])
 
-    # CTCK items
-    margin_loans = find_col(["bs_cac_khoan_cho_vay", "bs_phai_thu_ve_cho_vay_ky_quy"])
-    advances = find_col(["bs_phai_thu_ung_truoc_tien_ban_chung_khoan_cua_khach_hang", "bs_ung_truoc_tien_ban"])
-    fvtpl = find_col(["bs_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
-    htm = find_col(["bs_cac_khoan_dau_tu_nam_giu_den_ngay_dao_han_htm", "bs_dau_tu_nam_giu_den_ngay_dao_han_htm"])
-    afs = find_col(["bs_cac_khoan_tai_chinh_san_sang_de_ban_afs", "bs_tai_san_tai_chinh_san_sang_de_ban_afs"])
-    brokerage_rev = find_col(["is_doanh_thu_hoat_dong_moi_gioi_chung_khoan"])
-    proprietary_rev = find_col(["is_doanh_thu_mang_tu_doanh_va_kinh_doanh_nguon_von", "is_lai_tu_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
-    margin_profit = find_col(["is_lai_tu_cac_khoan_cho_vay_va_phai_thu"])
-    ib_rev = find_col(["is_doanh_thu_hoat_dong_tu_van_tai_chinh", "is_doanh_thu_mang_ngan_hang_dau_tu"])
-    brokerage_cost = find_col(["is_chi_phi_hoat_dong_moi_gioi_chung_khoan"])
-    proprietary_cost = find_col(["is_chi_phi_hoat_dong_tu_doanh"])
-    advisory_cost = find_col(["is_chi_phi_hoat_dong_tu_van_tai_chinh"])
-    provision_cost = find_col(["is_chi_phi_du_phong_tstc", "is_chi_phi_du_phong"])
-    long_term_debt = find_col(["bs_no_dai_han", "bs_tong_no_dai_han"])
-    non_curr_assets = find_col(["bs_tai_san_dai_han"])
-    operating_cost = find_col(["is_chi_phi_hoat_dong", "is_tong_chi_phi_hoat_dong"])
-    other_receivables = find_col(["bs_phai_thu_khac", "bs_cac_khoan_phai_thu_khac"])
-    broker_services = find_col(["bs_phai_thu_cac_dich_vu_ctck_cung_cap"])
+    # CTCK & Non-financial specific items
+    margin_loans = coalesce_cols(["bs_cac_khoan_cho_vay", "bs_phai_thu_ve_cho_vay_ky_quy", "bs_cho_vay_margin"])
+    advances = coalesce_cols(["bs_phai_thu_ung_truoc_tien_ban_chung_khoan_cua_khach_hang", "bs_ung_truoc_tien_ban"])
+    fvtpl = coalesce_cols(["bs_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl", "bs_tai_san_tai_chinh_fvtpl"])
+    htm = coalesce_cols(["bs_cac_khoan_dau_tu_nam_giu_den_ngay_dao_han_htm", "bs_dau_tu_nam_giu_den_ngay_dao_han_htm"])
+    afs = coalesce_cols(["bs_cac_khoan_tai_chinh_san_sang_de_ban_afs", "bs_tai_san_tai_chinh_san_sang_de_ban_afs"])
+    brokerage_rev = coalesce_cols(["is_doanh_thu_hoat_dong_moi_gioi_chung_khoan", "is_doanh_thu_moi_gioi"])
+    proprietary_rev = coalesce_cols(["is_doanh_thu_mang_tu_doanh_va_kinh_doanh_nguon_von", "is_lai_tu_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
+    margin_profit = coalesce_cols(["is_lai_tu_cac_khoan_cho_vay_va_phai_thu"])
+    ib_rev = coalesce_cols(["is_doanh_thu_hoat_dong_tu_van_tai_chinh", "is_doanh_thu_mang_ngan_hang_dau_tu"])
+    brokerage_cost = coalesce_cols(["is_chi_phi_hoat_dong_moi_gioi_chung_khoan"])
+    proprietary_cost = coalesce_cols(["is_chi_phi_hoat_dong_tu_doanh"])
+    advisory_cost = coalesce_cols(["is_chi_phi_hoat_dong_tu_van_tai_chinh"])
+    provision_cost = coalesce_cols(["is_chi_phi_du_phong_tstc", "is_chi_phi_du_phong"])
+    long_term_debt = coalesce_cols(["bs_no_dai_han", "bs_tong_no_dai_han"])
+    non_curr_assets = coalesce_cols(["bs_tai_san_dai_han"])
+    operating_cost = coalesce_cols(["is_chi_phi_hoat_dong", "is_tong_chi_phi_hoat_dong"])
+    other_receivables = coalesce_cols(["bs_phai_thu_khac", "bs_cac_khoan_phai_thu_khac"])
+    broker_services = coalesce_cols(["bs_phai_thu_cac_dich_vu_ctck_cung_cap"])
 
     def sdiv(a, b):
         return a.astype(float) / b.replace(0, np.nan).astype(float)
@@ -1298,18 +1346,8 @@ def _create_codebook_sheet(ws, fin_codebook):
         cell.alignment = _CENTER
         cell.border = _THIN_BORDER
 
-    # Build full codebook including WiData ratios
+    # Codebook strictly mirrors exported variables in fin_codebook
     cb_full = list(fin_codebook)
-    cb_vars = {item.get("Biến") for item in cb_full}
-    for rk, rinfo in WIDATA_RATIOS.items():
-        if rk not in cb_vars:
-            cb_full.append({
-                "Biến": rk,
-                "Tên chỉ tiêu": rinfo["name"],
-                "Phân loại / Nhóm": rinfo["group"],
-                "Phân loại": "Tỷ số tài chính WiData",
-                "Công thức / Nguồn": rinfo["formula"],
-            })
 
     for r_idx, item in enumerate(cb_full, 2):
         for c_idx, h in enumerate(cb_headers, 1):
@@ -1347,10 +1385,10 @@ def _create_guide_sheet(ws):
             "Bạn cũng có thể gõ trực tiếp mã CK vào ô B2 rồi nhấn Enter.",
         ]),
         ("2. Tổng quan các Tab trong bảng tính:", [
-            "Bao_Cao_Tai_Chinh: Toàn bộ 702 chỉ tiêu kế toán phân chia theo 13 nhóm chuẩn mực.",
-            "Ty_So_Tai_Chinh: Hệ thống tỷ số tài chính toàn diện theo chuẩn WiData.",
+            "Bao_Cao_Tai_Chinh: Toàn bộ chỉ tiêu kế toán phân chia theo 13 nhóm chuẩn mực.",
+            "Ty_So_Tai_Chinh: Hệ thống tỷ số tài chính được trích chọn theo chuẩn WiData.",
             "Panel_Data_Goc: Bảng dữ liệu phẳng Panel Data (tất cả mã CK) để chạy hồi quy trên Stata/R/Python.",
-            "Codebook: Từ điển định nghĩa chi tiết từng biến.",
+            "Codebook: Từ điển định nghĩa chi tiết từng biến thực tế xuất hiện trong tập dữ liệu.",
         ]),
         ("3. Sử dụng bộ lọc AutoFilter bổ sung:", [
             "Tại dòng tiêu đề (dòng 4), mỗi cột đều có mũi tên lọc ▼.",
@@ -1390,15 +1428,15 @@ def populate_financial_sheets(
     missing_tickers: Optional[List[str]] = None,
 ) -> openpyxl.Workbook:
     """
-    Populate an openpyxl Workbook with all 8 financial sheets:
+    Populate an openpyxl Workbook with financial sheets:
     - Trang_Bia (Cover)
-    - Bao_Cao_Tai_Chinh (702 items + dropdown B2 + INDEX/MATCH)
-    - Ty_So_Tai_Chinh (75 ratios + dropdown B2 + INDEX/MATCH)
+    - Bao_Cao_Tai_Chinh (Dropdown B2 + INDEX/MATCH)
+    - Ty_So_Tai_Chinh (Ratios + Dropdown B2 + INDEX/MATCH - if ratios selected)
     - Panel_Data_Goc (Flat panel data for all tickers)
     - Codebook
     - Huong_Dan
     - Data_BCTC (Hidden raw data sheet for formulas)
-    - Data_TySo (Hidden ratio data sheet for formulas)
+    - Data_TySo (Hidden ratio data sheet for formulas - if ratios selected)
     """
     # Compute WiData metrics
     pivot = compute_widata_metrics(pivot)
@@ -1412,19 +1450,22 @@ def populate_financial_sheets(
     # Data lookup
     data_lookup = _build_data_lookup(all_data)
 
-    # Active ratios
-    active_ratios = list(WIDATA_RATIOS.keys())
-    if fin_codebook:
+    # Active ratios (Strictly respect caller's ratio_cols)
+    if ratio_cols is not None:
+        active_ratios = [r for r in ratio_cols.keys() if r in WIDATA_RATIOS]
+    elif fin_codebook:
         selected_ratios = [item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Tỷ số tài chính WiData"]
-        if selected_ratios and len(selected_ratios) < len(WIDATA_RATIOS):
-            active_ratios = [r for r in WIDATA_RATIOS if r in selected_ratios]
+        active_ratios = [r for r in WIDATA_RATIOS if r in selected_ratios]
+    else:
+        active_ratios = [r for r in WIDATA_RATIOS.keys() if r in pivot.columns]
 
     # 1. Hidden Data sheets (must be created FIRST for formula references)
     ws_data_bctc = wb.create_sheet("Data_BCTC")
     bctc_last_row = _create_hidden_bctc_sheet(ws_data_bctc, df_master, tickers, years, data_lookup)
 
-    ws_data_tyso = wb.create_sheet("Data_TySo")
-    tyso_last_row = _create_hidden_tyso_sheet(ws_data_tyso, pivot, tickers, years, active_ratios)
+    if active_ratios:
+        ws_data_tyso = wb.create_sheet("Data_TySo")
+        tyso_last_row = _create_hidden_tyso_sheet(ws_data_tyso, pivot, tickers, years, active_ratios)
 
     # 2. Cover sheet
     ws_cover = wb.create_sheet("Trang_Bia", 0)  # Insert at position 0 (first)
@@ -1434,9 +1475,10 @@ def populate_financial_sheets(
     ws_bctc = wb.create_sheet("Bao_Cao_Tai_Chinh")
     _create_bctc_report_sheet(ws_bctc, df_master, tickers, years, bctc_last_row)
 
-    # 4. TySo report (with formulas)
-    ws_tyso = wb.create_sheet("Ty_So_Tai_Chinh")
-    _create_tyso_report_sheet(ws_tyso, tickers, years, active_ratios, tyso_last_row)
+    # 4. TySo report (with formulas) - only if active_ratios
+    if active_ratios:
+        ws_tyso = wb.create_sheet("Ty_So_Tai_Chinh")
+        _create_tyso_report_sheet(ws_tyso, tickers, years, active_ratios, tyso_last_row)
 
     # 5. Panel Data (actual values for Stata/R/Python)
     ws_panel = wb.create_sheet("Panel_Data_Goc")

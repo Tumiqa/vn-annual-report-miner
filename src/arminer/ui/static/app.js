@@ -1325,12 +1325,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const defaultChecked = new Set([
-        'roa', 'roe', 'gross_margin', 'net_margin', 'ebit_margin',
-        'debt_to_assets', 'debt_to_equity', 'current_ratio',
-        'margin_to_equity', 'pct_margin_loans', 'pct_fvtpl',
-        'rev_growth_yoy', 'eat_growth_yoy', 'assets_growth_yoy',
-        'total_assets', 'equity', 'net_revenue', 'profit_after_tax',
-        'operating_cash_flow', 'size_ln', 'margin_profit', 'eat_parent'
+        'roa', 'roe', 'gross_margin', 'net_margin',
+        'debt_to_assets', 'debt_to_equity', 'current_ratio', 'size_ln'
       ]);
 
       for (const [groupName, ratios] of Object.entries(groups)) {
@@ -1541,7 +1537,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Select all ratios / Clear ratios
+  // Select core ratios / Select all ratios / Clear ratios
+  const CORE_RATIOS_SET = new Set([
+    'roa', 'roe', 'gross_margin', 'net_margin',
+    'debt_to_assets', 'debt_to_equity', 'current_ratio', 'size_ln'
+  ]);
+
+  const btnFinSelectCoreRatios = document.getElementById('btnFinSelectCoreRatios');
+  if (btnFinSelectCoreRatios) {
+    btnFinSelectCoreRatios.addEventListener('click', () => {
+      document.querySelectorAll('#finRatiosContainer .fin-ratio-chk').forEach(lbl => {
+        const chk = lbl.querySelector('input[type="checkbox"]');
+        if (chk) {
+          chk.checked = CORE_RATIOS_SET.has(chk.value);
+        }
+      });
+    });
+  }
+
   const btnFinSelectAllRatios = document.getElementById('btnFinSelectAllRatios');
   if (btnFinSelectAllRatios) {
     btnFinSelectAllRatios.addEventListener('click', () => {
