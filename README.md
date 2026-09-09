@@ -9,11 +9,17 @@
 </p>
 
 <p align="center">
+  <a href="https://colab.research.google.com/github/Tumiqa/vn-annual-report-miner/blob/main/arminer_colab_quickstart.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22c55e?style=flat-square" alt="License: MIT"></a>
   <a href="#hướng-dẫn-cài-đặt--chạy-nhanh-3-bước-cho-mọi-máy"><img src="https://img.shields.io/badge/Cài_đặt-3_bước_siêu_tốc-blue?style=flat-square" alt="Quick Install"></a>
   <a href="#bước-3-bật-giao-diện-và-sử-dụng-100-bằng-chuột"><img src="https://img.shields.io/badge/Web_Studio-Trực_quan-009688?style=flat-square&logo=fastapi&logoColor=white" alt="Web UI"></a>
 </p>
+
+---
+
+> 🚀 **Chạy ngay trên Google Colab (Không cần cài đặt trên máy cá nhân)**:  
+> Bấm vào nút [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Tumiqa/vn-annual-report-miner/blob/main/arminer_colab_quickstart.ipynb) để chạy toàn bộ hệ thống Web Studio, trích xuất BCTC và quét từ khóa trực tiếp trên đám mây!
 
 ---
 

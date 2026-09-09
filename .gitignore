@@ -46,6 +46,7 @@ logs/
 # Temp files
 *.tmp
 *.bak
+scratch/
 
 # Jupyter
 .ipynb_checkpoints/
