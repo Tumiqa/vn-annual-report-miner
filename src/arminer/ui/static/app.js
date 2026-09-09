@@ -1127,6 +1127,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let finSelectedTickers = new Set(); // Set of ticker strings
   let finSmartFilterActive = false;
   let finAvailableItemCodes = null; // Set<string> or null
+  let finAvailableRatios = {}; // code -> ratio definition
 
   async function loadFinancialStatus() {
     const badge = document.getElementById('finStatusBadge');
@@ -1309,8 +1310,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/financial/ratios');
       const data = await res.json();
-      const ratiosObj = data.ratios || {};
-      const entries = Object.entries(ratiosObj);
+      finAvailableRatios = data.ratios || {};
+      const entries = Object.entries(finAvailableRatios);
       if (entries.length === 0) return;
 
       if (countEl) countEl.textContent = `(${entries.length} chỉ số)`;
