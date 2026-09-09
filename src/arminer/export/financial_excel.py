@@ -17,8 +17,7 @@ Tao file Excel bao cao tai chinh chuyen nghiep:
     11. NGOẠI BẢNG. A TÀI SẢN CỦA CTCK VÀ TÀI SẢN QUẢN LÝ THEO CAM KẾT
     12. NGOẠI BẢNG. B TÀI SẢN VÀ CÁC KHOẢN PHẢI TRẢ VỀ TÀI SẢN QUẢN LÝ CAM KẾT VỚI KHÁCH HÀNG
     13. THUYẾT MINH. CÁC LOẠI TÀI SẢN TÀI CHÍNH
-- Tab Ty_So_Tai_Chinh: He thong chi so tai chinh toan dien chuan WiData (Kha nang sinh loi, Don bay & Thanh toan,
-  Dac thu CTCK / Margin / Dau tu, Toc do tang truong YoY %, Quy mo & Dinh gia).
+- Tab Ty_So_Tai_Chinh: He thong 116 chi so tai chinh toan dien chuan hoc thuat (CFA, VAS/IFRS, Basel III, CAMELS).
 - Tab Panel_Data_Goc: Bang du lieu bang phang (Panel Data) chuan nghien cuu kinh te luong.
 - Tab Codebook: Tu dien bien chi tiet.
 - Tab Huong_Dan_VBA: Huong dan su dung bo loc va ma nguon VBA.
@@ -117,472 +116,760 @@ def classify_financial_item(code: str, name: str, stmt: str, order: int = 0) -> 
     return "CĐKT. TÀI SẢN NGẮN HẠN"
 
 
-# He thong dinh nghia toan bo cac chi so WiData
-WIDATA_RATIOS = {
-    # 1. Kha nang sinh loi & Hieu qua
+# He thong 116 chi so tai chinh chuan hoc thuat (CFA, VAS/IFRS, Basel III, CAMELS)
+FINANCIAL_RATIOS = {
+    # -------------------------------------------------------------
+    # Trụ cột 1: Khả năng sinh lời & Hiệu quả vốn (15 chỉ số)
+    # -------------------------------------------------------------
     "roa": {
-        "name": "ROA (%) (Y)",
-        "group": "Khả năng sinh lời",
+        "name": "Tỷ suất sinh lời trên tổng tài sản (ROA) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
         "formula": "Lợi nhuận sau thuế / Tổng tài sản",
         "fmt": "0.00%",
     },
     "roe": {
-        "name": "ROE (%) (Y)",
-        "group": "Khả năng sinh lời",
+        "name": "Tỷ suất sinh lời trên vốn chủ sở hữu (ROE) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
         "formula": "Lợi nhuận sau thuế / Vốn chủ sở hữu",
         "fmt": "0.00%",
     },
+    "roce": {
+        "name": "Tỷ suất sinh lời trên vốn sử dụng (ROCE) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "EBIT / (Tổng tài sản - Nợ ngắn hạn)",
+        "fmt": "0.00%",
+    },
+    "roic": {
+        "name": "Tỷ suất sinh lời trên vốn đầu tư (ROIC) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "EBIT*(1 - Thuế suất) / (Vốn CSH + Nợ vay tài chính - Tiền mặt)",
+        "fmt": "0.00%",
+    },
     "gross_margin": {
-        "name": "Biên lợi nhuận gộp (%) (Y)",
-        "group": "Khả năng sinh lời",
+        "name": "Biên lợi nhuận gộp (Gross Margin) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
         "formula": "Lợi nhuận gộp / Doanh thu thuần",
         "fmt": "0.00%",
     },
-    "net_margin": {
-        "name": "Biên lợi nhuận ròng (%) (Y)",
-        "group": "Khả năng sinh lời",
-        "formula": "Lợi nhuận sau thuế / Doanh thu thuần",
-        "fmt": "0.00%",
-    },
-    "ebit_margin": {
-        "name": "Biên EBIT (%) (Y)",
-        "group": "Khả năng sinh lời",
+    "operating_margin": {
+        "name": "Biên lợi nhuận hoạt động (Operating Margin) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
         "formula": "EBIT / Doanh thu thuần",
         "fmt": "0.00%",
     },
+    "ebitda_margin": {
+        "name": "Biên EBITDA (EBITDA Margin) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "EBITDA / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "net_margin": {
+        "name": "Biên lợi nhuận ròng (Net Profit Margin) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "Lợi nhuận sau thuế / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "ebt_margin": {
+        "name": "Biên lợi nhuận trước thuế (EBT Margin) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "Lợi nhuận trước thuế / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
     "effective_tax_rate": {
-        "name": "Tỷ lệ thuế suất hiệu dụng (%) (Y)",
-        "group": "Khả năng sinh lời",
+        "name": "Thuế suất thực tế (Effective Tax Rate) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
         "formula": "Chi phí thuế TNDN / Lợi nhuận trước thuế",
         "fmt": "0.00%",
     },
-    "asset_turnover": {
-        "name": "Vòng quay tổng tài sản (Lần) (Y)",
-        "group": "Hiệu quả hoạt động",
+    "dupont_tax_burden": {
+        "name": "DuPont - Gánh nặng thuế (Tax Burden) (Lần) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "LNST / Lợi nhuận trước thuế (EAT / EBT)",
+        "fmt": "0.000",
+    },
+    "dupont_interest_burden": {
+        "name": "DuPont - Gánh nặng lãi vay (Interest Burden) (Lần) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "Lợi nhuận trước thuế / EBIT (EBT / EBIT)",
+        "fmt": "0.000",
+    },
+    "dupont_operating_margin": {
+        "name": "DuPont - Biên hoạt động (Operating Margin) (%) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "EBIT / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "dupont_asset_turnover": {
+        "name": "DuPont - Vòng quay tổng tài sản (Asset Turnover) (Lần) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
         "formula": "Doanh thu thuần / Tổng tài sản",
         "fmt": "0.00",
     },
-    "cfo_to_net_income": {
-        "name": "Dòng tiền HĐKD/Lợi nhuận thuần (%) (Y)",
-        "group": "Hiệu quả dòng tiền",
-        "formula": "Dòng tiền thuần HĐKD / Lợi nhuận sau thuế",
-        "fmt": "0.00%",
-    },
-    "cfo_to_avg_assets": {
-        "name": "Dòng tiền HĐKD/Trung bình tổng tài sản (%) (Y)",
-        "group": "Hiệu quả dòng tiền",
-        "formula": "Dòng tiền thuần HĐKD / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "cfo_to_avg_equity": {
-        "name": "Dòng tiền HĐKD/Trung bình vốn chủ sỡ hữu (%) (Y)",
-        "group": "Hiệu quả dòng tiền",
-        "formula": "Dòng tiền thuần HĐKD / Vốn chủ sở hữu",
-        "fmt": "0.00%",
+    "dupont_equity_multiplier": {
+        "name": "DuPont - Đòn bẩy tài chính (Equity Multiplier) (Lần) (Y)",
+        "group": "1. Khả năng sinh lời & Hiệu quả vốn",
+        "formula": "Tổng tài sản / Vốn chủ sở hữu",
+        "fmt": "0.00",
     },
 
-    # 2. Co cau von & Kha nang thanh toan
+    # -------------------------------------------------------------
+    # Trụ cột 2: Cấu trúc vốn & Đòn bẩy tài chính (13 chỉ số)
+    # -------------------------------------------------------------
     "debt_to_assets": {
-        "name": "Hệ số nợ trên tổng tài sản (%) (Y)",
-        "group": "Cơ cấu vốn và Đòn bẩy",
+        "name": "Hệ số nợ trên tổng tài sản (D/A) (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
         "formula": "Nợ phải trả / Tổng tài sản",
         "fmt": "0.00%",
     },
     "debt_to_equity": {
-        "name": "Hệ số nợ trên vốn chủ sở hữu (%) (Y)",
-        "group": "Cơ cấu vốn và Đòn bẩy",
+        "name": "Hệ số nợ trên vốn chủ sở hữu (D/E) (Lần) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
         "formula": "Nợ phải trả / Vốn chủ sở hữu",
+        "fmt": "0.00",
+    },
+    "fin_debt_to_assets": {
+        "name": "Hệ số nợ vay tài chính trên tổng tài sản (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "(Vay ngắn hạn + Vay dài hạn) / Tổng tài sản",
         "fmt": "0.00%",
     },
+    "fin_debt_to_equity": {
+        "name": "Hệ số nợ vay tài chính trên vốn CSH (Lần) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "(Vay ngắn hạn + Vay dài hạn) / Vốn chủ sở hữu",
+        "fmt": "0.00",
+    },
     "equity_to_assets": {
-        "name": "Hệ số vốn chủ sở hữu (%) (Y)",
-        "group": "Cơ cấu vốn và Đòn bẩy",
+        "name": "Hệ số tự tài trợ (Equity / Assets) (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
         "formula": "Vốn chủ sở hữu / Tổng tài sản",
         "fmt": "0.00%",
     },
     "equity_multiplier": {
-        "name": "Tổng tài sản/Vốn chủ sở hữu (Lần) (Y)",
-        "group": "Cơ cấu vốn và Đòn bẩy",
+        "name": "Đòn bẩy tài chính (Equity Multiplier) (Lần) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
         "formula": "Tổng tài sản / Vốn chủ sở hữu",
         "fmt": "0.00",
     },
+    "st_debt_to_total_debt": {
+        "name": "Tỷ trọng nợ vay ngắn hạn / Tổng nợ vay (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "Vay ngắn hạn / Tổng nợ vay tài chính",
+        "fmt": "0.00%",
+    },
+    "lt_debt_to_total_debt": {
+        "name": "Tỷ trọng nợ vay dài hạn / Tổng nợ vay (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "Vay dài hạn / Tổng nợ vay tài chính",
+        "fmt": "0.00%",
+    },
+    "interest_coverage": {
+        "name": "Hệ số chi trả lãi vay (TIE - Interest Coverage) (Lần) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "EBIT / Chi phí lãi vay",
+        "fmt": "0.00",
+    },
+    "debt_to_ebitda": {
+        "name": "Tỷ lệ nợ vay tài chính trên EBITDA (Lần) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "Nợ vay tài chính / EBITDA",
+        "fmt": "0.00",
+    },
+    "cfo_to_debt": {
+        "name": "Khả năng trả nợ vay từ dòng tiền HĐKD (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / Nợ vay tài chính",
+        "fmt": "0.00%",
+    },
+    "cfo_to_liabilities": {
+        "name": "Khả năng trang trải tổng nợ từ dòng tiền HĐKD (%) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / Tổng nợ phải trả",
+        "fmt": "0.00%",
+    },
+    "fin_leverage_ratio": {
+        "name": "Hệ số đòn bẩy tài sản trên vốn (Assets / Equity) (Lần) (Y)",
+        "group": "2. Cấu trúc vốn & Đòn bẩy tài chính",
+        "formula": "Tổng tài sản / Vốn chủ sở hữu",
+        "fmt": "0.00",
+    },
+
+    # -------------------------------------------------------------
+    # Trụ cột 3: Thanh khoản & Vốn lưu động (8 chỉ số)
+    # -------------------------------------------------------------
     "current_ratio": {
-        "name": "Tỷ số thanh toán hiện hành (Lần) (Y)",
-        "group": "Khả năng thanh toán",
+        "name": "Hệ số khả năng thanh toán hiện hành (Current Ratio) (Lần) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
         "formula": "Tài sản ngắn hạn / Nợ ngắn hạn",
         "fmt": "0.00",
     },
     "quick_ratio": {
-        "name": "Tỷ số thanh toán nhanh (Lần) (Y)",
-        "group": "Khả năng thanh toán",
+        "name": "Hệ số khả năng thanh toán nhanh (Quick Ratio) (Lần) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
         "formula": "(Tài sản ngắn hạn - Hàng tồn kho) / Nợ ngắn hạn",
         "fmt": "0.00",
     },
-
-    # 3. Dac thu CTCK & Tai san tai chinh
-    "margin_to_equity": {
-        "name": "Tỷ lệ cho vay ký quỹ trên VCSH (%) (Y)",
-        "group": "Đặc thù CTCK & Margin",
-        "formula": "Cho vay ký quỹ (margin) / Vốn chủ sở hữu",
-        "fmt": "0.00%",
+    "cash_ratio": {
+        "name": "Hệ số thanh toán tiền mặt (Cash Ratio) (Lần) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
+        "formula": "(Tiền và tương đương tiền + Đầu tư tài chính ngắn hạn) / Nợ ngắn hạn",
+        "fmt": "0.00",
     },
-    "pct_margin_loans": {
-        "name": "% Cho vay nghiệp vụ ký quỹ (margin) (%) (Y)",
-        "group": "Đặc thù CTCK & Margin",
-        "formula": "Cho vay margin / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "pct_advances": {
-        "name": "% Cho vay ứng trước tiền bán chứng khoán của khách hàng (%) (Y)",
-        "group": "Đặc thù CTCK & Margin",
-        "formula": "Cho vay ứng trước tiền bán CK / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "pct_fvtpl": {
-        "name": "% Tài sản tài chính ghi nhận thông qua lãi lỗ (FVTPL) (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
-        "formula": "Tài sản FVTPL / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "pct_afs": {
-        "name": "% Tài sản tài chính sẵn sàng để bán (AFS) (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
-        "formula": "Tài sản AFS / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "pct_htm": {
-        "name": "% Tài sản tài chính giữ đến ngày đáo hạn (HTM) (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
-        "formula": "Tài sản HTM / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "pct_cash": {
-        "name": "% Tiền và các khoản tương đương tiền (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
+    "cash_to_assets": {
+        "name": "Tỷ trọng tiền mặt trên tổng tài sản (%) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
         "formula": "Tiền và tương đương tiền / Tổng tài sản",
         "fmt": "0.00%",
     },
-    "pct_loans": {
-        "name": "% Các khoản cho vay (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
-        "formula": "Tổng các khoản cho vay / Tổng tài sản",
+    "working_capital": {
+        "name": "Vốn lưu động ròng (Net Working Capital) (VND) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
+        "formula": "Tài sản ngắn hạn - Nợ ngắn hạn",
+        "fmt": "#,##0",
+    },
+    "nwc_to_assets": {
+        "name": "Tỷ lệ vốn lưu động ròng trên tổng tài sản (%) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
+        "formula": "Vốn lưu động ròng / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "nwc_to_revenue": {
+        "name": "Tỷ lệ vốn lưu động ròng trên doanh thu (%) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
+        "formula": "Vốn lưu động ròng / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "defensive_interval": {
+        "name": "Số ngày phòng thủ thanh khoản (Defensive Interval) (Ngày) (Y)",
+        "group": "3. Thanh khoản & Vốn lưu động",
+        "formula": "(Tiền + Phải thu khách hàng) / (Tổng chi phí hoạt động / 365)",
+        "fmt": "0.0",
+    },
+
+    # -------------------------------------------------------------
+    # Trụ cột 4: Hiệu quả hoạt động & Vòng quay tài sản (13 chỉ số)
+    # -------------------------------------------------------------
+    "asset_turnover": {
+        "name": "Vòng quay tổng tài sản (Asset Turnover) (Lần) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Doanh thu thuần / Tổng tài sản",
+        "fmt": "0.00",
+    },
+    "fixed_asset_turnover": {
+        "name": "Vòng quay tài sản cố định (Fixed Asset Turnover) (Lần) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Doanh thu thuần / Tài sản cố định",
+        "fmt": "0.00",
+    },
+    "inventory_turnover": {
+        "name": "Vòng quay hàng tồn kho (Inventory Turnover) (Lần) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Giá vốn hàng bán / Hàng tồn kho bình quân",
+        "fmt": "0.00",
+    },
+    "dio": {
+        "name": "Số ngày lưu kho bình quân (DIO) (Ngày) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "(Hàng tồn kho / Giá vốn hàng bán) * 365",
+        "fmt": "0.0",
+    },
+    "ar_turnover": {
+        "name": "Vòng quay các khoản phải thu (Receivables Turnover) (Lần) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Doanh thu thuần / Phải thu khách hàng",
+        "fmt": "0.00",
+    },
+    "dso": {
+        "name": "Số ngày thu tiền bình quân (DSO) (Ngày) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "(Phải thu khách hàng / Doanh thu thuần) * 365",
+        "fmt": "0.0",
+    },
+    "ap_turnover": {
+        "name": "Vòng quay các khoản phải trả (Payables Turnover) (Lần) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Giá vốn hàng bán / Phải trả người bán",
+        "fmt": "0.00",
+    },
+    "dpo": {
+        "name": "Số ngày trả tiền bình quân (DPO) (Ngày) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "(Phải trả người bán / Giá vốn hàng bán) * 365",
+        "fmt": "0.0",
+    },
+    "ccc": {
+        "name": "Chu kỳ chuyển hóa tiền mặt (Cash Conversion Cycle - CCC) (Ngày) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "DIO + DSO - DPO",
+        "fmt": "0.0",
+    },
+    "working_capital_turnover": {
+        "name": "Vòng quay vốn lưu động (Working Capital Turnover) (Lần) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Doanh thu thuần / Vốn lưu động ròng (NWC)",
+        "fmt": "0.00",
+    },
+    "sga_to_revenue": {
+        "name": "Tỷ lệ chi phí bán hàng và QLDN / Doanh thu (%) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "(Chi phí bán hàng + Chi phí QLDN) / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "selling_cost_ratio": {
+        "name": "Tỷ lệ chi phí bán hàng trên doanh thu (%) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Chi phí bán hàng / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "admin_cost_ratio": {
+        "name": "Tỷ lệ chi phí QLDN trên doanh thu (%) (Y)",
+        "group": "4. Hiệu quả hoạt động & Vòng quay tài sản",
+        "formula": "Chi phí quản lý doanh nghiệp / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+
+    # -------------------------------------------------------------
+    # Trụ cột 5: Chất lượng dòng tiền & Lợi nhuận (11 chỉ số)
+    # -------------------------------------------------------------
+    "cfo_to_net_income": {
+        "name": "Tỷ lệ dòng tiền HĐKD trên LNST (Earnings Quality) (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / Lợi nhuận sau thuế",
+        "fmt": "0.00%",
+    },
+    "cfo_to_revenue": {
+        "name": "Tỷ suất sinh dòng tiền trên doanh thu (CFO Margin) (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "cfo_to_assets": {
+        "name": "Tỷ suất sinh dòng tiền trên tổng tài sản (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "cfo_to_equity": {
+        "name": "Tỷ suất sinh dòng tiền trên vốn chủ sở hữu (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / Vốn chủ sở hữu",
+        "fmt": "0.00%",
+    },
+    "fcf": {
+        "name": "Dòng tiền tự do (Free Cash Flow - FCF) (VND) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "CFO - Tiền chi mua sắm, xây dựng TSCĐ (CAPEX)",
+        "fmt": "#,##0",
+    },
+    "fcf_to_net_income": {
+        "name": "Tỷ lệ dòng tiền tự do trên LNST (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền tự do (FCF) / Lợi nhuận sau thuế",
+        "fmt": "0.00%",
+    },
+    "fcf_to_revenue": {
+        "name": "Tỷ lệ dòng tiền tự do trên doanh thu (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền tự do (FCF) / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "capex_to_revenue": {
+        "name": "Tỷ lệ đầu tư vốn CAPEX trên doanh thu (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Tiền chi mua sắm TSCĐ (CAPEX) / Doanh thu thuần",
+        "fmt": "0.00%",
+    },
+    "capex_to_assets": {
+        "name": "Tỷ lệ đầu tư vốn CAPEX trên tổng tài sản (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Tiền chi mua sắm TSCĐ (CAPEX) / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "cfo_to_capex": {
+        "name": "Hệ số tự tài trợ đầu tư CAPEX từ dòng tiền HĐKD (Lần) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "Dòng tiền thuần HĐKD (CFO) / CAPEX",
+        "fmt": "0.00",
+    },
+    "accruals_to_assets": {
+        "name": "Mức độ dồn tích kế toán trên tài sản (Accruals / Assets) (%) (Y)",
+        "group": "5. Chất lượng dòng tiền & Lợi nhuận",
+        "formula": "(Lợi nhuận sau thuế - CFO) / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+
+    # -------------------------------------------------------------
+    # Trụ cột 6: Đặc thù Ngân hàng (CAMELS) (10 chỉ số)
+    # -------------------------------------------------------------
+    "bank_nim": {
+        "name": "Tỷ lệ thu nhập lãi thuần (NIM - Net Interest Margin) (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Thu nhập lãi thuần / Tổng tài sản sinh lời (hoặc Tổng tài sản)",
+        "fmt": "0.00%",
+    },
+    "bank_cir": {
+        "name": "Tỷ lệ chi phí trên thu nhập (CIR - Cost to Income Ratio) (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Tổng chi phí hoạt động / Tổng thu nhập hoạt động (TOI)",
+        "fmt": "0.00%",
+    },
+    "bank_ldr": {
+        "name": "Tỷ lệ dư nợ cho vay trên tiền gửi (LDR) (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Cho vay khách hàng / Tiền gửi của khách hàng",
+        "fmt": "0.00%",
+    },
+    "bank_provision_coverage": {
+        "name": "Tỷ lệ dự phòng rủi ro trên dư nợ cho vay (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Dự phòng rủi ro cho vay / Dư nợ cho vay khách hàng",
+        "fmt": "0.00%",
+    },
+    "bank_credit_cost": {
+        "name": "Tỷ lệ chi phí trích lập dự phòng tín dụng (Credit Cost) (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Chi phí dự phòng rủi ro tín dụng / Cho vay khách hàng",
+        "fmt": "0.00%",
+    },
+    "bank_loans_to_assets": {
+        "name": "Tỷ trọng dư nợ cho vay trên tổng tài sản (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Cho vay khách hàng / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "bank_deposits_to_assets": {
+        "name": "Tỷ trọng tiền gửi khách hàng trên tổng tài sản (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Tiền gửi của khách hàng / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "bank_equity_to_assets": {
+        "name": "Tỷ lệ an toàn vốn chủ trên tổng tài sản (Equity / Assets) (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Vốn chủ sở hữu / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "bank_nii_to_toi": {
+        "name": "Tỷ trọng thu nhập lãi thuần trong tổng thu nhập HĐ (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "Thu nhập lãi thuần / Tổng thu nhập hoạt động (TOI)",
+        "fmt": "0.00%",
+    },
+    "bank_non_interest_income_ratio": {
+        "name": "Tỷ trọng thu nhập ngoài lãi trong tổng thu nhập HĐ (%) (Y)",
+        "group": "6. Đặc thù Ngân hàng (CAMELS)",
+        "formula": "(Tổng thu nhập HĐ - Thu nhập lãi thuần) / Tổng thu nhập HĐ",
+        "fmt": "0.00%",
+    },
+
+    # -------------------------------------------------------------
+    # Trụ cột 7: Đặc thù Công ty Chứng khoán (14 chỉ số)
+    # -------------------------------------------------------------
+    "margin_to_equity": {
+        "name": "Tỷ lệ dư nợ cho vay ký quỹ (Margin) / Vốn CSH (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Dư nợ cho vay ký quỹ (margin) / Vốn chủ sở hữu",
+        "fmt": "0.00%",
+    },
+    "pct_margin_loans": {
+        "name": "Tỷ trọng dư nợ Margin trên tổng tài sản (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Dư nợ cho vay margin / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "pct_advances": {
+        "name": "Tỷ trọng ứng trước tiền bán chứng khoán trên tổng tài sản (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Ứng trước tiền bán chứng khoán của KH / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "pct_fvtpl": {
+        "name": "Tỷ trọng tài sản tài chính FVTPL trên tổng tài sản (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Tài sản tài chính FVTPL / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "pct_afs": {
+        "name": "Tỷ trọng tài sản tài chính sẵn sàng để bán (AFS) trên tổng tài sản (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Tài sản tài chính AFS / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "pct_htm": {
+        "name": "Tỷ trọng đầu tư nắm giữ đến ngày đáo hạn (HTM) trên tổng tài sản (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Tài sản tài chính HTM / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "pct_cash": {
+        "name": "Tỷ trọng tiền và tương đương tiền trên tổng tài sản (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Tiền và các khoản tương đương tiền / Tổng tài sản",
         "fmt": "0.00%",
     },
     "pct_brokerage_rev": {
-        "name": "% Doanh thu hoạt động môi giới chứng khoán (%) (Y)",
-        "group": "Cơ cấu doanh thu",
-        "formula": "Doanh thu môi giới CK / Tổng doanh thu hoạt động",
+        "name": "Tỷ trọng doanh thu hoạt động môi giới chứng khoán (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Doanh thu môi giới chứng khoán / Doanh thu hoạt động",
         "fmt": "0.00%",
     },
     "pct_proprietary_rev": {
-        "name": "% Doanh thu mảng tự doanh và kinh doanh nguồn vốn (%) (Y)",
-        "group": "Cơ cấu doanh thu",
-        "formula": "Doanh thu tự doanh / Tổng doanh thu hoạt động",
+        "name": "Tỷ trọng doanh thu tự doanh và kinh doanh nguồn vốn (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Lãi FVTPL, HTM, AFS / Doanh thu hoạt động",
         "fmt": "0.00%",
     },
     "pct_margin_profit": {
-        "name": "% Lợi nhuận cho vay ký quỹ (%) (Y)",
-        "group": "Cơ cấu lợi nhuận",
-        "formula": "Lợi nhuận cho vay margin / Lợi nhuận hoạt động",
+        "name": "Tỷ trọng lãi từ các khoản cho vay và phải thu (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Lãi từ các khoản cho vay và phải thu / Doanh thu hoạt động",
         "fmt": "0.00%",
     },
     "pct_ib_rev": {
-        "name": "% Doanh thu mảng ngân hàng đầu tư (%) (Y)",
-        "group": "Cơ cấu doanh thu",
-        "formula": "Doanh thu tư vấn tài chính, IB / Tổng doanh thu",
+        "name": "Tỷ trọng doanh thu tư vấn tài chính & ngân hàng đầu tư (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Doanh thu tư vấn tài chính / Doanh thu hoạt động",
         "fmt": "0.00%",
     },
     "pct_brokerage_cost": {
-        "name": "% Chi phí hoạt động môi giới chứng khoán (%) (Y)",
-        "group": "Cơ cấu chi phí",
-        "formula": "Chi phí môi giới / Tổng chi phí hoạt động",
+        "name": "Tỷ trọng chi phí môi giới trên tổng chi phí hoạt động (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
+        "formula": "Chi phí môi giới chứng khoán / Tổng chi phí hoạt động",
         "fmt": "0.00%",
     },
     "pct_proprietary_cost": {
-        "name": "% Chi phí hoạt động tự doanh (%) (Y)",
-        "group": "Cơ cấu chi phí",
+        "name": "Tỷ trọng chi phí tự doanh trên tổng chi phí hoạt động (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
         "formula": "Chi phí tự doanh / Tổng chi phí hoạt động",
         "fmt": "0.00%",
     },
-    "pct_advisory_cost": {
-        "name": "% Chi phí hoạt động tư vấn tài chính (%) (Y)",
-        "group": "Cơ cấu chi phí",
-        "formula": "Chi phí tư vấn tài chính / Tổng chi phí hoạt động",
-        "fmt": "0.00%",
-    },
     "pct_provision_cost": {
-        "name": "% Chi phí dự phòng/Hoàn nhập TSTC (%) (Y)",
-        "group": "Cơ cấu chi phí",
+        "name": "Tỷ trọng chi phí dự phòng TSTC trên tổng chi phí hoạt động (%) (Y)",
+        "group": "7. Đặc thù Công ty Chứng khoán",
         "formula": "Chi phí dự phòng TSTC / Tổng chi phí hoạt động",
         "fmt": "0.00%",
     },
 
-    # 4. Tang truong cung ky YoY (%)
+    # -------------------------------------------------------------
+    # Trụ cột 8: Đặc thù Bất động sản & Xây dựng (6 chỉ số)
+    # -------------------------------------------------------------
+    "re_prepayments_to_inventory": {
+        "name": "Tỷ lệ người mua trả tiền trước / Hàng tồn kho dự án (%) (Y)",
+        "group": "8. Đặc thù Bất động sản & Xây dựng",
+        "formula": "Người mua trả tiền trước / Hàng tồn kho BĐS",
+        "fmt": "0.00%",
+    },
+    "re_prepayments_to_assets": {
+        "name": "Tỷ lệ người mua trả tiền trước / Tổng tài sản (%) (Y)",
+        "group": "8. Đặc thù Bất động sản & Xây dựng",
+        "formula": "Người mua trả tiền trước / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "re_inventory_to_assets": {
+        "name": "Tỷ trọng hàng tồn kho BĐS trên tổng tài sản (%) (Y)",
+        "group": "8. Đặc thù Bất động sản & Xây dựng",
+        "formula": "Hàng tồn kho / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "re_wip_to_assets": {
+        "name": "Tỷ trọng tài sản dở dang dài hạn / Tổng tài sản (%) (Y)",
+        "group": "8. Đặc thù Bất động sản & Xây dựng",
+        "formula": "Chi phí XDCB dở dang / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "re_debt_to_inventory": {
+        "name": "Hệ số nợ vay tài chính trên hàng tồn kho (Lần) (Y)",
+        "group": "8. Đặc thù Bất động sản & Xây dựng",
+        "formula": "Nợ vay tài chính / Hàng tồn kho BĐS",
+        "fmt": "0.00",
+    },
+    "re_invest_prop_to_assets": {
+        "name": "Tỷ trọng bất động sản đầu tư trên tổng tài sản (%) (Y)",
+        "group": "8. Đặc thù Bất động sản & Xây dựng",
+        "formula": "Bất động sản đầu tư / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+
+    # -------------------------------------------------------------
+    # Trụ cột 9: Tốc độ tăng trưởng cùng kỳ (YoY) (14 chỉ số)
+    # -------------------------------------------------------------
     "rev_growth_yoy": {
-        "name": "Doanh thu (*) (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "name": "Doanh thu thuần (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(Doanh thu T - Doanh thu T-1) / |Doanh thu T-1|",
         "fmt": "0.00%",
     },
+    "gross_profit_growth_yoy": {
+        "name": "Lợi nhuận gộp (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(Lợi nhuận gộp T - Lợi nhuận gộp T-1) / |Lợi nhuận gộp T-1|",
+        "fmt": "0.00%",
+    },
+    "ebit_growth_yoy": {
+        "name": "Lợi nhuận trước lãi vay và thuế (EBIT) (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(EBIT T - EBIT T-1) / |EBIT T-1|",
+        "fmt": "0.00%",
+    },
     "ebt_growth_yoy": {
-        "name": "Lợi nhuận trước thuế (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "name": "Lợi nhuận trước thuế (EBT) (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(LNTT T - LNTT T-1) / |LNTT T-1|",
         "fmt": "0.00%",
     },
     "eat_growth_yoy": {
-        "name": "Lợi nhuận sau thuế (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "name": "Lợi nhuận sau thuế (EAT) (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(LNST T - LNST T-1) / |LNST T-1|",
         "fmt": "0.00%",
     },
     "eat_parent_growth_yoy": {
-        "name": "Lợi nhuận sau thuế CĐCTM (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(LNST Cty mẹ T - LNST Cty mẹ T-1) / |LNST Cty mẹ T-1|",
+        "name": "Lợi nhuận sau thuế CĐCT mẹ (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(LNST mẹ T - LNST mẹ T-1) / |LNST mẹ T-1|",
         "fmt": "0.00%",
     },
     "assets_growth_yoy": {
         "name": "Tổng tài sản (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(Tổng tài sản T - Tổng tài sản T-1) / Tổng tài sản T-1",
         "fmt": "0.00%",
     },
     "equity_growth_yoy": {
         "name": "Vốn chủ sở hữu (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(Vốn CSH T - Vốn CSH T-1) / Vốn CSH T-1",
         "fmt": "0.00%",
     },
     "debt_growth_yoy": {
-        "name": "Nợ phải trả (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "name": "Tổng nợ phải trả (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(Nợ phải trả T - Nợ phải trả T-1) / Nợ phải trả T-1",
         "fmt": "0.00%",
     },
+    "fin_debt_growth_yoy": {
+        "name": "Nợ vay tài chính (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(Nợ vay T - Nợ vay T-1) / Nợ vay T-1",
+        "fmt": "0.00%",
+    },
+    "cfo_growth_yoy": {
+        "name": "Dòng tiền thuần từ HĐKD (CFO) (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(CFO T - CFO T-1) / |CFO T-1|",
+        "fmt": "0.00%",
+    },
+    "bank_loans_growth_yoy": {
+        "name": "Dư nợ cho vay khách hàng ngân hàng (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(Cho vay T - Cho vay T-1) / Cho vay T-1",
+        "fmt": "0.00%",
+    },
+    "bank_deposits_growth_yoy": {
+        "name": "Tiền gửi khách hàng ngân hàng (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
+        "formula": "(Tiền gửi T - Tiền gửi T-1) / Tiền gửi T-1",
+        "fmt": "0.00%",
+    },
     "margin_loans_growth_yoy": {
-        "name": "Cho vay nghiệp vụ ký quỹ (margin) (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
+        "name": "Dư nợ cho vay ký quỹ margin CTCK (YoY) (%) (Y)",
+        "group": "9. Tốc độ tăng trưởng cùng kỳ (YoY)",
         "formula": "(Dư nợ margin T - Dư nợ margin T-1) / Dư nợ margin T-1",
         "fmt": "0.00%",
     },
-    "advances_growth_yoy": {
-        "name": "Cho vay ứng trước tiền bán chứng khoán của khách hàng (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(Ứng trước T - Ứng trước T-1) / Ứng trước T-1",
-        "fmt": "0.00%",
-    },
-    "brokerage_rev_growth_yoy": {
-        "name": "Doanh thu hoạt động môi giới chứng khoán (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(DT môi giới T - DT môi giới T-1) / DT môi giới T-1",
-        "fmt": "0.00%",
-    },
-    "proprietary_rev_growth_yoy": {
-        "name": "Doanh thu mảng tự doanh và kinh doanh nguồn vốn (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(DT tự doanh T - DT tự doanh T-1) / DT tự doanh T-1",
-        "fmt": "0.00%",
-    },
-    "cash_growth_yoy": {
-        "name": "Tiền và các khoản tương đương tiền (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(Tiền T - Tiền T-1) / Tiền T-1",
-        "fmt": "0.00%",
-    },
-    "fvtpl_growth_yoy": {
-        "name": "Tài sản tài chính ghi nhận thông qua lãi lỗ (FVTPL) (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(FVTPL T - FVTPL T-1) / FVTPL T-1",
-        "fmt": "0.00%",
-    },
-    "htm_growth_yoy": {
-        "name": "Tài sản tài chính giữ đến ngày đáo hạn (HTM) (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(HTM T - HTM T-1) / HTM T-1",
-        "fmt": "0.00%",
-    },
-    "afs_growth_yoy": {
-        "name": "Tài sản tài chính sẵn sàng để bán (AFS) (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(AFS T - AFS T-1) / AFS T-1",
-        "fmt": "0.00%",
-    },
 
-    # 5. Quy mo & Dinh gia co ban (VND & ln)
-    "total_assets": {
-        "name": "Tổng tài sản (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Tổng tài sản",
-        "fmt": "#,##0",
-    },
-    "total_debt": {
-        "name": "Nợ phải trả (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Nợ phải trả",
-        "fmt": "#,##0",
-    },
-    "equity": {
-        "name": "Vốn chủ sở hữu (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Vốn chủ sở hữu",
-        "fmt": "#,##0",
-    },
-    "net_revenue": {
-        "name": "Doanh thu (*) (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Doanh thu thuần / Doanh thu hoạt động",
-        "fmt": "#,##0",
-    },
-    "profit_before_tax": {
-        "name": "Lợi nhuận trước thuế (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Lợi nhuận trước thuế",
-        "fmt": "#,##0",
-    },
-    "profit_after_tax": {
-        "name": "Lợi nhuận sau thuế (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Lợi nhuận sau thuế",
-        "fmt": "#,##0",
-    },
-    "operating_cash_flow": {
-        "name": "Dòng tiền từ hoạt động kinh doanh (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "LCTT - Dòng tiền thuần từ HĐKD",
-        "fmt": "#,##0",
-    },
-    "investing_cash_flow": {
-        "name": "Dòng tiền từ hoạt động đầu tư (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "LCTT - Dòng tiền thuần từ HĐĐT",
-        "fmt": "#,##0",
-    },
-    "financing_cash_flow": {
-        "name": "Dòng tiền từ hoạt động tài chính (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "LCTT - Dòng tiền thuần từ HĐTC",
-        "fmt": "#,##0",
-    },
-    "eat_parent": {
-        "name": "Lợi nhuận sau thuế công ty mẹ (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - LNST Cổ đông công ty mẹ",
-        "fmt": "#,##0",
-    },
-    "curr_debt": {
-        "name": "Nợ phải trả ngắn hạn (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Nợ ngắn hạn",
-        "fmt": "#,##0",
-    },
-    "long_term_debt": {
-        "name": "Nợ phải trả dài hạn (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Nợ dài hạn",
-        "fmt": "#,##0",
-    },
-    "curr_assets": {
-        "name": "Tài sản ngắn hạn (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Tài sản ngắn hạn",
-        "fmt": "#,##0",
-    },
-    "non_curr_assets": {
-        "name": "Tài sản dài hạn (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "BCTC - Tài sản dài hạn",
-        "fmt": "#,##0",
-    },
-    "brokerage_profit": {
-        "name": "Lợi nhuận từ nghiệp vụ môi giới (VND) (Y)",
-        "group": "Đặc thù CTCK & Margin",
-        "formula": "Doanh thu môi giới - Chi phí môi giới",
-        "fmt": "#,##0",
-    },
-    "advisory_profit": {
-        "name": "Lợi nhuận từ nghiệp vụ tư vấn tài chính (VND) (Y)",
-        "group": "Đặc thù CTCK & Margin",
-        "formula": "Doanh thu tư vấn - Chi phí tư vấn",
-        "fmt": "#,##0",
-    },
-    "margin_profit": {
-        "name": "Lợi nhuận từ cho vay ký quỹ (VND) (Y)",
-        "group": "Đặc thù CTCK & Margin",
-        "formula": "Lãi từ các khoản cho vay và phải thu",
-        "fmt": "#,##0",
-    },
-    "operating_profit": {
-        "name": "Lợi nhuận hoạt động (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "Doanh thu hoạt động - Chi phí hoạt động",
-        "fmt": "#,##0",
-    },
-    "operating_cost": {
-        "name": "Chi phí hoạt động (*) (VND) (Y)",
-        "group": "Quy mô tài chính",
-        "formula": "Tổng chi phí hoạt động CTCK",
-        "fmt": "#,##0",
-    },
-    "curr_debt_growth_yoy": {
-        "name": "Nợ phải trả ngắn hạn (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(Nợ NH T - Nợ NH T-1) / Nợ NH T-1",
-        "fmt": "0.00%",
-    },
-    "long_debt_growth_yoy": {
-        "name": "Nợ phải trả dài hạn (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(Nợ DH T - Nợ DH T-1) / Nợ DH T-1",
-        "fmt": "0.00%",
-    },
-    "curr_assets_growth_yoy": {
-        "name": "Tài sản ngắn hạn (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(TSNH T - TSNH T-1) / TSNH T-1",
-        "fmt": "0.00%",
-    },
-    "non_curr_assets_growth_yoy": {
-        "name": "Tài sản dài hạn (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(TSDH T - TSDH T-1) / TSDH T-1",
-        "fmt": "0.00%",
-    },
-    "oper_cost_growth_yoy": {
-        "name": "Chi phí hoạt động (*) (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(Chi phí HĐ T - Chi phí HĐ T-1) / Chi phí HĐ T-1",
-        "fmt": "0.00%",
-    },
-    "oper_profit_growth_yoy": {
-        "name": "Lợi nhuận hoạt động (YoY) (%) (Y)",
-        "group": "Tăng trưởng cùng kỳ (YoY)",
-        "formula": "(Lợi nhuận HĐ T - Lợi nhuận HĐ T-1) / Lợi nhuận HĐ T-1",
-        "fmt": "0.00%",
-    },
-    "pct_other_receivables": {
-        "name": "% Phải thu khác (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
-        "formula": "Phải thu khác / Tổng tài sản",
-        "fmt": "0.00%",
-    },
-    "pct_broker_services": {
-        "name": "% Phải thu các dịch vụ CTCK cung cấp (%) (Y)",
-        "group": "Cơ cấu tài sản tài chính",
-        "formula": "Phải thu dịch vụ CTCK / Tổng tài sản",
-        "fmt": "0.00%",
-    },
+    # -------------------------------------------------------------
+    # Trụ cột 10: Biến kiểm soát kinh tế lượng & Altman Z-Score (12 chỉ số)
+    # -------------------------------------------------------------
     "size_ln": {
         "name": "Quy mô doanh nghiệp Size ln(Tổng tài sản)",
-        "group": "Quy mô tài chính",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
         "formula": "ln(Tổng tài sản)",
         "fmt": "0.000",
+    },
+    "size_log10": {
+        "name": "Quy mô doanh nghiệp log10(Tổng tài sản)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "log10(Tổng tài sản)",
+        "fmt": "0.000",
+    },
+    "tangibility": {
+        "name": "Tỷ lệ tài sản hữu hình (Asset Tangibility) (%) (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "Tài sản cố định hữu hình / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "firm_age_proxy": {
+        "name": "Tỷ lệ thặng dư lợi nhuận tích lũy (Capital Accumulation) (%) (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "LNST chưa phân phối / Tổng tài sản",
+        "fmt": "0.00%",
+    },
+    "altman_x1": {
+        "name": "Hệ số Altman X1: Vốn lưu động ròng / Tổng tài sản (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "Vốn lưu động ròng / Tổng tài sản",
+        "fmt": "0.000",
+    },
+    "altman_x2": {
+        "name": "Hệ số Altman X2: Lợi nhuận giữ lại / Tổng tài sản (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "LNST chưa phân phối / Tổng tài sản",
+        "fmt": "0.000",
+    },
+    "altman_x3": {
+        "name": "Hệ số Altman X3: EBIT / Tổng tài sản (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "EBIT / Tổng tài sản",
+        "fmt": "0.000",
+    },
+    "altman_x4": {
+        "name": "Hệ số Altman X4: Vốn chủ sở hữu / Tổng nợ phải trả (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "Vốn chủ sở hữu / Tổng nợ phải trả",
+        "fmt": "0.000",
+    },
+    "altman_x5": {
+        "name": "Hệ số Altman X5: Vòng quay tài sản (Doanh thu / Tài sản) (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "Doanh thu thuần / Tổng tài sản",
+        "fmt": "0.000",
+    },
+    "altman_z_prime": {
+        "name": "Điểm nguy cơ kiệt quệ tài chính Altman Z'-Score (Thị trường mới nổi)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "0.717*X1 + 0.847*X2 + 3.107*X3 + 0.420*X4 + 0.998*X5",
+        "fmt": "0.00",
+    },
+    "charter_capital_to_equity": {
+        "name": "Tỷ lệ vốn điều lệ trên vốn chủ sở hữu (%) (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "Vốn điều lệ / Vốn chủ sở hữu",
+        "fmt": "0.00%",
+    },
+    "retained_earnings_to_equity": {
+        "name": "Tỷ lệ LNST chưa phân phối trên vốn CSH (%) (Y)",
+        "group": "10. Biến kiểm soát kinh tế lượng & Altman Z-Score",
+        "formula": "LNST chưa phân phối / Vốn chủ sở hữu",
+        "fmt": "0.00%",
     },
 }
 
 
-def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
-    """Tinh toan toan bo he thong chi so WiData tu bang pivot panel."""
+def compute_financial_ratios(pivot: pd.DataFrame) -> pd.DataFrame:
+    """
+    Tinh toan toan bo he thong 116 chi so tai chinh chuan hoc thuat tu bang pivot panel:
+    1. Kha nang sinh loi & Hieu qua von (15 chi so)
+    2. Cau truc von, Don bay & Kha nang thanh toan (13 chi so)
+    3. Thanh khoan & Von luu dong (8 chi so)
+    4. Hieu qua hoat dong & Vong quay tai san (13 chi so)
+    5. Chat luong dong tien & Loi nhuan (11 chi so)
+    6. Dac thu Ngan hang - CAMELS (10 chi so)
+    7. Dac thu Cong ty Chung khoan (14 chi so)
+    8. Dac thu Bat dong san & Xay dung (6 chi so)
+    9. Toc do tang truong cung ky YoY (14 chi so)
+    10. Bien kiem soat kinh te luong & Altman Z-Score (12 chi so)
+    """
     df = pivot.copy()
     if "ticker" not in df.columns or "year" not in df.columns:
         return df
@@ -602,229 +889,294 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
             for c in df.columns:
                 if p.lower() in c.lower() and c not in matched_cols:
                     matched_cols.append(c)
-        # Coalesce: first non-null across matched candidate columns per row
+        # Coalesce
         for c in matched_cols:
             col_s = pd.to_numeric(df[c], errors="coerce")
             res = res.combine_first(col_s)
         return res
 
-    # Core base items (Multi-sector: Commercial/Manufacturing, Banking, Securities, Insurance)
+    def safe_div(a, b):
+        a = pd.to_numeric(a, errors="coerce")
+        b = pd.to_numeric(b, errors="coerce")
+        res = a / b.replace(0, np.nan)
+        res = res.replace([np.inf, -np.inf], np.nan)
+        return res
+
+    # 1. Base balance sheet items
     total_assets = coalesce_cols(["bs_tong_tai_san", "bs_tong_cong_tai_san"])
-    equity = coalesce_cols([
-        "bs_von_chu_so_huu_4d280b22",
-        "bs_von_chu_so_huu_6cda78ae",
-        "bs_von_chu_so_huu",
-        "bs_tong_von_chu_so_huu",
-        "bs_von_va_cac_quy",
-    ])
-    debt = coalesce_cols(["bs_no_phai_tra", "bs_tong_no_phai_tra"])
     curr_assets = coalesce_cols(["bs_tai_san_ngan_han", "bs_tong_tai_san_ngan_han"])
-    curr_liab = coalesce_cols(["bs_no_ngan_han", "bs_tong_no_ngan_han"])
-    inventory = coalesce_cols(["bs_hang_ton_kho", "bs_hang_ton_kho_rong"])
+    non_curr_assets = coalesce_cols(["bs_tai_san_dai_han", "bs_tong_tai_san_dai_han"])
     cash = coalesce_cols(["bs_tien_va_tuong_duong_tien", "bs_tien_mat_vang_bac_da_quy", "bs_tien"])
+    st_invest = coalesce_cols(["bs_gia_tri_thuan_dau_tu_ngan_han", "bs_dau_tu_ngan_han", "bs_chung_khoan_kinh_doanh", "bs_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
+    receivables = coalesce_cols(["bs_cac_khoan_phai_thu", "bs_phai_thu_khach_hang", "bs_tong_cac_khoan_phai_thu", "bs_phai_thu_cua_khach_hang"])
+    ar_cust = coalesce_cols(["bs_phai_thu_khach_hang", "bs_phai_thu_cua_khach_hang"]).combine_first(receivables)
+    inventory = coalesce_cols(["bs_hang_ton_kho_rong_746c904f", "bs_hang_ton_kho", "bs_hang_ton_kho_rong_fd969671", "bs_hang_ton_kho_2"])
+    fixed_assets = coalesce_cols(["bs_tai_san_co_dinh", "bs_gtcl_tscd_huu_hinh", "bs_tai_san_co_dinh_huu_hinh"])
+    tangible_assets = coalesce_cols(["bs_tai_san_co_dinh_huu_hinh", "bs_gtcl_tscd_huu_hinh", "bs_nguyen_gia_tscd_huu_hinh"])
+    invest_prop = coalesce_cols(["bs_bat_dong_san_dau_tu"])
+    re_wip = coalesce_cols(["bs_chi_phi_san_xuat_kinh_doanh_do_dang_dai_han", "bs_xay_dung_co_ban_do_dang", "bs_tai_san_do_dang_dai_han"])
+
+    total_debt = coalesce_cols(["bs_no_phai_tra", "bs_tong_no_phai_tra"])
+    curr_liab = coalesce_cols(["bs_no_ngan_han", "bs_tong_no_ngan_han"])
+    long_liab = coalesce_cols(["bs_no_dai_han", "bs_tong_no_dai_han"])
+    st_debt = coalesce_cols(["bs_vay_va_no_thue_tai_chinh_ngan_han", "bs_vay_ngan_han", "bs_vay_no_ngan_han", "bs_vay_tai_san_tai_chinh_ngan_han"])
+    lt_debt = coalesce_cols(["bs_vay_va_no_thue_tai_san_tai_chinh_dai_han", "bs_vay_dai_han", "bs_vay_va_no_dai_han", "bs_trai_phieu_phat_hanh_dai_han"])
+    fin_debt = st_debt.fillna(0) + lt_debt.fillna(0)
+    fin_debt = fin_debt.where(st_debt.notna() | lt_debt.notna(), np.nan)
+    payables = coalesce_cols(["bs_phai_tra_nguoi_ban_ngan_han", "bs_phai_tra_nguoi_ban"])
+    prepayments = coalesce_cols(["bs_nguoi_mua_tra_tien_truoc_ngan_han", "bs_nguoi_mua_tra_tien_truoc", "bs_tra_truoc_ngan_han"])
+
+    equity = coalesce_cols(["bs_von_chu_so_huu_4d280b22", "bs_von_chu_so_huu_6cda78ae", "bs_von_chu_so_huu", "bs_tong_von_chu_so_huu", "bs_von_va_cac_quy"])
+    charter_capital = coalesce_cols(["bs_von_dieu_le", "bs_von_gop", "bs_von_dau_tu_cua_chu_so_huu"])
+    retained_earnings = coalesce_cols(["bs_loi_nhuan_sau_thue_chua_phan_phoi", "bs_loi_nhuan_chua_phan_phoi", "bs_lai_chua_phan_phoi"])
+
+    # 2. Base income statement items
     revenue = coalesce_cols([
-        "is_doanh_thu_thuan",
         "is_doanh_so_thuan",
+        "is_doanh_thu_thuan_ve_hoat_dong_kinh_doanh",
         "is_tong_thu_nhap_hoat_dong",
         "is_doanh_thu_hoat_dong",
+        "is_doanh_thu_phi_bao_hiem_thuan",
         "is_thu_nhap_lai_thuan",
+        "is_doanh_thu_thuan",
     ])
-    gross_profit = coalesce_cols(["is_loi_nhuan_gop", "is_lai_gop", "is_thu_nhap_lai_thuan"])
-    ebt = coalesce_cols([
-        "is_tong_loi_nhuan_ke_toan_truoc_thue",
-        "is_tong_loi_nhuan_truoc_thue",
-        "is_loi_nhuan_truoc_thue",
-        "is_lai_truoc_thue",
-    ])
-    eat = coalesce_cols([
-        "is_lai_lo_thuan_sau_thue",
-        "is_loi_nhuan_sau_thue",
-        "is_loi_nhuan_ke_toan_sau_thue",
-        "is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep",
-        "is_loi_nhuan_sau_thue_phan_bo_cho_chu_so_huu",
-        "is_loi_nhuan_sau_thue_cua_chu_so_huu_tap_doan",
-        "is_tong_loi_nhuan_ke_toan_sau_thue",
-        "is_lai_sau_thue",
-    ])
-    eat_parent = coalesce_cols([
-        "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me",
-        "is_loi_nhuan_cua_co_dong_cua_cong_ty_me",
-        "is_loi_nhuan_sau_thue_phan_bo_cho_chu_so_huu",
-        "is_loi_nhuan_sau_thue_cua_chu_so_huu_tap_doan",
-        "is_loi_nhuan_sau_thue_cty_me",
-        "is_lai_sau_thue_cua_co_dong_cong_ty_me",
-    ])
-    eat_parent = eat_parent.combine_first(eat)
-    interest_expense = coalesce_cols([
-        "is_chi_phi_lai_vay",
-        "is_trong_do_chi_phi_lai_vay",
-        "is_chi_phi_lai_va_cac_khoan_chi_phi_tuong_tu",
-    ])
-    operating_profit_base = coalesce_cols([
-        "is_ebit",
-        "is_lai_lo_tu_hoat_dong_kinh_doanh",
-        "is_ln_thuan_tu_hoat_dong_kinh_doanh_truoc_cf_du_phong_rui_ro_tin_dung",
-        "is_ket_qua_hoat_dong",
-    ])
-    ebit = coalesce_cols(["is_ebit"]).combine_first(ebt + interest_expense.fillna(0)).combine_first(operating_profit_base)
-    tax = coalesce_cols([
-        "is_chi_phi_thue_tndn",
-        "is_chi_phi_thue_thu_nhap_doanh_nghiep_hien_hanh",
-        "is_chi_phi_thue_thu_nhap_doanh_nghiep",
-    ])
+    cogs_raw = coalesce_cols(["is_gia_von_hang_ban", "is_gia_von"])
+    cogs = cogs_raw.abs() if cogs_raw is not None else None
+    gross_profit = coalesce_cols(["is_lai_gop", "is_loi_nhuan_gop", "is_loi_nhuan_gop_hoat_dong_kinh_doanh_bao_hiem"]).combine_first(revenue - cogs if cogs is not None else None)
+
+    selling_exp = coalesce_cols(["is_chi_phi_ban_hang", "is_chi_phi_ban_hang_truoc_2014"]).abs()
+    admin_exp = coalesce_cols(["is_chi_phi_quan_ly_doanh_nghiep", "is_chi_phi_quan_ly_doanh_nghiep_lien_quan_truc_tiep_den_hoat_dong_bao_hiem", "is_chi_phi_quan_ly_cong_ty_chung_khoan"]).abs()
+    sga = selling_exp.fillna(0) + admin_exp.fillna(0)
+    sga = sga.where(selling_exp.notna() | admin_exp.notna(), np.nan)
+
+    interest_exp = coalesce_cols(["is_chi_phi_lai_vay", "is_trong_do_chi_phi_lai_vay", "is_chi_phi_lai_va_cac_khoan_chi_phi_tuong_tu", "is_chi_phi_lai_va_cac_chi_phi_tuong_tu", "cf_chi_phi_lai_vay"]).abs()
+    ebt = coalesce_cols(["is_tong_loi_nhuan_ke_toan_truoc_thue", "is_tong_loi_nhuan_truoc_thue", "is_lai_lo_rong_truoc_thue", "is_loi_nhuan_truoc_thue", "is_lai_truoc_thue"])
+    eat = coalesce_cols(["is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep", "is_lai_lo_thuan_sau_thue", "is_loi_nhuan_ke_toan_sau_thue", "is_loi_nhuan_sau_thue"])
+    eat_parent = coalesce_cols(["is_loi_nhuan_cua_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_chu_so_huu_tap_doan"]).combine_first(eat)
+    tax = coalesce_cols(["is_chi_phi_thue_thu_nhap_doanh_nghiep", "is_chi_phi_thue_tndn_hien_hanh", "is_chi_phi_thue_thu_nhap_hien_hanh", "is_thue_thu_nhap_doanh_nghiep_hien_thoi"]).abs()
+    operating_profit = coalesce_cols(["is_ebit", "is_lai_lo_tu_hoat_dong_kinh_doanh", "is_ln_thuan_tu_hoat_dong_kinh_doanh_truoc_cf_du_phong_rui_ro_tin_dung", "is_ket_qua_hoat_dong"])
+    ebit = coalesce_cols(["is_ebit"]).combine_first(ebt + interest_exp.fillna(0)).combine_first(operating_profit).combine_first(gross_profit - sga if gross_profit is not None else None)
+    ebitda = coalesce_cols(["is_ebitda"]).combine_first(ebit)
+
+    # 3. Base cash flow items
     cfo = coalesce_cols([
         "cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh",
         "cf_luu_chuyen_thuan_tu_hoat_dong_kinh_doanh_chung_khoan",
         "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh",
         "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh_truoc_thue_thu_nhap_dn",
     ])
-    cfi = coalesce_cols([
-        "cf_luu_chuyen_tien_te_rong_tu_hoat_dong_dau_tu",
-        "cf_luu_chuyen_tien_thuan_tu_hoat_dong_dau_tu",
-        "cf_luu_chuyen_tu_hoat_dong_dau_tu",
-    ])
-    cff = coalesce_cols([
-        "cf_luu_chuyen_tien_te_tu_hoat_dong_tai_chinh",
-        "cf_luu_chuyen_tien_tu_hoat_dong_tai_chinh",
-        "cf_luu_chuyen_thuan_tu_hoat_dong_tai_chinh",
-        "cf_luu_chuyen_tien_thuan_tu_hoat_dong_tai_chinh",
-    ])
+    cfi = coalesce_cols(["cf_luu_chuyen_tien_te_rong_tu_hoat_dong_dau_tu", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_dau_tu", "cf_luu_chuyen_tu_hoat_dong_dau_tu"])
+    cff = coalesce_cols(["cf_luu_chuyen_tien_te_tu_hoat_dong_tai_chinh", "cf_luu_chuyen_tien_tu_hoat_dong_tai_chinh", "cf_luu_chuyen_thuan_tu_hoat_dong_tai_chinh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_tai_chinh"])
+    capex = coalesce_cols(["cf_tien_chi_de_mua_sam_xay_dung_tscd_va_cac_tai_san_dai_han_khac", "cf_tien_chi_mua_sam_xay_dung_tscd_va_cac_tai_san_dai_han_khac", "cf_tien_mua_tai_san_co_dinh_va_cac_tai_san_dai_han_khac"]).abs()
+    fcf = cfo - capex.fillna(0)
 
-    # CTCK & Non-financial specific items
-    margin_loans = coalesce_cols(["bs_cac_khoan_cho_vay", "bs_phai_thu_ve_cho_vay_ky_quy", "bs_cho_vay_margin"])
-    advances = coalesce_cols([
-        "bs_phai_thu_ung_truoc_tien_ban_chung_khoan_cua_khach_hang",
-        "bs_ung_truoc_tien_ban",
-        "bs_phai_thu_ve_hoat_dong_giao_dich_chung_khoan",
-    ])
-    fvtpl = coalesce_cols(["bs_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl", "bs_tai_san_tai_chinh_fvtpl"])
-    htm = coalesce_cols(["bs_cac_khoan_dau_tu_nam_giu_den_ngay_dao_han_htm", "bs_dau_tu_nam_giu_den_ngay_dao_han_htm"])
-    afs = coalesce_cols(["bs_cac_khoan_tai_chinh_san_sang_de_ban_afs", "bs_tai_san_tai_chinh_san_sang_de_ban_afs"])
-    brokerage_rev = coalesce_cols(["is_doanh_thu_hoat_dong_moi_gioi_chung_khoan", "is_doanh_thu_moi_gioi"])
-    proprietary_rev = coalesce_cols(["is_doanh_thu_mang_tu_doanh_va_kinh_doanh_nguon_von", "is_lai_tu_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
-    margin_profit = coalesce_cols(["is_lai_tu_cac_khoan_cho_vay_va_phai_thu"])
-    ib_rev = coalesce_cols(["is_doanh_thu_hoat_dong_tu_van_tai_chinh", "is_doanh_thu_mang_ngan_hang_dau_tu"])
-    brokerage_cost = coalesce_cols([
-        "is_chi_phi_moi_gioi_chung_khoan",
-        "is_chi_phi_hoat_dong_moi_gioi_chung_khoan",
-    ])
-    proprietary_cost = coalesce_cols(["is_chi_phi_hoat_dong_tu_doanh"])
-    advisory_cost = coalesce_cols(["is_chi_phi_hoat_dong_tu_van_tai_chinh"])
-    provision_cost = coalesce_cols(["is_chi_phi_du_phong_tstc", "is_chi_phi_du_phong"])
-    long_term_debt = coalesce_cols(["bs_no_dai_han", "bs_tong_no_dai_han"])
-    non_curr_assets = coalesce_cols(["bs_tai_san_dai_han"])
-    operating_cost = coalesce_cols(["is_chi_phi_hoat_dong", "is_tong_chi_phi_hoat_dong"])
-    other_receivables = coalesce_cols(["bs_phai_thu_khac", "bs_cac_khoan_phai_thu_khac"])
-    broker_services = coalesce_cols(["bs_phai_thu_cac_dich_vu_ctck_cung_cap"])
+    # 4. Bank specific base items
+    bank_loans = coalesce_cols(["bs_cho_vay_khach_hang", "bs_cho_vay_khach_hang_2"])
+    bank_deposits = coalesce_cols(["bs_tien_gui_cua_khach_hang", "bs_tien_gui_cua_khach_hang_va_cac_to_chuc_tin_dung_khac"])
+    bank_nii = coalesce_cols(["is_thu_nhap_lai_thuan"])
+    bank_toi = coalesce_cols(["is_tong_thu_nhap_hoat_dong"])
+    bank_provisions = coalesce_cols(["bs_du_phong_rui_ro_cho_vay_khach_hang", "bs_du_phong_rui_ro_tin_dung"]).abs()
+    bank_credit_cost = coalesce_cols(["is_chi_phi_du_phong_rui_ro_tin_dung"]).abs()
+    bank_opex = coalesce_cols(["is_chi_phi_hoat_dong", "is_chi_phi_quan_ly_doanh_nghiep"]).abs()
 
-    def sdiv(a, b):
-        return a.astype(float) / b.replace(0, np.nan).astype(float)
+    # 5. Securities specific base items
+    sec_margin = coalesce_cols(["bs_cho_vay_va_ung_truoc_cho_khach_hang", "bs_cho_vay_va_ung_truoc_cho_vay", "bs_cac_khoan_cho_vay"])
+    sec_advances = coalesce_cols(["bs_phai_thu_ung_truoc_tien_ban_chung_khoan_cua_khach_hang", "bs_ung_truoc_tien_ban"])
+    sec_fvtpl = coalesce_cols(["bs_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
+    sec_afs = coalesce_cols(["bs_cac_khoan_tai_chinh_san_sang_de_ban_afs"])
+    sec_htm = coalesce_cols(["bs_cac_khoan_dau_tu_nam_giu_den_ngay_dao_han_htm"])
+    sec_broker_rev = coalesce_cols(["is_doanh_thu_hoat_dong_moi_gioi_chung_khoan"])
+    sec_broker_cost = coalesce_cols(["is_chi_phi_moi_gioi_chung_khoan"]).abs()
+    sec_prop_rev = coalesce_cols(["is_lai_tu_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
+    sec_margin_profit = coalesce_cols(["is_lai_tu_cac_khoan_cho_vay_va_phai_thu"])
+    sec_ib_rev = coalesce_cols(["is_doanh_thu_hoat_dong_tu_van_tai_chinh", "is_doanh_thu_bao_lanh_phat_hanh_chung_khoan"])
+    sec_oper_cost = coalesce_cols(["is_chi_phi_hoat_dong_kinh_doanh", "is_chi_phi_hoat_dong"]).abs()
 
-    # 1. Sinh loi
-    df["roa"] = sdiv(eat, total_assets)
-    df["roe"] = sdiv(eat, equity)
-    df["gross_margin"] = sdiv(gross_profit, revenue)
-    df["net_margin"] = sdiv(eat, revenue)
-    df["ebit_margin"] = sdiv(ebit, revenue)
-    df["effective_tax_rate"] = sdiv(tax, ebt)
-    df["asset_turnover"] = sdiv(revenue, total_assets)
-    df["cfo_to_net_income"] = sdiv(cfo, eat)
-    df["cfo_to_avg_assets"] = sdiv(cfo, total_assets)
-    df["cfo_to_avg_equity"] = sdiv(cfo, equity)
+    # Build calculation dictionary to avoid DataFrame fragmentation
+    new_metrics = {}
 
-    # 2. Don bay & Thanh toan
-    df["debt_to_assets"] = sdiv(debt, total_assets)
-    df["debt_to_equity"] = sdiv(debt, equity)
-    df["equity_to_assets"] = sdiv(equity, total_assets)
-    df["equity_multiplier"] = sdiv(total_assets, equity)
-    df["current_ratio"] = sdiv(curr_assets, curr_liab)
-    df["quick_ratio"] = sdiv(curr_assets - inventory.fillna(0), curr_liab)
+    # Pillar 1: Sinh loi
+    new_metrics["roa"] = safe_div(eat, total_assets)
+    new_metrics["roe"] = safe_div(eat, equity)
+    new_metrics["roce"] = safe_div(ebit, total_assets - curr_liab)
+    new_metrics["roic"] = safe_div(ebit * (1 - safe_div(tax, ebt).fillna(0.2)), equity + fin_debt.fillna(0) - cash.fillna(0))
+    new_metrics["gross_margin"] = safe_div(gross_profit, revenue)
+    new_metrics["operating_margin"] = safe_div(ebit, revenue)
+    new_metrics["ebitda_margin"] = safe_div(ebitda, revenue)
+    new_metrics["net_margin"] = safe_div(eat, revenue)
+    new_metrics["ebt_margin"] = safe_div(ebt, revenue)
+    new_metrics["effective_tax_rate"] = safe_div(tax, ebt)
+    new_metrics["dupont_tax_burden"] = safe_div(eat, ebt)
+    new_metrics["dupont_interest_burden"] = safe_div(ebt, ebit)
+    new_metrics["dupont_operating_margin"] = safe_div(ebit, revenue)
+    new_metrics["dupont_asset_turnover"] = safe_div(revenue, total_assets)
+    new_metrics["dupont_equity_multiplier"] = safe_div(total_assets, equity)
 
-    # 3. CTCK & Co cau
-    df["margin_to_equity"] = sdiv(margin_loans, equity)
-    df["pct_margin_loans"] = sdiv(margin_loans, total_assets)
-    df["pct_advances"] = sdiv(advances, total_assets)
-    df["pct_fvtpl"] = sdiv(fvtpl, total_assets)
-    df["pct_afs"] = sdiv(afs, total_assets)
-    df["pct_htm"] = sdiv(htm, total_assets)
-    df["pct_cash"] = sdiv(cash, total_assets)
-    df["pct_loans"] = sdiv(margin_loans, total_assets)
-    df["pct_brokerage_rev"] = sdiv(brokerage_rev, revenue)
-    df["pct_proprietary_rev"] = sdiv(proprietary_rev, revenue)
-    df["pct_margin_profit"] = sdiv(margin_profit, ebt)
-    df["pct_ib_rev"] = sdiv(ib_rev, revenue)
-    df["pct_brokerage_cost"] = sdiv(brokerage_cost, revenue)
-    df["pct_proprietary_cost"] = sdiv(proprietary_cost, revenue)
-    df["pct_advisory_cost"] = sdiv(advisory_cost, revenue)
-    df["pct_provision_cost"] = sdiv(provision_cost, revenue)
-    df["pct_other_receivables"] = sdiv(other_receivables, total_assets)
-    df["pct_broker_services"] = sdiv(broker_services, total_assets)
+    # Pillar 2: Cau truc von & Don bay
+    new_metrics["debt_to_assets"] = safe_div(total_debt, total_assets)
+    new_metrics["debt_to_equity"] = safe_div(total_debt, equity)
+    new_metrics["fin_debt_to_assets"] = safe_div(fin_debt, total_assets)
+    new_metrics["fin_debt_to_equity"] = safe_div(fin_debt, equity)
+    new_metrics["equity_to_assets"] = safe_div(equity, total_assets)
+    new_metrics["equity_multiplier"] = safe_div(total_assets, equity)
+    new_metrics["st_debt_to_total_debt"] = safe_div(st_debt, fin_debt)
+    new_metrics["lt_debt_to_total_debt"] = safe_div(lt_debt, fin_debt)
+    new_metrics["interest_coverage"] = safe_div(ebit, interest_exp)
+    new_metrics["debt_to_ebitda"] = safe_div(fin_debt, ebitda)
+    new_metrics["cfo_to_debt"] = safe_div(cfo, fin_debt)
+    new_metrics["cfo_to_liabilities"] = safe_div(cfo, total_debt)
+    new_metrics["fin_leverage_ratio"] = safe_div(total_assets, equity)
 
-    # 4. Quy mo
-    df["total_assets"] = total_assets
-    df["total_debt"] = debt
-    df["equity"] = equity
-    df["curr_assets"] = curr_assets
-    df["non_curr_assets"] = non_curr_assets
-    df["curr_debt"] = curr_liab
-    df["long_term_debt"] = long_term_debt
-    df["net_revenue"] = revenue
-    df["profit_before_tax"] = ebt
-    df["profit_after_tax"] = eat
-    df["eat_parent"] = eat_parent
-    df["brokerage_profit"] = brokerage_rev.fillna(0) - brokerage_cost.fillna(0)
-    df["advisory_profit"] = ib_rev.fillna(0) - advisory_cost.fillna(0)
-    df["margin_profit"] = margin_profit
-    df["operating_cost"] = operating_cost
-    df["operating_profit"] = revenue.fillna(0) - operating_cost.fillna(0)
-    df["operating_cash_flow"] = cfo
-    df["investing_cash_flow"] = cfi
-    df["financing_cash_flow"] = cff
-    df["size_ln"] = total_assets.apply(lambda x: math.log(x) if pd.notna(x) and x > 0 else np.nan)
+    # Pillar 3: Thanh khoan & Von luu dong
+    new_metrics["current_ratio"] = safe_div(curr_assets, curr_liab)
+    new_metrics["quick_ratio"] = safe_div(curr_assets - inventory.fillna(0), curr_liab)
+    new_metrics["cash_ratio"] = safe_div(cash.fillna(0) + st_invest.fillna(0), curr_liab)
+    new_metrics["cash_to_assets"] = safe_div(cash, total_assets)
+    nwc = curr_assets - curr_liab
+    new_metrics["working_capital"] = nwc
+    new_metrics["nwc_to_assets"] = safe_div(nwc, total_assets)
+    new_metrics["nwc_to_revenue"] = safe_div(nwc, revenue)
+    new_metrics["defensive_interval"] = safe_div((cash.fillna(0) + ar_cust.fillna(0)) * 365, sga.fillna(cogs.fillna(0)))
 
-    # 5. YoY Growth %
-    for col, yoy_col in [
-        ("net_revenue", "rev_growth_yoy"),
-        ("profit_before_tax", "ebt_growth_yoy"),
-        ("profit_after_tax", "eat_growth_yoy"),
-        ("eat_parent", "eat_parent_growth_yoy"),
-        ("total_assets", "assets_growth_yoy"),
-        ("equity", "equity_growth_yoy"),
-        ("total_debt", "debt_growth_yoy"),
-        ("curr_debt", "curr_debt_growth_yoy"),
-        ("long_term_debt", "long_debt_growth_yoy"),
-        ("curr_assets", "curr_assets_growth_yoy"),
-        ("non_curr_assets", "non_curr_assets_growth_yoy"),
-        ("operating_cost", "oper_cost_growth_yoy"),
-        ("operating_profit", "oper_profit_growth_yoy"),
-    ]:
-        try:
-            df[yoy_col] = df.groupby("ticker")[col].pct_change(fill_method=None)
-        except TypeError:
-            df[yoy_col] = df.groupby("ticker")[col].pct_change()
+    # Pillar 4: Hieu qua hoat dong
+    new_metrics["asset_turnover"] = safe_div(revenue, total_assets)
+    new_metrics["fixed_asset_turnover"] = safe_div(revenue, fixed_assets)
+    new_metrics["inventory_turnover"] = safe_div(cogs, inventory)
+    dio = safe_div(inventory * 365, cogs)
+    new_metrics["dio"] = dio
+    new_metrics["ar_turnover"] = safe_div(revenue, ar_cust)
+    dso = safe_div(ar_cust * 365, revenue)
+    new_metrics["dso"] = dso
+    new_metrics["ap_turnover"] = safe_div(cogs, payables)
+    dpo = safe_div(payables * 365, cogs)
+    new_metrics["dpo"] = dpo
+    new_metrics["ccc"] = dio + dso - dpo
+    new_metrics["working_capital_turnover"] = safe_div(revenue, nwc)
+    new_metrics["sga_to_revenue"] = safe_div(sga, revenue)
+    new_metrics["selling_cost_ratio"] = safe_div(selling_exp, revenue)
+    new_metrics["admin_cost_ratio"] = safe_div(admin_exp, revenue)
 
-    # CTCK & Financial asset specific YoY
-    extra_yoy_items = {
-        "margin_loans": margin_loans,
-        "advances": advances,
-        "brokerage_rev": brokerage_rev,
-        "proprietary_rev": proprietary_rev,
-        "cash": cash,
-        "fvtpl": fvtpl,
-        "htm": htm,
-        "afs": afs,
+    # Pillar 5: Chat luong dong tien
+    new_metrics["cfo_to_net_income"] = safe_div(cfo, eat)
+    new_metrics["cfo_to_revenue"] = safe_div(cfo, revenue)
+    new_metrics["cfo_to_assets"] = safe_div(cfo, total_assets)
+    new_metrics["cfo_to_equity"] = safe_div(cfo, equity)
+    new_metrics["fcf"] = fcf
+    new_metrics["fcf_to_net_income"] = safe_div(fcf, eat)
+    new_metrics["fcf_to_revenue"] = safe_div(fcf, revenue)
+    new_metrics["capex_to_revenue"] = safe_div(capex, revenue)
+    new_metrics["capex_to_assets"] = safe_div(capex, total_assets)
+    new_metrics["cfo_to_capex"] = safe_div(cfo, capex)
+    new_metrics["accruals_to_assets"] = safe_div(eat - cfo, total_assets)
+
+    # Pillar 6: Ngan hang (CAMELS)
+    new_metrics["bank_nim"] = safe_div(bank_nii, total_assets)
+    new_metrics["bank_cir"] = safe_div(bank_opex, bank_toi)
+    new_metrics["bank_ldr"] = safe_div(bank_loans, bank_deposits)
+    new_metrics["bank_provision_coverage"] = safe_div(bank_provisions, bank_loans)
+    new_metrics["bank_credit_cost"] = safe_div(bank_credit_cost, bank_loans)
+    new_metrics["bank_loans_to_assets"] = safe_div(bank_loans, total_assets)
+    new_metrics["bank_deposits_to_assets"] = safe_div(bank_deposits, total_assets)
+    new_metrics["bank_equity_to_assets"] = safe_div(equity, total_assets)
+    new_metrics["bank_nii_to_toi"] = safe_div(bank_nii, bank_toi)
+    new_metrics["bank_non_interest_income_ratio"] = safe_div(bank_toi - bank_nii, bank_toi)
+
+    # Pillar 7: Chung khoan
+    new_metrics["margin_to_equity"] = safe_div(sec_margin, equity)
+    new_metrics["pct_margin_loans"] = safe_div(sec_margin, total_assets)
+    new_metrics["pct_advances"] = safe_div(sec_advances, total_assets)
+    new_metrics["pct_fvtpl"] = safe_div(sec_fvtpl, total_assets)
+    new_metrics["pct_afs"] = safe_div(sec_afs, total_assets)
+    new_metrics["pct_htm"] = safe_div(sec_htm, total_assets)
+    new_metrics["pct_cash"] = safe_div(cash, total_assets)
+    new_metrics["pct_brokerage_rev"] = safe_div(sec_broker_rev, revenue)
+    new_metrics["pct_proprietary_rev"] = safe_div(sec_prop_rev, revenue)
+    new_metrics["pct_margin_profit"] = safe_div(sec_margin_profit, revenue)
+    new_metrics["pct_ib_rev"] = safe_div(sec_ib_rev, revenue)
+    new_metrics["pct_brokerage_cost"] = safe_div(sec_broker_cost, sec_oper_cost)
+    new_metrics["pct_proprietary_cost"] = safe_div(coalesce_cols(["is_chi_phi_hoat_dong_tu_doanh"]).abs(), sec_oper_cost)
+    new_metrics["pct_provision_cost"] = safe_div(coalesce_cols(["is_chi_phi_du_phong_tstc", "is_chi_phi_du_phong"]).abs(), sec_oper_cost)
+
+    # Pillar 8: Bat dong san & Xay dung
+    new_metrics["re_prepayments_to_inventory"] = safe_div(prepayments, inventory)
+    new_metrics["re_prepayments_to_assets"] = safe_div(prepayments, total_assets)
+    new_metrics["re_inventory_to_assets"] = safe_div(inventory, total_assets)
+    new_metrics["re_wip_to_assets"] = safe_div(re_wip, total_assets)
+    new_metrics["re_debt_to_inventory"] = safe_div(fin_debt, inventory)
+    new_metrics["re_invest_prop_to_assets"] = safe_div(invest_prop, total_assets)
+
+    # Pillar 9: YoY Growth Dynamics
+    yoy_specs = [
+        ("rev_growth_yoy", revenue),
+        ("gross_profit_growth_yoy", gross_profit),
+        ("ebit_growth_yoy", ebit),
+        ("ebt_growth_yoy", ebt),
+        ("eat_growth_yoy", eat),
+        ("eat_parent_growth_yoy", eat_parent),
+        ("assets_growth_yoy", total_assets),
+        ("equity_growth_yoy", equity),
+        ("debt_growth_yoy", total_debt),
+        ("fin_debt_growth_yoy", fin_debt),
+        ("cfo_growth_yoy", cfo),
+        ("bank_loans_growth_yoy", bank_loans),
+        ("bank_deposits_growth_yoy", bank_deposits),
+        ("margin_loans_growth_yoy", sec_margin),
+    ]
+    for yoy_col, src in yoy_specs:
+        s_prev = df.groupby("ticker")["ticker"].apply(lambda g: pd.Series(src.iloc[g.index]).shift(1)).reset_index(level=0, drop=True)
+        denom = s_prev.abs().replace(0, np.nan)
+        new_metrics[yoy_col] = (src - s_prev) / denom
+
+    # Pillar 10: Econometrics & Altman Z-Score
+    new_metrics["size_ln"] = np.log(total_assets.where(total_assets > 0, np.nan))
+    new_metrics["size_log10"] = np.log10(total_assets.where(total_assets > 0, np.nan))
+    new_metrics["tangibility"] = safe_div(tangible_assets, total_assets)
+    new_metrics["firm_age_proxy"] = safe_div(retained_earnings, total_assets)
+    x1 = safe_div(nwc, total_assets)
+    x2 = safe_div(retained_earnings, total_assets)
+    x3 = safe_div(ebit, total_assets)
+    x4 = safe_div(equity, total_debt)
+    x5 = safe_div(revenue, total_assets)
+    new_metrics["altman_x1"] = x1
+    new_metrics["altman_x2"] = x2
+    new_metrics["altman_x3"] = x3
+    new_metrics["altman_x4"] = x4
+    new_metrics["altman_x5"] = x5
+    new_metrics["altman_z_prime"] = 0.717 * x1 + 0.847 * x2 + 3.107 * x3 + 0.420 * x4 + 0.998 * x5
+    new_metrics["charter_capital_to_equity"] = safe_div(charter_capital, equity)
+    new_metrics["retained_earnings_to_equity"] = safe_div(retained_earnings, equity)
+
+    # Concat all new metrics at once to prevent fragmentation
+    df_metrics = pd.DataFrame(new_metrics, index=df.index)
+    
+    # Also attach base items if not already present
+    base_items = {
+        "total_assets": total_assets,
+        "total_debt": total_debt,
+        "equity": equity,
+        "curr_assets": curr_assets,
+        "non_curr_assets": non_curr_assets,
+        "curr_debt": curr_liab,
+        "long_term_debt": long_liab,
+        "net_revenue": revenue,
+        "profit_before_tax": ebt,
+        "profit_after_tax": eat,
+        "eat_parent": eat_parent,
+        "operating_cash_flow": cfo,
+        "investing_cash_flow": cfi,
+        "financing_cash_flow": cff,
     }
-    for base_key, s_val in extra_yoy_items.items():
-        yoy_col = f"{base_key}_growth_yoy"
-        tmp_col = f"_tmp_{base_key}"
-        df[tmp_col] = s_val
-        try:
-            df[yoy_col] = df.groupby("ticker")[tmp_col].pct_change(fill_method=None)
-        except TypeError:
-            df[yoy_col] = df.groupby("ticker")[tmp_col].pct_change()
-        df.drop(columns=[tmp_col], inplace=True)
+    for k, v in base_items.items():
+        if k not in df.columns:
+            df_metrics[k] = v
 
-    return df
+    overlap = [c for c in df_metrics.columns if c in df.columns]
+    if overlap:
+        df = df.drop(columns=overlap)
+
+    return pd.concat([df, df_metrics], axis=1)
+
+
 
 
 # =====================================================================
@@ -992,7 +1344,7 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
         ("Giai đoạn:", f"{min(years)} — {max(years)}"),
         ("Ngày xuất báo cáo:", datetime.now().strftime("%d/%m/%Y %H:%M")),
         ("Số chỉ tiêu BCTC:", "702 chỉ tiêu (13 nhóm kế toán chuẩn mực)"),
-        ("Số tỷ số tài chính:", f"{len(WIDATA_RATIOS)} chỉ số (chuẩn WiData / WiGroup)"),
+        ("Số tỷ số tài chính:", f"{len(FINANCIAL_RATIOS)} chỉ số (Chuẩn học thuật: CFA, IFRS/VAS, Basel III, CAMELS)"),
     ]
     if missing_tickers:
         info_items.append(("⚠️ Mã không có dữ liệu:", f"{', '.join(missing_tickers)} (Đã tự động loại bỏ)"))
@@ -1015,7 +1367,7 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
 
     nav_items = [
         ("→ Bao_Cao_Tai_Chinh", "702 chỉ tiêu kế toán — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
-        ("→ Ty_So_Tai_Chinh", "75 tỷ số WiData — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
+        ("→ Ty_So_Tai_Chinh", "116 chỉ số tài chính — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
         ("→ Panel_Data_Goc", "Bảng phẳng Panel Data (tất cả mã) — sẵn sàng cho Stata / R / Python"),
         ("→ Codebook", "Từ điển biến, công thức tính toán và nguồn dữ liệu"),
         ("→ Huong_Dan", "Hướng dẫn sử dụng bộ chọn mã chứng khoán"),
@@ -1033,7 +1385,7 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
     row += 1
     for src in [
         "vnfinancialdata — Ngo Phu Thanh (UEL, ĐHQG TP.HCM)",
-        "Hệ thống tỷ số tài chính WiData — WiGroup",
+        "Hệ thống chỉ số tài chính phân tích & nghiên cứu chuyên sâu",
         "vn-annual-report-miner — github.com/Tumiqa/vn-annual-report-miner",
     ]:
         ws.cell(row=row, column=2, value="→").font = Font(name="Segoe UI", size=10, color=_TEAL)
@@ -1090,7 +1442,7 @@ def _create_hidden_tyso_sheet(ws, pivot, tickers, years, active_ratios):
     for t in tickers:
         df_t = pivot[pivot["ticker"] == t]
         for rcode in active_ratios:
-            meta = WIDATA_RATIOS.get(rcode, {"name": rcode, "group": "Tỷ số tài chính", "formula": "", "fmt": "0.00%"})
+            meta = FINANCIAL_RATIOS.get(rcode, {"name": rcode, "group": "Chỉ số tài chính", "formula": "", "fmt": "0.00%"})
             ws.cell(row=row, column=1, value=f"{t}_{rcode}")
             ws.cell(row=row, column=2, value=t)
             ws.cell(row=row, column=3, value=rcode)
@@ -1099,8 +1451,13 @@ def _create_hidden_tyso_sheet(ws, pivot, tickers, years, active_ratios):
             ws.cell(row=row, column=6, value=meta["formula"])
             for y_idx, y in enumerate(years):
                 row_match = df_t[df_t["year"] == y]
-                val = row_match[rcode].values[0] if len(row_match) > 0 and rcode in row_match.columns else None
-                if pd.notna(val) and val is not None:
+                val = None
+                if len(row_match) > 0 and rcode in row_match.columns:
+                    col_data = row_match[rcode]
+                    if isinstance(col_data, pd.DataFrame):
+                        col_data = col_data.iloc[:, 0]
+                    val = col_data.values[0] if len(col_data) > 0 else None
+                if val is not None and pd.notna(val):
                     try:
                         ws.cell(row=row, column=7 + y_idx, value=float(val))
                     except (ValueError, TypeError):
@@ -1225,7 +1582,7 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
 
     # Row 1: Title
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
-    ws.cell(row=1, column=1, value="CÁC TỶ SỐ TÀI CHÍNH PHÂN TÍCH (CHUẨN WIDATA)").font = _TITLE_FONT
+    ws.cell(row=1, column=1, value="HỆ THỐNG CHỈ SỐ TÀI CHÍNH DOANH NGHIỆP").font = _TITLE_FONT
 
     # Row 2: Ticker selector
     ws.cell(row=2, column=1, value="Chọn Mã CK →").font = _LABEL_FONT
@@ -1260,7 +1617,7 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
     item_count = 0
 
     for rcode in active_ratios:
-        meta = WIDATA_RATIOS.get(rcode, {"name": rcode, "group": "Tỷ số tài chính", "formula": "", "fmt": "0.00%"})
+        meta = FINANCIAL_RATIOS.get(rcode, {"name": rcode, "group": "Chỉ số tài chính", "formula": "", "fmt": "0.00%"})
         group = meta["group"]
 
         # Section header
@@ -1420,7 +1777,7 @@ def _create_guide_sheet(ws):
         ]),
         ("2. Tổng quan các Tab trong bảng tính:", [
             "Bao_Cao_Tai_Chinh: Toàn bộ chỉ tiêu kế toán phân chia theo 13 nhóm chuẩn mực.",
-            "Ty_So_Tai_Chinh: Hệ thống tỷ số tài chính được trích chọn theo chuẩn WiData.",
+            "Ty_So_Tai_Chinh: Hệ thống chỉ số tài chính phân tích & nghiên cứu chuyên sâu (10 trụ cột học thuật).",
             "Panel_Data_Goc: Bảng dữ liệu phẳng Panel Data (tất cả mã CK) để chạy hồi quy trên Stata/R/Python.",
             "Codebook: Từ điển định nghĩa chi tiết từng biến thực tế xuất hiện trong tập dữ liệu.",
         ]),
@@ -1472,8 +1829,8 @@ def populate_financial_sheets(
     - Data_BCTC (Hidden raw data sheet for formulas)
     - Data_TySo (Hidden ratio data sheet for formulas - if ratios selected)
     """
-    # Compute WiData metrics
-    pivot = compute_widata_metrics(pivot)
+    # Compute academic financial ratios
+    pivot = compute_financial_ratios(pivot)
 
     tickers = sorted([str(t) for t in pivot["ticker"].dropna().unique().tolist()])
     years = sorted([int(y) for y in pivot["year"].dropna().unique().tolist()])
@@ -1486,12 +1843,12 @@ def populate_financial_sheets(
 
     # Active ratios (Strictly respect caller's ratio_cols)
     if ratio_cols is not None:
-        active_ratios = [r for r in ratio_cols.keys() if r in WIDATA_RATIOS]
+        active_ratios = [r for r in ratio_cols.keys() if r in FINANCIAL_RATIOS]
     elif fin_codebook:
-        selected_ratios = [item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Tỷ số tài chính WiData"]
-        active_ratios = [r for r in WIDATA_RATIOS if r in selected_ratios]
+        selected_ratios = [item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Chỉ số tài chính phân tích"]
+        active_ratios = [r for r in FINANCIAL_RATIOS if r in selected_ratios]
     else:
-        active_ratios = [r for r in WIDATA_RATIOS.keys() if r in pivot.columns]
+        active_ratios = [r for r in FINANCIAL_RATIOS.keys() if r in pivot.columns]
 
     # 1. Hidden Data sheets (must be created FIRST for formula references)
     ws_data_bctc = wb.create_sheet("Data_BCTC")

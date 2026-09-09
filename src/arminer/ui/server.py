@@ -1185,8 +1185,8 @@ def financial_tickers_by_sector():
     return {"sectors": filtered_sectors}
 
 
-def get_available_widata_ratios(code_set: set) -> list[str]:
-    """Determine which WiData financial ratios can actually be calculated from available item codes."""
+def get_available_financial_ratios(code_set: set) -> list[str]:
+    """Determine which financial ratios can actually be calculated from available item codes across all sectors."""
     if not code_set:
         return []
 
@@ -1197,118 +1197,179 @@ def get_available_widata_ratios(code_set: set) -> list[str]:
                     return True
         return False
 
-    eat = has_item(["loi_nhuan_sau_thue", "lai_sau_thue", "lai_lo_thuan_sau_thue"])
-    revenue = has_item(["doanh_thu_thuan", "doanh_so_thuan", "doanh_thu_hoat_dong"])
+    eat = has_item(["loi_nhuan_sau_thue", "lai_sau_thue", "lai_lo_thuan_sau_thue", "is_loi_nhuan_ke_toan_sau_thue"])
+    revenue = has_item(["doanh_thu_thuan", "doanh_so_thuan", "doanh_thu_hoat_dong", "tong_thu_nhap_hoat_dong", "thu_nhap_lai_thuan", "phi_bao_hiem_thuan"])
     ebt = has_item(["loi_nhuan_truoc_thue", "lai_truoc_thue", "lai_lo_rong_truoc_thue", "tong_loi_nhuan_ke_toan_truoc_thue"])
     tax = has_item(["thue_tndn", "thue_thu_nhap_doanh_nghiep"])
-    ebit = has_item(["is_ebit"])
-    gross_profit = has_item(["loi_nhuan_gop", "lai_gop"])
+    ebit = has_item(["is_ebit"]) or (ebt and has_item(["lai_vay"]))
+    gross_profit = has_item(["loi_nhuan_gop", "lai_gop", "thu_nhap_lai_thuan"]) or (revenue and has_item(["gia_von"]))
     assets = has_item(["tong_tai_san", "tong_cong_tai_san"])
-    equity = has_item(["von_chu_so_huu"])
+    equity = has_item(["von_chu_so_huu", "von_va_cac_quy"])
     debt = has_item(["no_phai_tra", "tong_no_phai_tra"])
     curr_assets = has_item(["tai_san_ngan_han"])
     curr_liab = has_item(["no_ngan_han"])
-    long_debt = has_item(["no_dai_han"])
-    non_curr_assets = has_item(["tai_san_dai_han"])
-    cfo = has_item(["kinh_doanh", "san_xuat_kinh_doanh"]) and any(c.startswith("cf_") for c in code_set)
-    cfi = has_item(["dau_tu"]) and any(c.startswith("cf_") for c in code_set)
-    cff = has_item(["tai_chinh"]) and any(c.startswith("cf_") for c in code_set)
-    margin_loans = has_item(["cac_khoan_cho_vay", "cho_vay_ky_quy"])
-    advances = has_item(["ung_truoc_tien_ban"])
-    fvtpl = has_item(["fvtpl"])
-    htm = has_item(["htm"])
-    afs = has_item(["afs"])
+    inventory = has_item(["hang_ton_kho"])
+    cogs = has_item(["gia_von"])
+    payables = has_item(["phai_tra_nguoi_ban"])
     cash = has_item(["tien_va_tuong_duong_tien", "bs_tien"])
-    brokerage_rev = has_item(["moi_gioi_chung_khoan"])
-    proprietary_rev = has_item(["tu_doanh_va_kinh_doanh_nguon_von", "fvtpl"])
-    margin_profit = has_item(["cho_vay_va_phai_thu"])
-    ib_rev = has_item(["tu_van_tai_chinh", "ngan_hang_dau_tu"])
-    operating_cost = has_item(["chi_phi_hoat_dong"])
-    other_receivables = has_item(["phai_thu_khac"])
-    broker_services = has_item(["dich_vu_ctck"])
+    fixed_assets = has_item(["tai_san_co_dinh", "tscd_huu_hinh"])
+    retained_earnings = has_item(["chua_phan_phoi"])
+    fin_debt = has_item(["vay_ngan_han", "vay_dai_han", "vay_va_no"])
+
+    cfo = has_item(["kinh_doanh", "san_xuat_kinh_doanh"]) and any(c.startswith("cf_") for c in code_set)
+    capex = has_item(["mua_sam", "xay_dung_tscd"]) and any(c.startswith("cf_") for c in code_set)
+
+    bank_loans = has_item(["cho_vay_khach_hang"])
+    bank_deposits = has_item(["tien_gui_cua_khach_hang", "tien_gui"])
+    bank_nii = has_item(["thu_nhap_lai_thuan"])
+    bank_toi = has_item(["tong_thu_nhap_hoat_dong"])
+
+    sec_margin = has_item(["cho_vay_va_ung_truoc", "cho_vay_margin", "cac_khoan_cho_vay"])
+    sec_fvtpl = has_item(["fvtpl"])
+    sec_broker_rev = has_item(["moi_gioi_chung_khoan"])
+
+    re_prep = has_item(["nguoi_mua_tra_tien_truoc", "tra_tien_truoc"])
 
     checks = {
+        # Pillar 1: Sinh loi
         "roa": eat and assets,
         "roe": eat and equity,
+        "roce": ebit and assets and curr_liab,
+        "roic": ebit and equity,
         "gross_margin": gross_profit and revenue,
+        "operating_margin": ebit and revenue,
+        "ebitda_margin": ebit and revenue,
         "net_margin": eat and revenue,
-        "ebit_margin": ebit and revenue,
+        "ebt_margin": ebt and revenue,
         "effective_tax_rate": tax and ebt,
-        "asset_turnover": revenue and assets,
-        "cfo_to_net_income": cfo and eat,
-        "cfo_to_avg_assets": cfo and assets,
-        "cfo_to_avg_equity": cfo and equity,
+        "dupont_tax_burden": eat and ebt,
+        "dupont_interest_burden": ebt and ebit,
+        "dupont_operating_margin": ebit and revenue,
+        "dupont_asset_turnover": revenue and assets,
+        "dupont_equity_multiplier": assets and equity,
 
+        # Pillar 2: Cau truc von & Don bay
         "debt_to_assets": debt and assets,
         "debt_to_equity": debt and equity,
+        "fin_debt_to_assets": fin_debt and assets,
+        "fin_debt_to_equity": fin_debt and equity,
         "equity_to_assets": equity and assets,
         "equity_multiplier": assets and equity,
+        "st_debt_to_total_debt": fin_debt,
+        "lt_debt_to_total_debt": fin_debt,
+        "interest_coverage": ebit and has_item(["lai_vay"]),
+        "debt_to_ebitda": fin_debt and ebit,
+        "cfo_to_debt": cfo and fin_debt,
+        "cfo_to_liabilities": cfo and debt,
+        "fin_leverage_ratio": assets and equity,
+
+        # Pillar 3: Thanh khoan & Von luu dong
         "current_ratio": curr_assets and curr_liab,
         "quick_ratio": curr_assets and curr_liab,
+        "cash_ratio": cash and curr_liab,
+        "cash_to_assets": cash and assets,
+        "working_capital": curr_assets and curr_liab,
+        "nwc_to_assets": curr_assets and curr_liab and assets,
+        "nwc_to_revenue": curr_assets and curr_liab and revenue,
+        "defensive_interval": cash and revenue,
 
-        "margin_to_equity": margin_loans and equity,
-        "pct_margin_loans": margin_loans and assets,
-        "pct_advances": advances and assets,
-        "pct_fvtpl": fvtpl and assets,
-        "pct_afs": afs and assets,
-        "pct_htm": htm and assets,
+        # Pillar 4: Hieu qua hoat dong
+        "asset_turnover": revenue and assets,
+        "fixed_asset_turnover": revenue and fixed_assets,
+        "inventory_turnover": cogs and inventory,
+        "dio": cogs and inventory,
+        "ar_turnover": revenue and has_item(["phai_thu"]),
+        "dso": revenue and has_item(["phai_thu"]),
+        "ap_turnover": cogs and payables,
+        "dpo": cogs and payables,
+        "ccc": cogs and inventory and payables,
+        "working_capital_turnover": revenue and curr_assets,
+        "sga_to_revenue": has_item(["quan_ly", "ban_hang"]) and revenue,
+        "selling_cost_ratio": has_item(["ban_hang"]) and revenue,
+        "admin_cost_ratio": has_item(["quan_ly"]) and revenue,
+
+        # Pillar 5: Chat luong dong tien
+        "cfo_to_net_income": cfo and eat,
+        "cfo_to_revenue": cfo and revenue,
+        "cfo_to_assets": cfo and assets,
+        "cfo_to_equity": cfo and equity,
+        "fcf": cfo,
+        "fcf_to_net_income": cfo and eat,
+        "fcf_to_revenue": cfo and revenue,
+        "capex_to_revenue": capex and revenue,
+        "capex_to_assets": capex and assets,
+        "cfo_to_capex": cfo and capex,
+        "accruals_to_assets": eat and cfo and assets,
+
+        # Pillar 6: Ngan hang
+        "bank_nim": bank_nii and assets,
+        "bank_cir": bank_toi and has_item(["chi_phi_hoat_dong"]),
+        "bank_ldr": bank_loans and bank_deposits,
+        "bank_provision_coverage": has_item(["du_phong_rui_ro_cho_vay"]) and bank_loans,
+        "bank_credit_cost": has_item(["chi_phi_du_phong_rui_ro_tin_dung"]) and bank_loans,
+        "bank_loans_to_assets": bank_loans and assets,
+        "bank_deposits_to_assets": bank_deposits and assets,
+        "bank_equity_to_assets": equity and assets,
+        "bank_nii_to_toi": bank_nii and bank_toi,
+        "bank_non_interest_income_ratio": bank_toi and bank_nii,
+
+        # Pillar 7: Chung khoan
+        "margin_to_equity": sec_margin and equity,
+        "pct_margin_loans": sec_margin and assets,
+        "pct_advances": has_item(["ung_truoc_tien_ban"]) and assets,
+        "pct_fvtpl": sec_fvtpl and assets,
+        "pct_afs": has_item(["afs"]) and assets,
+        "pct_htm": has_item(["htm"]) and assets,
         "pct_cash": cash and assets,
-        "pct_loans": margin_loans and assets,
-        "pct_brokerage_rev": brokerage_rev and revenue,
-        "pct_proprietary_rev": proprietary_rev and revenue,
-        "pct_margin_profit": margin_profit and ebt,
-        "pct_ib_rev": ib_rev and revenue,
-        "pct_brokerage_cost": has_item(["moi_gioi"]) and operating_cost,
-        "pct_proprietary_cost": has_item(["tu_doanh"]) and operating_cost,
-        "pct_advisory_cost": has_item(["tu_van"]) and operating_cost,
-        "pct_provision_cost": has_item(["du_phong"]) and operating_cost,
-        "pct_other_receivables": other_receivables and assets,
-        "pct_broker_services": broker_services and assets,
-        "brokerage_profit": brokerage_rev and has_item(["moi_gioi"]),
-        "advisory_profit": ib_rev and has_item(["tu_van"]),
-        "margin_profit": margin_profit,
+        "pct_brokerage_rev": sec_broker_rev and revenue,
+        "pct_proprietary_rev": sec_fvtpl and revenue,
+        "pct_margin_profit": has_item(["cho_vay_va_phai_thu"]) and revenue,
+        "pct_ib_rev": has_item(["tu_van"]) and revenue,
+        "pct_brokerage_cost": has_item(["moi_gioi"]) and has_item(["chi_phi_hoat_dong"]),
+        "pct_proprietary_cost": has_item(["tu_doanh"]) and has_item(["chi_phi_hoat_dong"]),
+        "pct_provision_cost": has_item(["du_phong"]) and has_item(["chi_phi_hoat_dong"]),
 
+        # Pillar 8: Bat dong san
+        "re_prepayments_to_inventory": re_prep and inventory,
+        "re_prepayments_to_assets": re_prep and assets,
+        "re_inventory_to_assets": inventory and assets,
+        "re_wip_to_assets": has_item(["do_dang"]) and assets,
+        "re_debt_to_inventory": fin_debt and inventory,
+        "re_invest_prop_to_assets": has_item(["bat_dong_san_dau_tu"]) and assets,
+
+        # Pillar 9: YoY
         "rev_growth_yoy": revenue,
+        "gross_profit_growth_yoy": gross_profit,
+        "ebit_growth_yoy": ebit,
         "ebt_growth_yoy": ebt,
         "eat_growth_yoy": eat,
         "eat_parent_growth_yoy": eat,
         "assets_growth_yoy": assets,
         "equity_growth_yoy": equity,
         "debt_growth_yoy": debt,
-        "margin_loans_growth_yoy": margin_loans,
-        "advances_growth_yoy": advances,
-        "brokerage_rev_growth_yoy": brokerage_rev,
-        "proprietary_rev_growth_yoy": proprietary_rev,
-        "cash_growth_yoy": cash,
-        "fvtpl_growth_yoy": fvtpl,
-        "htm_growth_yoy": htm,
-        "afs_growth_yoy": afs,
-        "curr_debt_growth_yoy": curr_liab,
-        "long_debt_growth_yoy": long_debt,
-        "curr_assets_growth_yoy": curr_assets,
-        "non_curr_assets_growth_yoy": non_curr_assets,
-        "oper_cost_growth_yoy": operating_cost,
-        "oper_profit_growth_yoy": operating_cost and revenue,
+        "fin_debt_growth_yoy": fin_debt,
+        "cfo_growth_yoy": cfo,
+        "bank_loans_growth_yoy": bank_loans,
+        "bank_deposits_growth_yoy": bank_deposits,
+        "margin_loans_growth_yoy": sec_margin,
 
-        "total_assets": assets,
-        "total_debt": debt,
-        "equity": equity,
-        "net_revenue": revenue,
-        "profit_before_tax": ebt,
-        "profit_after_tax": eat,
-        "operating_cash_flow": cfo,
-        "investing_cash_flow": cfi,
-        "financing_cash_flow": cff,
-        "eat_parent": eat,
-        "curr_debt": curr_liab,
-        "long_term_debt": long_debt,
-        "curr_assets": curr_assets,
-        "non_curr_assets": non_curr_assets,
-        "operating_profit": operating_cost and revenue,
-        "operating_cost": operating_cost,
+        # Pillar 10: Econometrics & Altman
         "size_ln": assets,
+        "size_log10": assets,
+        "tangibility": has_item(["huu_hinh"]) and assets,
+        "firm_age_proxy": retained_earnings and assets,
+        "altman_x1": curr_assets and curr_liab and assets,
+        "altman_x2": retained_earnings and assets,
+        "altman_x3": ebit and assets,
+        "altman_x4": equity and debt,
+        "altman_x5": revenue and assets,
+        "altman_z_prime": curr_assets and curr_liab and retained_earnings and ebit and equity and debt and revenue and assets,
+        "charter_capital_to_equity": has_item(["von_dieu_le", "von_gop"]) and equity,
+        "retained_earnings_to_equity": retained_earnings and equity,
     }
     return [k for k, v in checks.items() if v]
+
+
 
 
 @app.get("/api/financial/available-items")
@@ -1316,7 +1377,7 @@ def financial_available_items(
     ticker: str = Query(...),
     exchange: str = Query(""),
 ):
-    """Probe which item_codes and WiData ratios actually have calculable data for given ticker(s).
+    """Probe which item_codes and financial ratios actually have calculable data for given ticker(s).
     Supports comma-separated tickers (e.g. VCB,CTG,BID).
     Returns lists of available item_codes and available_ratios based on accounting prerequisites.
     """
@@ -1355,7 +1416,7 @@ def financial_available_items(
             except Exception:
                 pass
 
-    avail_ratios = get_available_widata_ratios(available_codes)
+    avail_ratios = get_available_financial_ratios(available_codes)
 
     return {
         "tickers": ticker_list,
@@ -1670,9 +1731,9 @@ RATIO_DEFS = {
 
 @app.get("/api/financial/ratios")
 def financial_ratios():
-    """Return all available ratio definitions (WiData standard)."""
-    from arminer.export.financial_excel import WIDATA_RATIOS
-    return {"ratios": WIDATA_RATIOS}
+    """Return all available ratio definitions (academic standard: CFA, VAS/IFRS, Basel III, CAMELS)."""
+    from arminer.export.financial_excel import FINANCIAL_RATIOS
+    return {"ratios": FINANCIAL_RATIOS}
 
 
 class FinancialQueryRequest(BaseModel):
@@ -1795,9 +1856,9 @@ async def financial_query(req: FinancialQueryRequest):
         ).reset_index()
         pivot.columns.name = None
 
-        # Compute WiData ratios
-        from arminer.export.financial_excel import compute_widata_metrics, WIDATA_RATIOS, classify_financial_item
-        pivot = compute_widata_metrics(pivot)
+        # Compute academic financial ratios (116 ratios - 10 pillars)
+        from arminer.export.financial_excel import compute_financial_ratios, FINANCIAL_RATIOS, classify_financial_item
+        pivot = compute_financial_ratios(pivot)
 
         # Lay toan bo danh muc goc 702 chi tieu tu vnfinancialdata
         df_master_items = vnf.list_items(active_only=False)
@@ -1813,7 +1874,7 @@ async def financial_query(req: FinancialQueryRequest):
 
         # Xac dinh danh sach ty so can xuat
         if req.ratios is not None:
-            active_ratios = [r for r in req.ratios if r in WIDATA_RATIOS]
+            active_ratios = [r for r in req.ratios if r in FINANCIAL_RATIOS]
         else:
             active_ratios = ["roa", "roe", "gross_margin", "net_margin", "debt_to_assets", "debt_to_equity", "current_ratio", "size_ln"]
 
@@ -1829,7 +1890,7 @@ async def financial_query(req: FinancialQueryRequest):
                 pivot = pivot.drop(columns=cols_to_drop)
                 target_item_codes = [c for c in target_item_codes if c not in cols_to_drop]
 
-            # Ty so tai chinh WiData: chi giu ratios co it nhat 1 gia tri khac NaN
+            # Chi so tai chinh phan tich: chi giu ratios co it nhat 1 gia tri khac NaN
             active_ratios = [r for r in active_ratios if r in pivot.columns and not pivot[r].dropna().empty]
         else:
             # Che do day du: dam bao toan bo chi tieu muc tieu co cot tren pivot (neu DN khong co thi gia tri la None)
@@ -1844,15 +1905,15 @@ async def financial_query(req: FinancialQueryRequest):
                 df_missing = pd.DataFrame(missing_cols, index=pivot.index)
                 pivot = pd.concat([pivot, df_missing], axis=1)
 
-        ratio_cols = {rk: rinfo["name"] for rk, rinfo in WIDATA_RATIOS.items() if rk in active_ratios}
+        ratio_cols = {rk: rinfo["name"] for rk, rinfo in FINANCIAL_RATIOS.items() if rk in active_ratios}
 
         # Replace inf with None
         pivot = pivot.replace([float('inf'), float('-inf')], None)
 
-        # Sap xep thu tu cot khoa hoc: ticker, year, toan bo chi tieu BCTC da chon, toan bo ty so WiData da chon
-        # TUYET DOI KHONG giu lai cac ty so WiData khong duoc chon trong file xuat!
+        # Sap xep thu tu cot khoa hoc: ticker, year, toan bo chi tieu BCTC da chon, toan bo chi so tai chinh da chon
+        # TUYET DOI KHONG giu lai cac chi so khong duoc chon trong file xuat!
         ordered_cols = ["ticker", "year"] + [c for c in target_item_codes if c in pivot.columns] + [r for r in active_ratios if r in pivot.columns]
-        other_cols = [c for c in pivot.columns if c not in ordered_cols and c not in WIDATA_RATIOS]
+        other_cols = [c for c in pivot.columns if c not in ordered_cols and c not in FINANCIAL_RATIOS]
         pivot = pivot[ordered_cols + other_cols]
 
         # Sort theo ticker va year
@@ -1868,12 +1929,12 @@ async def financial_query(req: FinancialQueryRequest):
         for col in pivot.columns:
             if col in ("ticker", "year"):
                 continue
-            is_ratio = col in WIDATA_RATIOS
+            is_ratio = col in FINANCIAL_RATIOS
             if is_ratio:
-                rinfo = WIDATA_RATIOS[col]
+                rinfo = FINANCIAL_RATIOS[col]
                 c_name = rinfo["name"]
                 stmt = rinfo["group"]
-                ptype = "Tỷ số tài chính WiData"
+                ptype = "Chỉ số tài chính phân tích"
                 formula = rinfo["formula"]
             else:
                 c_name = item_name_lookup.get(col, col)

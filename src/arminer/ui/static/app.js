@@ -1369,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       console.error('Load ratios error:', e);
-      container.innerHTML = '<div style="color: var(--color-danger); font-size: 12px;">Lỗi tải danh mục chỉ số WiData</div>';
+      container.innerHTML = '<div style="color: var(--color-danger); font-size: 12px;">Lỗi tải danh mục chỉ số tài chính</div>';
     }
   }
 
@@ -1945,7 +1945,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btnFinSelectAll702.textContent = `Chọn tất cả (${visibleCount})`;
         }
 
-        // Apply filter to WiData ratios based on calculable prerequisites
+        // Apply filter to financial ratios based on calculable prerequisites
         if (data.available_ratios) {
           const availRatiosSet = new Set(data.available_ratios);
           const ratioContainer = document.getElementById('finRatiosContainer');
@@ -1975,7 +1975,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const finRatiosCount = document.getElementById('finRatiosCount');
             if (finRatiosCount) {
-              finRatiosCount.textContent = `(${data.total_ratios || data.available_ratios.length}/75 khả dụng)`;
+              const totalRatios = Object.keys(finAvailableRatios || {}).length || 116;
+              finRatiosCount.textContent = `(${data.total_ratios || data.available_ratios.length}/${totalRatios} khả dụng)`;
             }
           }
         }
@@ -2001,7 +2002,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (finSmartFilterBadge) finSmartFilterBadge.style.display = 'none';
       if (btnFinSelectAll702) btnFinSelectAll702.textContent = 'Chọn tất cả';
 
-      // Reset WiData ratios container
+      // Reset financial ratios container
       const ratioContainer = document.getElementById('finRatiosContainer');
       if (ratioContainer) {
         ratioContainer.querySelectorAll('.fin-ratio-group').forEach(group => {
@@ -2016,7 +2017,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const finRatiosCount = document.getElementById('finRatiosCount');
         if (finRatiosCount) {
-          finRatiosCount.textContent = `(75 chỉ số)`;
+          const totalRatios = Object.keys(finAvailableRatios || {}).length || 116;
+          finRatiosCount.textContent = `(${totalRatios} chỉ số)`;
         }
       }
     });

@@ -107,7 +107,7 @@ _SHEET_DESCRIPTIONS = {
     "Codebook": "Từ điển giải thích chi tiết ý nghĩa, thang đo, công thức tính toán và tài liệu tham khảo",
     "Merged_Panel": "Dữ liệu bảng ghép nối hoàn chỉnh giữa biến văn bản (Mining) và biến tài chính (BCTC)",
     "Bao_Cao_Tai_Chinh": "Toàn bộ 702 chỉ tiêu kế toán chi tiết theo 13 nhóm chuẩn mực kế toán Việt Nam",
-    "Ty_So_Tai_Chinh": "Hệ thống 75 tỷ số tài chính chuyên sâu chuẩn WiData (Sinh lời, Đòn bẩy, Margin, FVTPL...)",
+    "Ty_So_Tai_Chinh": "Hệ thống 116 chỉ số tài chính chuyên sâu chuẩn học thuật (Sinh lời, Cấu trúc vốn, Thanh khoản, Dòng tiền, CAMELS, Altman Z-score)",
     "Descriptive_Stats": "Bảng thống kê mô tả (Mean, SD, Min, Max, Quantiles) của các biến số",
     "Correlation": "Ma trận tương quan Pearson giữa các biến số trong nghiên cứu",
 }
@@ -247,7 +247,7 @@ def add_cover_sheet(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -
         ("🏛️ Đơn vị phát triển:", "Trương Minh Quân - Đại học Kinh tế Đà Nẵng"),
         ("⚙️ Công cụ trích xuất:", "arminer Studio v2.5 (Corporate Text Mining & Econometric Automation)"),
         ("📅 Thời điểm xuất file:", datetime.now().strftime("%d/%m/%Y %H:%M:%S")),
-        ("📊 Nguồn dữ liệu:", "BCTN Zenodo (13,982 file) | BCTC 702 chỉ tiêu WiData | Báo chí kinh tế & Website DN"),
+        ("📊 Nguồn dữ liệu:", "BCTN Zenodo (13,982 file) | BCTC 702 chỉ tiêu chuẩn hóa | Báo chí kinh tế & Website DN"),
         ("📈 Cấu trúc dữ liệu:", "Chuẩn Dữ Liệu Bảng (Firm - Year Panel Data: Mã CK 'ticker', Năm 'year')"),
         ("🎓 Ứng dụng mô hình:", "Sẵn sàng hồi quy OLS, Fixed Effects, Random Effects, GMM (Stata, Python, R)"),
         ("🛡️ Mã xác thực dữ liệu:", "ARMINER-VERIFIED-PANEL-DATASET (Trương Minh Quân)"),
