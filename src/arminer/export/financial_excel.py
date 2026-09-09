@@ -655,7 +655,18 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
         "is_lai_sau_thue_cua_co_dong_cong_ty_me",
     ])
     eat_parent = eat_parent.combine_first(eat)
-    ebit = coalesce_cols(["is_ebit"])
+    interest_expense = coalesce_cols([
+        "is_chi_phi_lai_vay",
+        "is_trong_do_chi_phi_lai_vay",
+        "is_chi_phi_lai_va_cac_khoan_chi_phi_tuong_tu",
+    ])
+    operating_profit_base = coalesce_cols([
+        "is_ebit",
+        "is_lai_lo_tu_hoat_dong_kinh_doanh",
+        "is_ln_thuan_tu_hoat_dong_kinh_doanh_truoc_cf_du_phong_rui_ro_tin_dung",
+        "is_ket_qua_hoat_dong",
+    ])
+    ebit = coalesce_cols(["is_ebit"]).combine_first(ebt + interest_expense.fillna(0)).combine_first(operating_profit_base)
     tax = coalesce_cols([
         "is_chi_phi_thue_tndn",
         "is_chi_phi_thue_thu_nhap_doanh_nghiep_hien_hanh",
@@ -663,15 +674,29 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
     ])
     cfo = coalesce_cols([
         "cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh",
+        "cf_luu_chuyen_thuan_tu_hoat_dong_kinh_doanh_chung_khoan",
         "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh",
         "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh_truoc_thue_thu_nhap_dn",
     ])
-    cfi = coalesce_cols(["cf_luu_chuyen_tien_thuan_tu_hoat_dong_dau_tu"])
-    cff = coalesce_cols(["cf_luu_chuyen_tien_thuan_tu_hoat_dong_tai_chinh"])
+    cfi = coalesce_cols([
+        "cf_luu_chuyen_tien_te_rong_tu_hoat_dong_dau_tu",
+        "cf_luu_chuyen_tien_thuan_tu_hoat_dong_dau_tu",
+        "cf_luu_chuyen_tu_hoat_dong_dau_tu",
+    ])
+    cff = coalesce_cols([
+        "cf_luu_chuyen_tien_te_tu_hoat_dong_tai_chinh",
+        "cf_luu_chuyen_tien_tu_hoat_dong_tai_chinh",
+        "cf_luu_chuyen_thuan_tu_hoat_dong_tai_chinh",
+        "cf_luu_chuyen_tien_thuan_tu_hoat_dong_tai_chinh",
+    ])
 
     # CTCK & Non-financial specific items
     margin_loans = coalesce_cols(["bs_cac_khoan_cho_vay", "bs_phai_thu_ve_cho_vay_ky_quy", "bs_cho_vay_margin"])
-    advances = coalesce_cols(["bs_phai_thu_ung_truoc_tien_ban_chung_khoan_cua_khach_hang", "bs_ung_truoc_tien_ban"])
+    advances = coalesce_cols([
+        "bs_phai_thu_ung_truoc_tien_ban_chung_khoan_cua_khach_hang",
+        "bs_ung_truoc_tien_ban",
+        "bs_phai_thu_ve_hoat_dong_giao_dich_chung_khoan",
+    ])
     fvtpl = coalesce_cols(["bs_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl", "bs_tai_san_tai_chinh_fvtpl"])
     htm = coalesce_cols(["bs_cac_khoan_dau_tu_nam_giu_den_ngay_dao_han_htm", "bs_dau_tu_nam_giu_den_ngay_dao_han_htm"])
     afs = coalesce_cols(["bs_cac_khoan_tai_chinh_san_sang_de_ban_afs", "bs_tai_san_tai_chinh_san_sang_de_ban_afs"])
@@ -679,7 +704,10 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
     proprietary_rev = coalesce_cols(["is_doanh_thu_mang_tu_doanh_va_kinh_doanh_nguon_von", "is_lai_tu_cac_tai_san_tai_chinh_ghi_nhan_thong_qua_lai_lo_fvtpl"])
     margin_profit = coalesce_cols(["is_lai_tu_cac_khoan_cho_vay_va_phai_thu"])
     ib_rev = coalesce_cols(["is_doanh_thu_hoat_dong_tu_van_tai_chinh", "is_doanh_thu_mang_ngan_hang_dau_tu"])
-    brokerage_cost = coalesce_cols(["is_chi_phi_hoat_dong_moi_gioi_chung_khoan"])
+    brokerage_cost = coalesce_cols([
+        "is_chi_phi_moi_gioi_chung_khoan",
+        "is_chi_phi_hoat_dong_moi_gioi_chung_khoan",
+    ])
     proprietary_cost = coalesce_cols(["is_chi_phi_hoat_dong_tu_doanh"])
     advisory_cost = coalesce_cols(["is_chi_phi_hoat_dong_tu_van_tai_chinh"])
     provision_cost = coalesce_cols(["is_chi_phi_du_phong_tstc", "is_chi_phi_du_phong"])
@@ -775,20 +803,26 @@ def compute_widata_metrics(pivot: pd.DataFrame) -> pd.DataFrame:
         except TypeError:
             df[yoy_col] = df.groupby("ticker")[col].pct_change()
 
-    # CTCK specific YoY
-    try:
-        if margin_loans.name:
-            df["margin_loans_growth_yoy"] = df.groupby("ticker")[margin_loans.name].pct_change(fill_method=None)
-        if cash.name:
-            df["cash_growth_yoy"] = df.groupby("ticker")[cash.name].pct_change(fill_method=None)
-        if fvtpl.name:
-            df["fvtpl_growth_yoy"] = df.groupby("ticker")[fvtpl.name].pct_change(fill_method=None)
-        if htm.name:
-            df["htm_growth_yoy"] = df.groupby("ticker")[htm.name].pct_change(fill_method=None)
-        if afs.name:
-            df["afs_growth_yoy"] = df.groupby("ticker")[afs.name].pct_change(fill_method=None)
-    except Exception:
-        pass
+    # CTCK & Financial asset specific YoY
+    extra_yoy_items = {
+        "margin_loans": margin_loans,
+        "advances": advances,
+        "brokerage_rev": brokerage_rev,
+        "proprietary_rev": proprietary_rev,
+        "cash": cash,
+        "fvtpl": fvtpl,
+        "htm": htm,
+        "afs": afs,
+    }
+    for base_key, s_val in extra_yoy_items.items():
+        yoy_col = f"{base_key}_growth_yoy"
+        tmp_col = f"_tmp_{base_key}"
+        df[tmp_col] = s_val
+        try:
+            df[yoy_col] = df.groupby("ticker")[tmp_col].pct_change(fill_method=None)
+        except TypeError:
+            df[yoy_col] = df.groupby("ticker")[tmp_col].pct_change()
+        df.drop(columns=[tmp_col], inplace=True)
 
     return df
 

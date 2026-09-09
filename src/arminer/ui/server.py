@@ -1699,8 +1699,9 @@ async def financial_query(req: FinancialQueryRequest):
         exchanges = [req.exchange] if req.exchange else ["HSX", "HNX"]
 
         # Determine which statements we need
+        has_ratios = bool(req.ratios is None or len(req.ratios) > 0)
         is_all_items = not req.item_codes or "all" in req.item_codes
-        if is_all_items:
+        if is_all_items or has_ratios:
             needed_statements = {"balance_sheet", "income_statement", "cash_flow"}
         else:
             needed_statements = set()
@@ -1711,7 +1712,7 @@ async def financial_query(req: FinancialQueryRequest):
             if not needed_statements:
                 needed_statements = {"balance_sheet", "income_statement", "cash_flow"}
 
-        # Collect all item_codes we need (explicit + ratio requirements)
+        # Collect all item_codes we need
         all_item_codes = list(req.item_codes)
 
         yield {"event": "progress", "data": json.dumps(
@@ -1720,15 +1721,16 @@ async def financial_query(req: FinancialQueryRequest):
             ensure_ascii=False)}
 
         # Load raw data for each needed statement+exchange combo
+        # NOTE: When ratios are requested, we do NOT restrict item_code in vnf.load
+        # because different sectors use different accounts (e.g. is_lai_lo_thuan_sau_thue vs is_loi_nhuan_sau_thue).
+        # Strict filtering to user-selected items is done when assembling the final pivot table.
         raw_data = {}
         for stmt in needed_statements:
             for exch in exchanges:
                 try:
-                    stmt_prefix = {"balance_sheet": "bs_", "income_statement": "is_", "cash_flow": "cf_"}[stmt]
-                    stmt_codes = [c for c in all_item_codes if c.startswith(stmt_prefix)]
-
-                    # If user chose all items, load full dataset without filtering item_codes
-                    item_code_arg = None if is_all_items else (stmt_codes if stmt_codes else None)
+                    item_code_arg = None if (is_all_items or has_ratios) else [c for c in all_item_codes if c.startswith({"balance_sheet": "bs_", "income_statement": "is_", "cash_flow": "cf_"}[stmt])]
+                    if not item_code_arg:
+                        item_code_arg = None
 
                     df = vnf.load(
                         exchange=exch,
