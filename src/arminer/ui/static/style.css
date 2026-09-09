@@ -959,3 +959,149 @@ body {
 .fin-smart-filter-active .fin-accordion-section.fin-section-empty {
   display: none !important;
 }
+
+/* ============================================================
+   News Mining Tab Styles
+   ============================================================ */
+.source-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.source-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-check-item:hover {
+  border-color: var(--brand-primary);
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.source-check-item input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: var(--brand-primary);
+}
+
+.source-check-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.source-check-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.source-check-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Source Badges */
+.badge-source {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+.badge-official {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-cafef {
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.badge-dtck {
+  background: rgba(217, 119, 6, 0.08);
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
+.badge-vne {
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.badge-custom {
+  background: rgba(107, 114, 128, 0.08);
+  color: #4b5563;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+}
+
+/* Modal styles for Company Directory */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.news-snippet-item {
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: var(--bg-surface);
+  border-left: 3px solid var(--brand-primary);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.news-snippet-item mark {
+  background: rgba(245, 158, 11, 0.25);
+  color: var(--text-primary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+

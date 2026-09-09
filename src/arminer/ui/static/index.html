@@ -37,9 +37,9 @@
       <button class="tab-btn" data-tab="tab-upload">
         <span>Tải lên báo cáo</span>
       </button>
-      <button class="tab-btn" data-tab="tab-results">
-        <span>Kết quả</span>
-        <span id="resultsTabBadge" class="tab-badge" style="display: none;">0</span>
+      <button class="tab-btn" data-tab="tab-news">
+        <span>Khai phá tin tức</span>
+        <span id="newsTabBadge" class="tab-badge" style="display: none;">0</span>
       </button>
     </nav>
 
@@ -197,6 +197,68 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Research Results Card (Panel Data & Exports) inside Catalog Tab -->
+        <div id="catalogResultsCard" class="card" style="margin-top: 24px; display: none; border-top: 2px solid var(--brand-primary);">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Bảng Dữ Liệu Nghiên Cứu Định Lượng (Panel Data Báo Cáo Thường Niên)</h2>
+              <p class="card-desc" id="resSummarySubtitle">Biến chính: Log_Frequency = ln(1+Freq). Robustness: Mention, Substantive, Density (%), Coverage. Tải file Excel 3 sheets đầy đủ.</p>
+            </div>
+            <div class="btn-group">
+              <a id="btnDlExcel" href="#" class="btn btn-secondary btn-sm" download title="Xuất file Excel gồm 3 sheet: Raw_Keywords, Panel_Data, Codebook">Xuất Excel (3 Sheets)</a>
+              <a id="btnDlStata" href="#" class="btn btn-secondary btn-sm" download title="Xuất file định dạng Stata 118 (.dta) sẵn sàng cho hồi quy">File Stata (.dta)</a>
+              <a id="btnDlCsv" href="#" class="btn btn-secondary btn-sm" download title="Xuất file định dạng CSV chuẩn UTF-8-BOM">CSV</a>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-item-label">Tổng Số Quan Sát (N)</div>
+              <div class="stat-item-value" id="statObsCount">0</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-label">Số Báo Cáo Có Đề Cập</div>
+              <div class="stat-item-value" id="statHitsCount" style="color: var(--color-success);">0</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-label">Tổng Lượt Đề Cập (Mentions)</div>
+              <div class="stat-item-value" id="statMentionsCount" style="color: #60a5fa;">0</div>
+            </div>
+          </div>
+
+          <!-- Table of Panel Data -->
+          <div class="table-wrapper" style="max-height: 380px; overflow-y: auto; margin-bottom: 20px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 75px;">Mã CK</th>
+                  <th style="width: 55px;">Năm</th>
+                  <th style="width: 130px;">Ngành (L1)</th>
+                  <th>Tên File</th>
+                  <th style="width: 85px; text-align: right;" title="Tổng số từ trong báo cáo (Word Count)">Số Từ</th>
+                  <th style="width: 85px; text-align: right;" class="th-hint" title="Frequency: Tổng số lần xuất hiện từ khóa (Raw count - Wu et al. 2021)">Frequency</th>
+                  <th style="width: 100px; text-align: right; color: #60a5fa;" class="th-hint" title="Biến chính mô hình: ln(1 + Frequency) (Wu et al. 2021, MDPI 2026)">Log (Main)</th>
+                  <th style="width: 75px; text-align: center;" class="th-hint" title="Mention: Biến giả 1 nếu Frequency > 0, ngược lại 0 (Baier et al. 2020)">Mention</th>
+                  <th style="width: 95px; text-align: right;" class="th-hint" title="Density: Frequency / Word_Count * 100% (PLOS ONE, Emerald)">Density (%)</th>
+                </tr>
+              </thead>
+              <tbody id="panelDataTableBody">
+                <tr>
+                  <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                    Chưa có dữ liệu. Hãy chọn báo cáo ở trên và bấm "Khai Phá Báo Cáo Đã Chọn".
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Context Snippets Section -->
+          <h3 class="card-title" style="margin-bottom: 12px;">Trích Đoạn Ngữ Cảnh Trong Văn Bản (Context Excerpts)</h3>
+          <div id="snippetsContainer" style="max-height: 280px; overflow-y: auto;">
+            <p style="color: var(--text-muted); font-style: italic;">Chưa có trích đoạn nào.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -552,69 +614,403 @@
       </div>
     </section>
 
-
     <!-- ===================================================================
-         TAB 4: RESEARCH RESULTS (Panel Data & Exports)
+         TAB 5: NEWS MINING (KHAI PHÁ TIN TỨC DOANH NGHIỆP & TRANG TÀI CHÍNH)
          =================================================================== -->
-    <section id="tab-results" class="tab-panel">
+    <!-- ===================================================================
+         TAB 5: NEWS MINING (KHAI PHÁ TIN TỨC DOANH NGHIỆP & TRANG TÀI CHÍNH)
+         =================================================================== -->
+    <section id="tab-news" class="tab-panel">
+      <!-- Step 1 & 2: Config & Collection -->
       <div class="card" style="margin-bottom: 20px;">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Bảng Dữ Liệu Nghiên Cứu Định Lượng (Panel Data)</h2>
-            <p class="card-desc" id="resSummarySubtitle">Biến chính: Log_Frequency = ln(1+Freq). Robustness: Mention, Substantive, Density (%), Coverage. Tải file Excel 3 sheets đầy đủ.</p>
+            <h2 class="card-title">Khai Phá Tin Tức Đa Nguồn (Website Doanh Nghiệp & Báo Tài Chính)</h2>
+            <p class="card-desc">
+              Thu thập và phân tích nội dung từ website chính thức của ~1,430+ doanh nghiệp niêm yết (HSX & HNX) cùng 7 trang báo tài chính lớn: CafeF, VnExpress Kinh Doanh, CafeBiz, Tin Nhanh Chứng Khoán, VnEconomy, VietnamNet. Tự động bù đắp thiếu hụt giữa các nguồn.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid-split" style="margin-bottom: 16px;">
+          <!-- Left: Tickers & Sources Selection -->
+          <div>
+            <!-- Fast Ticker Input (Comma-separated, instant typing) -->
+            <div class="form-group" style="margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label class="form-label" style="margin-bottom: 0;">Mã Cổ Phiếu Cần Thu Thập:</label>
+                <span id="newsTickerCounter" style="font-weight: 600; color: var(--brand-primary); font-size: 12px;">0 mã đã nhập</span>
+              </div>
+              <input type="text" id="newsTickerInput" class="form-input" placeholder="Nhập hoặc dán các mã CK (ví dụ: VCB, BID, CTG, HPG, FPT, SSI, VNM)..." style="font-family: var(--font-mono); font-size: 13px;">
+            </div>
+
+            <!-- Sector filter & add buttons -->
+            <div class="filter-grid" style="grid-template-columns: 1fr 1fr auto auto; margin-bottom: 12px; gap: 8px;">
+              <div class="form-group">
+                <label class="form-label">Ngành ICB L1:</label>
+                <select id="newsSectorL1" class="form-select">
+                  <option value="">Tất cả ngành (L1)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phân ngành L2:</label>
+                <select id="newsSectorL2" class="form-select">
+                  <option value="">Tất cả phân ngành (L2)</option>
+                </select>
+              </div>
+              <div class="form-group" style="align-self: flex-end;">
+                <button id="btnNewsAddSector" class="btn btn-secondary btn-sm" type="button" title="Thêm toàn bộ mã CK thuộc ngành đã chọn vào ô nhập">Thêm theo ngành</button>
+              </div>
+              <div class="form-group" style="align-self: flex-end;">
+                <button id="btnClearNewsTickers" class="btn btn-secondary btn-sm" type="button" style="color: var(--color-danger);">Xóa hết mã</button>
+              </div>
+            </div>
+
+            <!-- Quick Add Ticker Groups -->
+            <div style="margin-bottom: 14px;">
+              <span style="font-size: 11px; color: var(--text-muted); margin-right: 6px;">Chọn nhanh nhóm mã:</span>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VCB, BID, CTG, TCB, MBB, VPB, ACB, STB, HDB, VIB">Ngân hàng (Top 10)</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="SSI, VND, VCI, HCM, SHS, MBS, FTS, CTS, BSI, AGR, VDS, TVS, VIX">Chứng khoán (Top 13)</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="HPG, HSG, NKG, VGS">Thép & Kim loại</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="FPT, CMG, ELC, ITD">Công nghệ TT</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VHM, NVL, KDH, DIG, PDR, DXG, NLG, CEO">Bất động sản</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VNM, MSN, SAB, MWG, FRT, DGW">Bán lẻ & Tiêu dùng</button>
+              </div>
+            </div>
+
+            <!-- Multi-Source Selector (8 Sources) -->
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label">Chọn Nguồn Tin Tức (Hỗ Trợ Tự Động Bù Đắp):</label>
+              <div class="source-checkbox-grid">
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcCompanyWeb" value="company_website" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">Website Chính Thức Doanh Nghiệp</span>
+                      <span class="badge-source badge-official">Chính thống</span>
+                    </div>
+                    <span class="source-check-desc">Cào tự động mục /tin-tuc, /quan-he-co-dong trên web công ty (~1,430+ mã)</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcCafeF" value="cafef" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">CafeF</span>
+                      <span class="badge-source badge-cafef">Tốc độ cao</span>
+                    </div>
+                    <span class="source-check-desc">Trang dữ liệu & tin tức chứng khoán số 1 Việt Nam, đầy đủ bài viết</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcVnExpress" value="vnexpress" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">VnExpress Kinh Doanh</span>
+                      <span class="badge-source badge-vne">Báo lớn</span>
+                    </div>
+                    <span class="source-check-desc">Báo điện tử nhiều người đọc nhất Việt Nam, chuyên mục kinh doanh & thị trường</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcCafeBiz" value="cafebiz" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">CafeBiz</span>
+                      <span class="badge-source badge-cafef">Kinh tế DN</span>
+                    </div>
+                    <span class="source-check-desc">Thông tin chuyên sâu về doanh nghiệp, tài chính và thị trường kinh doanh</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcTinNhanhCK" value="tinnhanhchungkhoan" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">Tin Nhanh Chứng Khoán (ĐTCK)</span>
+                      <span class="badge-source badge-dtck">UBCKNN</span>
+                    </div>
+                    <span class="source-check-desc">Báo Đầu tư Chứng khoán - cơ quan ngôn luận của UBCK Nhà nước</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcVnEconomy" value="vneconomy" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">VnEconomy</span>
+                      <span class="badge-source badge-vne">Kinh tế</span>
+                    </div>
+                    <span class="source-check-desc">Tạp chí Kinh tế Việt Nam - phân tích hoạt động DN & thị trường</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcVietnamNet" value="vietnamnet" checked>
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">VietnamNet Kinh Doanh</span>
+                      <span class="badge-source badge-dtck">Chính luận</span>
+                    </div>
+                    <span class="source-check-desc">Báo VietnamNet - dòng sự kiện kinh tế tài chính và doanh nghiệp niêm yết</span>
+                  </div>
+                </label>
+
+                <label class="source-check-item">
+                  <input type="checkbox" id="srcCustomUrls" value="custom">
+                  <div class="source-check-info">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="source-check-title">URL Tùy Chỉnh</span>
+                      <span class="badge-source badge-custom">Tự chọn</span>
+                    </div>
+                    <span class="source-check-desc">Dán danh sách các link bài viết cụ thể vào ô bên dưới</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Custom URLs textarea (collapsible) -->
+            <div id="customUrlsContainer" class="form-group" style="margin-bottom: 12px; display: none;">
+              <label class="form-label">Danh sách URL bài viết (mỗi link 1 dòng):</label>
+              <textarea id="customUrlsInput" class="form-input" rows="3" placeholder="https://cafef.vn/...&#10;https://fpt.com/vi/tin-tuc/..."></textarea>
+            </div>
+          </div>
+
+          <!-- Right: Year Filter, Quota & Mining Dictionary -->
+          <div>
+            <!-- Year Range Filter -->
+            <div style="background: var(--bg-surface); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-default); margin-bottom: 14px;">
+              <div style="font-weight: 600; font-size: 13px; color: var(--text-primary); margin-bottom: 8px;">
+                Khoảng Thời Gian Xuất Bản Tin Tức:
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 12px;">Từ năm:</label>
+                  <input type="number" id="newsYearFrom" class="form-input tabular" value="2020" min="2000" max="2026">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 12px;">Đến năm:</label>
+                  <input type="number" id="newsYearTo" class="form-input tabular" value="2026" min="2000" max="2026">
+                </div>
+              </div>
+              <p style="font-size: 11px; color: var(--text-muted); margin: 6px 0 0 0; line-height: 1.4;">
+                * Hệ thống tự động phân tích ngày đăng từ bài viết và chỉ giữ lại các bài báo xuất bản trong dải năm này.
+              </p>
+            </div>
+
+            <!-- Quota per ticker -->
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="form-label">Số Lượng Bài Viết Mục Tiêu Mỗi Mã CK:</label>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="number" id="newsTargetArticles" class="form-input tabular" value="20" min="5" max="150" style="width: 100px;">
+                <span style="font-size: 12px; color: var(--text-muted);">bài viết / mã</span>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; padding: 10px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500;">
+                <input type="checkbox" id="newsAutoBackfill" checked>
+                <span>Tự động bù đắp nguồn thiếu hụt (Khuyên dùng)</span>
+              </label>
+              <p style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 0 24px; line-height: 1.4;">
+                Nếu website công ty hoặc 1 trang báo có ít bài hoặc bị lỗi mạng, các nguồn còn lại sẽ tự động lấy thêm bài để gom đủ chỉ tiêu cho nghiên cứu.
+              </p>
+            </div>
+
+            <!-- Dictionary Selection -->
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">Bộ Từ Điển Nghiên Cứu Áp Dụng:</label>
+              <select id="newsTopicSelect" class="form-select"></select>
+            </div>
+
+            <!-- Execute Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+              <button id="btnExecuteNewsMining" class="btn btn-primary" style="width: 100%; padding: 11px; font-size: 14px; font-weight: 600;">
+                Bắt Đầu Cào Tin Tức & Khai Phá Văn Bản
+              </button>
+              <div style="display: flex; gap: 8px;">
+                <button id="btnOnlyScrapeNews" class="btn btn-secondary btn-sm" style="flex: 1;">
+                  Chỉ Thu Thập & Xem Trước Tin
+                </button>
+                <button id="btnOpenCompanyDirectory" class="btn btn-secondary btn-sm" style="flex: 1;">
+                  Danh Bạ Website DN
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Realtime Progress Bar -->
+        <div id="newsProgressCard" style="display: none; margin-top: 16px; padding: 14px; background: var(--bg-canvas); border: 1px solid var(--border-default); border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span id="newsProgressPhase" style="font-weight: 600; font-size: 13px; color: var(--brand-primary);">Đang chuẩn bị...</span>
+            <span id="newsProgressPercent" style="font-family: monospace; font-size: 12px; font-weight: 600;">0%</span>
+          </div>
+          <div style="width: 100%; height: 8px; background: var(--bg-surface); border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+            <div id="newsProgressBarFill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s ease;"></div>
+          </div>
+          <div id="newsProgressMessage" style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            Đang khởi động crawler...
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview of Crawled Articles -->
+      <div id="newsPreviewCard" class="card" style="margin-bottom: 20px; display: none;">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Danh Sách Bài Viết Đã Thu Thập (<span id="previewArticleCount">0</span> bài)</h3>
+            <p class="card-desc">Bấm vào tiêu đề bài viết để xem trích đoạn nội dung văn bản.</p>
           </div>
           <div class="btn-group">
-            <a id="btnDlExcel" href="#" class="btn btn-secondary btn-sm" download title="Xuất file Excel gồm 3 sheet: Raw_Keywords, Panel_Data, Codebook">Xuất Excel (3 Sheets)</a>
-            <a id="btnDlStata" href="#" class="btn btn-secondary btn-sm" download title="Xuất file định dạng Stata 118 (.dta) sẵn sàng cho hồi quy">File Stata (.dta)</a>
-            <a id="btnDlCsv" href="#" class="btn btn-secondary btn-sm" download title="Xuất file định dạng CSV chuẩn UTF-8-BOM">CSV</a>
+            <button id="btnMineFromPreview" class="btn btn-primary btn-sm">Khai Phá Trên Dữ Liệu Này</button>
+          </div>
+        </div>
+
+        <div class="table-wrapper" style="max-height: 320px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">Mã CK</th>
+                <th style="width: 65px;">Năm</th>
+                <th style="width: 120px;">Nguồn Tin</th>
+                <th>Tiêu Đề Bài Viết</th>
+                <th style="width: 90px;">Ngày Đăng</th>
+                <th style="width: 75px; text-align: right;">Số Từ</th>
+                <th style="width: 60px; text-align: center;">Link</th>
+              </tr>
+            </thead>
+            <tbody id="newsPreviewTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mining Results (Panel Data) inside News Tab -->
+      <div id="newsResultsCard" class="card" style="margin-bottom: 20px; display: none;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Kết Quả Nghiên Cứu Định Lượng Từ Tin Tức (News Panel Data)</h2>
+            <p class="card-desc">Dữ liệu được chuẩn hóa theo cấp độ Doanh nghiệp (Firm Summary) và Cấp độ Bài viết (Articles Panel), xuất được Excel, Stata (.dta), CSV.</p>
+          </div>
+          <div class="btn-group">
+            <a id="btnNewsDlExcel" href="#" class="btn btn-secondary btn-sm" download>Xuất Excel (3 Sheets)</a>
+            <a id="btnNewsDlStata" href="#" class="btn btn-secondary btn-sm" download>File Stata (.dta)</a>
+            <a id="btnNewsDlCsv" href="#" class="btn btn-secondary btn-sm" download>CSV</a>
           </div>
         </div>
 
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-item-label">Tổng Số Quan Sát (N)</div>
-            <div class="stat-item-value" id="statObsCount">0</div>
+            <div class="stat-item-label">Tổng Số Bài Viết (N)</div>
+            <div class="stat-item-value" id="newsStatArticlesCount">0</div>
           </div>
           <div class="stat-item">
-            <div class="stat-item-label">Số Báo Cáo Có Đề Cập</div>
-            <div class="stat-item-value" id="statHitsCount" style="color: var(--color-success);">0</div>
+            <div class="stat-item-label">Doanh Nghiệp Có Từ Khóa</div>
+            <div class="stat-item-value" id="newsStatFirmsHitCount" style="color: var(--color-success);">0</div>
           </div>
           <div class="stat-item">
-            <div class="stat-item-label">Tổng Lượt Đề Cập (Mentions)</div>
-            <div class="stat-item-value" id="statMentionsCount" style="color: #60a5fa;">0</div>
+            <div class="stat-item-label">Tổng Lượt Xuất Hiện Từ Khóa</div>
+            <div class="stat-item-value" id="newsStatMentionsCount" style="color: #60a5fa;">0</div>
           </div>
         </div>
 
-        <!-- Table of Panel Data -->
+        <!-- Tab Toggle for Results: Firm-level vs Article-level -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border-default); padding-bottom: 8px;">
+          <button id="btnViewFirmSummary" class="btn btn-secondary btn-sm active" type="button">Tổng Hợp Theo Doanh Nghiệp (Firm Summary)</button>
+          <button id="btnViewArticlePanel" class="btn btn-secondary btn-sm" type="button">Chi Tiết Từng Bài Viết (Articles Panel)</button>
+        </div>
+
         <div class="table-wrapper" style="max-height: 380px; overflow-y: auto; margin-bottom: 20px;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th style="width: 75px;">Mã CK</th>
-                <th style="width: 55px;">Năm</th>
-                <th style="width: 130px;">Ngành (L1)</th>
-                <th>Tên File</th>
-                <th style="width: 85px; text-align: right;" title="Tổng số từ trong báo cáo (Word Count)">Số Từ</th>
-                <th style="width: 85px; text-align: right;" class="th-hint" title="Frequency: Tổng số lần xuất hiện từ khóa (Raw count - Wu et al. 2021)">Frequency</th>
-                <th style="width: 100px; text-align: right; color: #60a5fa;" class="th-hint" title="Biến chính mô hình: ln(1 + Frequency) (Wu et al. 2021, MDPI 2026)">Log (Main)</th>
-                <th style="width: 75px; text-align: center;" class="th-hint" title="Mention: Biến giả 1 nếu Frequency > 0, ngược lại 0 (Baier et al. 2020)">Mention</th>
-                <th style="width: 95px; text-align: right;" class="th-hint" title="Density: Frequency / Word_Count * 100% (PLOS ONE, Emerald)">Density (%)</th>
-              </tr>
+          <table class="data-table" id="newsPanelTable">
+            <thead id="newsPanelThead">
             </thead>
-            <tbody id="panelDataTableBody">
-              <tr>
-                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">
-                  Chưa có dữ liệu. Hãy chọn báo cáo ở tab "Kho Báo Cáo" và bấm "Khai Phá".
-                </td>
-              </tr>
+            <tbody id="newsPanelTbody">
             </tbody>
           </table>
         </div>
 
-        <!-- Context Snippets Section -->
-        <h3 class="card-title" style="margin-bottom: 12px;">Trích Đoạn Ngữ Cảnh Trong Văn Bản (Context Excerpts)</h3>
-        <div id="snippetsContainer" style="max-height: 280px; overflow-y: auto;">
+        <!-- News Snippets -->
+        <h3 class="card-title" style="margin-bottom: 12px;">Trích Đoạn Ngữ Cảnh Trong Tin Tức (News Excerpts)</h3>
+        <div id="newsSnippetsContainer" style="max-height: 280px; overflow-y: auto;">
           <p style="color: var(--text-muted); font-style: italic;">Chưa có trích đoạn nào.</p>
+        </div>
+      </div>
+
+      <!-- Fallback Card: Paste Text Directly -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Chế Độ Dán Văn Bản Bài Báo Trực Tiếp</h3>
+            <p class="card-desc">Dành cho trường hợp một số website bật tường lửa chống cào hoặc bài viết độc quyền. Dán văn bản vào đây để khai phá từ điển ngay lập tức.</p>
+          </div>
+        </div>
+
+        <div class="grid-split">
+          <div>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+              <input type="text" id="pasteTickerInput" class="form-input" placeholder="Mã CK (ví dụ: HPG)" style="width: 140px; text-transform: uppercase;">
+              <input type="text" id="pasteTitleInput" class="form-input" placeholder="Tiêu đề bài viết hoặc nguồn bài báo..." style="flex: 1;">
+            </div>
+            <textarea id="pasteNewsTextarea" class="form-input" rows="6" placeholder="Dán nội dung bài báo, thông cáo báo chí hoặc văn bản cần phân tích vào đây..."></textarea>
+          </div>
+          <div>
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label">Chọn từ điển:</label>
+              <select id="pasteTopicSelect" class="form-select"></select>
+            </div>
+            <button id="btnExecutePasteMining" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">
+              Khai Phá Văn Bản Đã Dán
+            </button>
+            <div id="pasteResultSummary" style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Company Websites Directory Management -->
+      <div id="companyDirectoryModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card" style="max-width: 900px; width: 95%;">
+          <div class="card-header" style="margin-bottom: 14px;">
+            <div>
+              <h3 class="card-title">Danh Bạ Website Doanh Nghiệp Niêm Yết (~1,430+ Công Ty)</h3>
+              <p class="card-desc">Xem, tra cứu hoặc chỉnh sửa URL trang chủ và Cổng IR của từng doanh nghiệp.</p>
+            </div>
+            <button id="btnCloseCompanyModal" class="btn btn-secondary btn-sm">Đóng</button>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <input type="text" id="dirSearchInput" class="form-input" placeholder="Tìm theo mã CK, tên công ty, hoặc domain...">
+            <select id="dirExchangeSelect" class="form-select" style="width: 130px;">
+              <option value="">Tất cả sàn</option>
+              <option value="HOSE">Sàn HOSE</option>
+              <option value="HNX">Sàn HNX</option>
+            </select>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; cursor: pointer;">
+              <input type="checkbox" id="dirHasWebOnly" checked>
+              <span>Chỉ hiện mã có website</span>
+            </label>
+          </div>
+
+          <div class="table-wrapper" style="max-height: 400px; overflow-y: auto; margin-bottom: 14px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Mã CK</th>
+                  <th style="width: 60px;">Sàn</th>
+                  <th>Tên Doanh Nghiệp</th>
+                  <th>Trang Chủ</th>
+                  <th>Cổng IR</th>
+                  <th style="width: 70px; text-align: center;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="companyDirectoryTbody">
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>

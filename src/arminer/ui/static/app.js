@@ -420,7 +420,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
           setTimeout(() => {
             renderResearchResults(finalData);
-            switchTab('tab-results');
+            const catalogResults = document.getElementById('catalogResultsCard');
+            if (catalogResults) {
+              catalogResults.style.display = 'block';
+              catalogResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
             progressContainer.style.display = 'none';
           }, 1200);
         } else {
@@ -609,7 +613,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       const list = data.dictionaries || [];
 
-      [dictSelectTopic, catTopicSelect, uploadTopicSelect].forEach(sel => {
+      const newsTopicSelect = document.getElementById('newsTopicSelect');
+      const pasteTopicSelect = document.getElementById('pasteTopicSelect');
+
+      [dictSelectTopic, catTopicSelect, uploadTopicSelect, newsTopicSelect, pasteTopicSelect].forEach(sel => {
         if (!sel) return;
         const currentVal = sel.value;
         sel.innerHTML = '';
@@ -906,6 +913,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnDlCsv = document.getElementById('btnDlCsv');
 
   function renderResearchResults(data) {
+    const catalogResults = document.getElementById('catalogResultsCard');
+    if (catalogResults) catalogResults.style.display = 'block';
+
     statObsCount.textContent = data.total_files || 0;
     statHitsCount.textContent = data.files_with_hits || 0;
     statMentionsCount.textContent = (data.total_mentions || 0).toLocaleString();
@@ -1045,7 +1055,12 @@ document.addEventListener('DOMContentLoaded', () => {
             csv_download: '/api/download/panel_data.csv'
           });
         }
-        switchTab('tab-results');
+        const catalogResults = document.getElementById('catalogResultsCard');
+        if (catalogResults) {
+          catalogResults.style.display = 'block';
+          switchTab('tab-catalog');
+          catalogResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       } catch (err) {
         alert(`Lỗi: ${err.message}`);
       } finally {
@@ -2207,6 +2222,738 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --------------------------------------------------------------------------
+  // 5. News Mining Tab (Multi-Source News Aggregator & Text Mining)
+  // --------------------------------------------------------------------------
+  function initNewsTab() {
+    let lastNewsResult = null;
+    let currentPreviewArticles = [];
+
+    const newsTickerInput = document.getElementById('newsTickerInput');
+    const newsTickerCounter = document.getElementById('newsTickerCounter');
+    const newsSectorL1 = document.getElementById('newsSectorL1');
+    const newsSectorL2 = document.getElementById('newsSectorL2');
+    const btnNewsAddSector = document.getElementById('btnNewsAddSector');
+    const btnClearNewsTickers = document.getElementById('btnClearNewsTickers');
+    const quickGroupBtns = document.querySelectorAll('.news-quick-group');
+
+    const newsYearFrom = document.getElementById('newsYearFrom');
+    const newsYearTo = document.getElementById('newsYearTo');
+
+    const srcCompanyWeb = document.getElementById('srcCompanyWeb');
+    const srcCafeF = document.getElementById('srcCafeF');
+    const srcVnExpress = document.getElementById('srcVnExpress');
+    const srcCafeBiz = document.getElementById('srcCafeBiz');
+    const srcTinNhanhCK = document.getElementById('srcTinNhanhCK');
+    const srcVnEconomy = document.getElementById('srcVnEconomy');
+    const srcVietnamNet = document.getElementById('srcVietnamNet');
+    const srcCustomUrls = document.getElementById('srcCustomUrls');
+    const customUrlsContainer = document.getElementById('customUrlsContainer');
+    const customUrlsInput = document.getElementById('customUrlsInput');
+
+    const newsTargetArticles = document.getElementById('newsTargetArticles');
+    const newsTopicSelect = document.getElementById('newsTopicSelect');
+
+    const btnExecuteNewsMining = document.getElementById('btnExecuteNewsMining');
+    const btnOnlyScrapeNews = document.getElementById('btnOnlyScrapeNews');
+    const btnOpenCompanyDirectory = document.getElementById('btnOpenCompanyDirectory');
+    const btnCloseCompanyModal = document.getElementById('btnCloseCompanyModal');
+    const companyDirectoryModal = document.getElementById('companyDirectoryModal');
+
+    const newsProgressCard = document.getElementById('newsProgressCard');
+    const newsProgressPhase = document.getElementById('newsProgressPhase');
+    const newsProgressPercent = document.getElementById('newsProgressPercent');
+    const newsProgressBarFill = document.getElementById('newsProgressBarFill');
+    const newsProgressMessage = document.getElementById('newsProgressMessage');
+
+    const newsPreviewCard = document.getElementById('newsPreviewCard');
+    const newsPreviewTableBody = document.getElementById('newsPreviewTableBody');
+    const previewArticleCount = document.getElementById('previewArticleCount');
+    const btnMineFromPreview = document.getElementById('btnMineFromPreview');
+
+    const newsResultsCard = document.getElementById('newsResultsCard');
+    const newsStatArticlesCount = document.getElementById('newsStatArticlesCount');
+    const newsStatFirmsHitCount = document.getElementById('newsStatFirmsHitCount');
+    const newsStatMentionsCount = document.getElementById('newsStatMentionsCount');
+    const btnViewFirmSummary = document.getElementById('btnViewFirmSummary');
+    const btnViewArticlePanel = document.getElementById('btnViewArticlePanel');
+    const newsPanelThead = document.getElementById('newsPanelThead');
+    const newsPanelTbody = document.getElementById('newsPanelTbody');
+    const newsSnippetsContainer = document.getElementById('newsSnippetsContainer');
+
+    const btnNewsDlExcel = document.getElementById('btnNewsDlExcel');
+    const btnNewsDlStata = document.getElementById('btnNewsDlStata');
+    const btnNewsDlCsv = document.getElementById('btnNewsDlCsv');
+    const newsTabBadge = document.getElementById('newsTabBadge');
+
+    // Fallback Paste
+    const pasteTickerInput = document.getElementById('pasteTickerInput');
+    const pasteTitleInput = document.getElementById('pasteTitleInput');
+    const pasteNewsTextarea = document.getElementById('pasteNewsTextarea');
+    const pasteTopicSelect = document.getElementById('pasteTopicSelect');
+    const btnExecutePasteMining = document.getElementById('btnExecutePasteMining');
+    const pasteResultSummary = document.getElementById('pasteResultSummary');
+
+    // 1. Fast Ticker Input Parsing & Live Counter
+    function getEnteredTickers() {
+      if (!newsTickerInput) return [];
+      const val = newsTickerInput.value || '';
+      return Array.from(new Set(
+        val.toUpperCase()
+          .split(/[\s,;]+/)
+          .map(t => t.trim())
+          .filter(t => t.length >= 3 && t.length <= 6)
+      ));
+    }
+
+    function updateTickerCounter() {
+      const tickers = getEnteredTickers();
+      if (newsTickerCounter) {
+        newsTickerCounter.textContent = `${tickers.length} mã đã nhập`;
+      }
+    }
+
+    if (newsTickerInput) {
+      if (!newsTickerInput.value) {
+        newsTickerInput.value = 'VCB, HPG, FPT, SSI, VNM';
+      }
+      updateTickerCounter();
+      newsTickerInput.addEventListener('input', updateTickerCounter);
+    }
+
+    // 1.1 Load sectors into news dropdowns
+    async function loadNewsSectors() {
+      try {
+        const res = await fetch('/api/catalog/sectors');
+        const data = await res.json();
+        const sectors = data.sectors || [];
+        if (newsSectorL1) {
+          newsSectorL1.innerHTML = '<option value="">Tất cả ngành (L1)</option>';
+          sectors.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.textContent = `${s.name} (${s.total_tickers} mã)`;
+            newsSectorL1.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error('Lỗi tải ngành cho news tab:', e);
+      }
+    }
+    loadNewsSectors();
+
+    if (newsSectorL1) {
+      newsSectorL1.addEventListener('change', () => {
+        const selectedL1 = newsSectorL1.value;
+        if (!newsSectorL2) return;
+        newsSectorL2.innerHTML = '<option value="">Tất cả phân ngành (L2)</option>';
+        if (selectedL1 && sectorsHierarchy) {
+          const found = sectorsHierarchy.find(s => s.name === selectedL1);
+          if (found && found.subsectors) {
+            found.subsectors.forEach(sub => {
+              const opt = document.createElement('option');
+              opt.value = sub.name;
+              opt.textContent = `${sub.name} (${sub.ticker_count} mã)`;
+              newsSectorL2.appendChild(opt);
+            });
+          }
+        }
+      });
+    }
+
+    if (btnNewsAddSector) {
+      btnNewsAddSector.addEventListener('click', async () => {
+        const l1 = newsSectorL1 ? newsSectorL1.value : '';
+        const l2 = newsSectorL2 ? newsSectorL2.value : '';
+        if (!l1 && !l2) {
+          alert('Vui lòng chọn Ngành hoặc Phân ngành trước khi thêm.');
+          return;
+        }
+        try {
+          btnNewsAddSector.disabled = true;
+          btnNewsAddSector.textContent = 'Đang lấy mã...';
+          const params = new URLSearchParams();
+          if (l1) params.set('sector_l1', l1);
+          if (l2) params.set('sector_l2', l2);
+          params.set('limit', '500');
+          const res = await fetch(`/api/catalog/reports?${params.toString()}`);
+          const data = await res.json();
+          const reports = data.reports || [];
+          const sectorTickers = Array.from(new Set(reports.map(r => r.ticker).filter(Boolean)));
+          if (sectorTickers.length === 0) {
+            alert('Không tìm thấy mã nào trong ngành này.');
+            return;
+          }
+          const existing = getEnteredTickers();
+          const combined = Array.from(new Set([...existing, ...sectorTickers]));
+          newsTickerInput.value = combined.join(', ');
+          updateTickerCounter();
+        } catch (err) {
+          alert(`Lỗi: ${err.message}`);
+        } finally {
+          btnNewsAddSector.disabled = false;
+          btnNewsAddSector.textContent = 'Thêm theo ngành';
+        }
+      });
+    }
+
+    quickGroupBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const group = btn.getAttribute('data-tickers');
+        if (group) {
+          const groupTickers = group.split(',').map(t => t.trim().toUpperCase());
+          const existing = getEnteredTickers();
+          const combined = Array.from(new Set([...existing, ...groupTickers]));
+          newsTickerInput.value = combined.join(', ');
+          updateTickerCounter();
+        }
+      });
+    });
+
+    if (btnClearNewsTickers) {
+      btnClearNewsTickers.addEventListener('click', () => {
+        newsTickerInput.value = '';
+        updateTickerCounter();
+      });
+    }
+
+    // 2. Custom URLs toggle
+    if (srcCustomUrls && customUrlsContainer) {
+      srcCustomUrls.addEventListener('change', () => {
+        customUrlsContainer.style.display = srcCustomUrls.checked ? 'block' : 'none';
+      });
+    }
+
+    function getSelectedSources() {
+      const s = [];
+      if (srcCompanyWeb && srcCompanyWeb.checked) s.push('company_website');
+      if (srcCafeF && srcCafeF.checked) s.push('cafef');
+      if (srcVnExpress && srcVnExpress.checked) s.push('vnexpress');
+      if (srcCafeBiz && srcCafeBiz.checked) s.push('cafebiz');
+      if (srcTinNhanhCK && srcTinNhanhCK.checked) s.push('tinnhanhchungkhoan');
+      if (srcVnEconomy && srcVnEconomy.checked) s.push('vneconomy');
+      if (srcVietnamNet && srcVietnamNet.checked) s.push('vietnamnet');
+      if (srcCustomUrls && srcCustomUrls.checked) s.push('custom');
+      return s;
+    }
+
+    function getCustomUrlsList() {
+      if (!customUrlsInput || !srcCustomUrls || !srcCustomUrls.checked) return [];
+      return customUrlsInput.value.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
+    }
+
+    // 3. Scrape Only Stream
+    if (btnOnlyScrapeNews) {
+      btnOnlyScrapeNews.addEventListener('click', async () => {
+        const tickers = getEnteredTickers();
+        const sources = getSelectedSources();
+        const customUrls = getCustomUrlsList();
+
+        if (tickers.length === 0 && customUrls.length === 0) {
+          alert('Vui lòng nhập ít nhất một mã chứng khoán (hoặc URL tùy chỉnh).');
+          return;
+        }
+        if (sources.length === 0) {
+          alert('Vui lòng chọn ít nhất một nguồn tin tức.');
+          return;
+        }
+
+        const targetPerTicker = parseInt(newsTargetArticles ? newsTargetArticles.value : '20') || 20;
+        const yearFrom = newsYearFrom ? parseInt(newsYearFrom.value) || 2020 : 2020;
+        const yearTo = newsYearTo ? parseInt(newsYearTo.value) || 2026 : 2026;
+
+        btnOnlyScrapeNews.disabled = true;
+        newsProgressCard.style.display = 'block';
+        newsPreviewCard.style.display = 'none';
+        newsResultsCard.style.display = 'none';
+
+        newsProgressPhase.textContent = 'Khởi động crawler...';
+        newsProgressBarFill.style.width = '5%';
+        newsProgressPercent.textContent = '5%';
+        newsProgressMessage.textContent = `Đang kết nối tới ${sources.length} nguồn tin tức (năm ${yearFrom}-${yearTo})...`;
+
+        try {
+          const resp = await fetch('/api/news/scrape-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tickers: tickers,
+              sources: sources,
+              target_articles_per_ticker: targetPerTicker,
+              year_from: yearFrom,
+              year_to: yearTo,
+              custom_urls: customUrls,
+            }),
+          });
+
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line.startsWith('data:')) {
+                const jsonStr = line.slice(5).trim();
+                if (!jsonStr) continue;
+                try {
+                  const eventData = JSON.parse(jsonStr);
+                  if (eventData.message) {
+                    newsProgressMessage.textContent = eventData.message;
+                    if (eventData.total_tickers) {
+                      const pct = Math.round((eventData.current_ticker_idx / eventData.total_tickers) * 90);
+                      newsProgressBarFill.style.width = `${pct}%`;
+                      newsProgressPercent.textContent = `${pct}%`;
+                    }
+                  }
+                  if (eventData.articles) {
+                    newsProgressBarFill.style.width = '100%';
+                    newsProgressPercent.textContent = '100%';
+                    newsProgressPhase.textContent = 'Đã hoàn tất thu thập tin tức!';
+                    currentPreviewArticles = eventData.articles;
+                    renderPreviewTable(eventData.articles);
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        } catch (err) {
+          alert(`Lỗi cào tin tức: ${err.message}`);
+        } finally {
+          btnOnlyScrapeNews.disabled = false;
+        }
+      });
+    }
+
+    function renderPreviewTable(articles) {
+      if (!newsPreviewTableBody) return;
+      newsPreviewTableBody.innerHTML = '';
+      if (previewArticleCount) previewArticleCount.textContent = articles.length;
+
+      if (!articles || articles.length === 0) {
+        newsPreviewTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Không thu thập được bài viết nào phù hợp bộ lọc năm.</td></tr>';
+        newsPreviewCard.style.display = 'block';
+        return;
+      }
+
+      articles.forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(a.ticker)}</strong></td>
+          <td class="tabular">${escapeHtml(a.year || '—')}</td>
+          <td><span class="badge-source badge-official">${escapeHtml(a.news_source)}</span></td>
+          <td>
+            <div style="font-weight: 500; color: var(--text-primary); cursor: pointer;" title="${escapeHtml(a.snippet || '')}">${escapeHtml(a.title || 'Không có tiêu đề')}</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(a.snippet || '')}</div>
+          </td>
+          <td><span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(a.published_date || 'N/A')}</span></td>
+          <td style="text-align: right;" class="tabular">${(a.word_count || 0).toLocaleString()}</td>
+          <td style="text-align: center;"><a href="${escapeHtml(a.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">↗ Xem</a></td>
+        `;
+        newsPreviewTableBody.appendChild(tr);
+      });
+
+      newsPreviewCard.style.display = 'block';
+      newsPreviewCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 4. Mine News Stream (Full Workflow)
+    if (btnExecuteNewsMining) {
+      btnExecuteNewsMining.addEventListener('click', () => triggerNewsMining());
+    }
+    if (btnMineFromPreview) {
+      btnMineFromPreview.addEventListener('click', () => triggerNewsMining());
+    }
+
+    async function triggerNewsMining() {
+      const tickers = getEnteredTickers();
+      const sources = getSelectedSources();
+      const customUrls = getCustomUrlsList();
+
+      if (tickers.length === 0 && customUrls.length === 0) {
+        alert('Vui lòng nhập ít nhất một mã chứng khoán (hoặc URL tùy chỉnh).');
+        return;
+      }
+      if (sources.length === 0) {
+        alert('Vui lòng chọn ít nhất một nguồn tin tức.');
+        return;
+      }
+
+      const targetPerTicker = parseInt(newsTargetArticles ? newsTargetArticles.value : '20') || 20;
+      const yearFrom = newsYearFrom ? parseInt(newsYearFrom.value) || 2020 : 2020;
+      const yearTo = newsYearTo ? parseInt(newsYearTo.value) || 2026 : 2026;
+      const topic = newsTopicSelect ? newsTopicSelect.value : 'blockchain';
+
+      if (btnExecuteNewsMining) btnExecuteNewsMining.disabled = true;
+      if (btnMineFromPreview) btnMineFromPreview.disabled = true;
+      newsProgressCard.style.display = 'block';
+      newsResultsCard.style.display = 'none';
+
+      newsProgressPhase.textContent = 'Đang thu thập tin tức...';
+      newsProgressBarFill.style.width = '10%';
+      newsProgressPercent.textContent = '10%';
+      newsProgressMessage.textContent = `Bắt đầu gom tin tức cho ${tickers.length} mã từ ${sources.length} nguồn (năm ${yearFrom}-${yearTo})...`;
+
+      try {
+        const resp = await fetch('/api/news/mine-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tickers: tickers,
+            sources: sources,
+            target_articles_per_ticker: targetPerTicker,
+            year_from: yearFrom,
+            year_to: yearTo,
+            custom_urls: customUrls,
+            topic: topic,
+            threshold: 85,
+          }),
+        });
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith('data:')) {
+              const jsonStr = line.slice(5).trim();
+              if (!jsonStr) continue;
+              try {
+                const eventData = JSON.parse(jsonStr);
+                if (eventData.detail) {
+                  throw new Error(eventData.detail);
+                }
+                if (eventData.phase === 'crawl') {
+                  const pct = Math.round((eventData.current / eventData.total) * 45);
+                  newsProgressBarFill.style.width = `${pct}%`;
+                  newsProgressPercent.textContent = `${pct}%`;
+                  newsProgressPhase.textContent = 'Giai đoạn 1: Thu thập tin tức đa nguồn';
+                  newsProgressMessage.textContent = eventData.message || '';
+                } else if (eventData.phase === 'mining') {
+                  const pct = 45 + Math.round((eventData.current / (eventData.total || 1)) * 50);
+                  newsProgressBarFill.style.width = `${pct}%`;
+                  newsProgressPercent.textContent = `${pct}%`;
+                  newsProgressPhase.textContent = 'Giai đoạn 2: Khai phá văn bản theo từ điển';
+                  newsProgressMessage.textContent = eventData.message || '';
+                }
+
+                if (eventData.firm_rows) {
+                  newsProgressBarFill.style.width = '100%';
+                  newsProgressPercent.textContent = '100%';
+                  newsProgressPhase.textContent = 'Hoàn tất khai phá tin tức!';
+                  lastNewsResult = eventData;
+                  renderNewsResults(eventData);
+                }
+              } catch (e) {
+                if (e.message && !e.message.includes('JSON')) throw e;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        alert(`Lỗi khai phá tin tức: ${err.message}`);
+      } finally {
+        if (btnExecuteNewsMining) btnExecuteNewsMining.disabled = false;
+        if (btnMineFromPreview) btnMineFromPreview.disabled = false;
+      }
+    }
+
+    function renderNewsResults(data) {
+      if (!newsResultsCard) return;
+
+      if (newsStatArticlesCount) newsStatArticlesCount.textContent = (data.total_articles || 0).toLocaleString();
+      if (newsStatFirmsHitCount) newsStatFirmsHitCount.textContent = `${data.firms_with_hits || 0} / ${data.total_firms || 0}`;
+      if (newsStatMentionsCount) newsStatMentionsCount.textContent = (data.total_mentions || 0).toLocaleString();
+
+      if (btnNewsDlExcel) btnNewsDlExcel.href = data.excel_download || '#';
+      if (btnNewsDlCsv) btnNewsDlCsv.href = data.csv_download || '#';
+      if (btnNewsDlStata) btnNewsDlStata.href = data.dta_download || '#';
+
+      if (newsTabBadge) {
+        newsTabBadge.textContent = data.total_articles || 0;
+        newsTabBadge.style.display = 'inline-flex';
+      }
+
+      renderFirmSummaryTable(data.firm_rows || []);
+      renderNewsSnippets(data.snippets || []);
+
+      newsResultsCard.style.display = 'block';
+      newsResultsCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderFirmSummaryTable(rows) {
+      if (!newsPanelThead || !newsPanelTbody) return;
+      newsPanelThead.innerHTML = `
+        <tr>
+          <th style="width: 80px;">Mã CK</th>
+          <th style="width: 100px; text-align: center;">Giai Đoạn</th>
+          <th style="width: 100px; text-align: right;">Tổng Số Bài</th>
+          <th style="width: 120px; text-align: right;">Bài Có Từ Khóa</th>
+          <th style="width: 110px; text-align: right;">Tỷ Lệ Đề Cập (%)</th>
+          <th style="width: 110px; text-align: right; color: #60a5fa;">Tổng Lượt (Hits)</th>
+          <th style="width: 100px; text-align: right;">Tổng Số Từ</th>
+          <th style="width: 120px; text-align: right;">Mật Độ (/1k từ)</th>
+        </tr>
+      `;
+
+      newsPanelTbody.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        newsPanelTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Không có dữ liệu tổng hợp.</td></tr>';
+        return;
+      }
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(r.ticker)}</strong></td>
+          <td class="tabular" style="text-align: center;">${escapeHtml(r.year_range || '—')}</td>
+          <td style="text-align: right;" class="tabular">${(r.total_articles || 0).toLocaleString()}</td>
+          <td style="text-align: right;" class="tabular" style="color: ${r.articles_with_hits > 0 ? 'var(--color-success)' : 'inherit'}; font-weight: ${r.articles_with_hits > 0 ? '600' : 'normal'};">${(r.articles_with_hits || 0).toLocaleString()}</td>
+          <td style="text-align: right;" class="tabular">${r.article_hit_ratio_pct || 0}%</td>
+          <td style="text-align: right;" class="tabular" style="color: #60a5fa; font-weight: 600;">${(r.total_mentions || 0).toLocaleString()}</td>
+          <td style="text-align: right;" class="tabular">${(r.total_words || 0).toLocaleString()}</td>
+          <td style="text-align: right;" class="tabular">${r.keyword_density_per_1k || 0}</td>
+        `;
+        newsPanelTbody.appendChild(tr);
+      });
+    }
+
+    function renderArticlePanelTable(rows) {
+      if (!newsPanelThead || !newsPanelTbody) return;
+      newsPanelThead.innerHTML = `
+        <tr>
+          <th style="width: 70px;">Mã CK</th>
+          <th style="width: 55px;">Năm</th>
+          <th style="width: 110px;">Nguồn</th>
+          <th>Tiêu Đề Bài Báo</th>
+          <th style="width: 85px;">Ngày</th>
+          <th style="width: 70px; text-align: right;">Số Từ</th>
+          <th style="width: 80px; text-align: right; color: #60a5fa;">Hits</th>
+          <th style="width: 60px; text-align: center;">Link</th>
+        </tr>
+      `;
+
+      newsPanelTbody.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        newsPanelTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Không có dữ liệu bài viết.</td></tr>';
+        return;
+      }
+
+      rows.forEach(r => {
+        const freq = r.frequency || r.Frequency || r.hits || 0;
+        const yr = r.year || r.published_year || '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(r.ticker)}</strong></td>
+          <td class="tabular">${escapeHtml(yr || '—')}</td>
+          <td><span class="badge-source badge-official">${escapeHtml(r.news_source || '')}</span></td>
+          <td><div style="font-weight: 500;">${escapeHtml(r.title || '')}</div></td>
+          <td><span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(r.published_date || 'N/A')}</span></td>
+          <td style="text-align: right;" class="tabular">${(r.word_count || 0).toLocaleString()}</td>
+          <td style="text-align: right;" class="tabular" style="color: ${freq > 0 ? '#60a5fa' : 'inherit'}; font-weight: ${freq > 0 ? '600' : 'normal'};">${freq}</td>
+          <td style="text-align: center;"><a href="${escapeHtml(r.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">↗</a></td>
+        `;
+        newsPanelTbody.appendChild(tr);
+      });
+    }
+
+    if (btnViewFirmSummary && btnViewArticlePanel) {
+      btnViewFirmSummary.addEventListener('click', () => {
+        btnViewFirmSummary.classList.add('active');
+        btnViewArticlePanel.classList.remove('active');
+        if (lastNewsResult) renderFirmSummaryTable(lastNewsResult.firm_rows || []);
+      });
+
+      btnViewArticlePanel.addEventListener('click', () => {
+        btnViewArticlePanel.classList.add('active');
+        btnViewFirmSummary.classList.remove('active');
+        if (lastNewsResult) renderArticlePanelTable(lastNewsResult.article_rows || []);
+      });
+    }
+
+    function renderNewsSnippets(snippets) {
+      if (!newsSnippetsContainer) return;
+      newsSnippetsContainer.innerHTML = '';
+      if (!snippets || snippets.length === 0) {
+        newsSnippetsContainer.innerHTML = '<p style="color: var(--text-muted); font-style: italic;">Không tìm thấy trích đoạn từ khóa nào.</p>';
+        return;
+      }
+
+      snippets.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'news-snippet-item';
+        const ctxHtml = escapeHtml(s.context).replace(
+          new RegExp(escapeRegExp(s.keyword), 'gi'),
+          '<mark>$&</mark>'
+        );
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; color: var(--text-muted);">
+            <span><strong>${escapeHtml(s.ticker)}</strong> | ${escapeHtml(s.source || '')} | Từ khóa: <code style="color: var(--brand-primary);">${escapeHtml(s.keyword)}</code></span>
+            <a href="${escapeHtml(s.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">Xem bài viết ↗</a>
+          </div>
+          <div style="color: var(--text-secondary);">${ctxHtml}</div>
+        `;
+        newsSnippetsContainer.appendChild(div);
+      });
+    }
+
+    // 6. Fallback Paste Text Mining
+    if (btnExecutePasteMining) {
+      btnExecutePasteMining.addEventListener('click', async () => {
+        const text = pasteNewsTextarea ? pasteNewsTextarea.value.trim() : '';
+        if (!text) {
+          alert('Vui lòng dán văn bản bài báo vào ô trước khi bấm khai phá.');
+          return;
+        }
+
+        btnExecutePasteMining.disabled = true;
+        btnExecutePasteMining.textContent = 'Đang khai phá...';
+
+        try {
+          const resp = await fetch('/api/news/mine-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ticker: pasteTickerInput ? pasteTickerInput.value.trim().toUpperCase() || 'CUSTOM' : 'CUSTOM',
+              title: pasteTitleInput ? pasteTitleInput.value.trim() || 'Văn bản nhập thủ công' : 'Văn bản nhập thủ công',
+              text: text,
+              topic: pasteTopicSelect ? pasteTopicSelect.value : 'blockchain',
+              threshold: 85,
+            }),
+          });
+
+          if (!resp.ok) throw new Error('Lỗi khai phá văn bản');
+          const res = await resp.json();
+
+          if (pasteResultSummary) {
+            pasteResultSummary.innerHTML = `
+              <div style="padding: 10px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 6px; margin-top: 8px;">
+                <div style="font-weight: 600; color: var(--brand-primary); margin-bottom: 4px;">Kết quả khai phá: ${escapeHtml(res.ticker)}</div>
+                <div>Tổng số từ: <strong>${res.total_words.toLocaleString()}</strong> | Lượt xuất hiện (Hits): <strong style="color: #60a5fa;">${res.total_hits}</strong></div>
+                <div style="margin-top: 6px; font-size: 11px; color: var(--text-muted);">
+                  ${res.snippets.length > 0 ? res.snippets.map(s => `<div>• <code>${escapeHtml(s.keyword)}</code>: ...${escapeHtml(s.context)}...</div>`).join('') : 'Không xuất hiện từ khóa nào trong từ điển.'}
+                </div>
+              </div>
+            `;
+          }
+        } catch (err) {
+          alert(`Lỗi: ${err.message}`);
+        } finally {
+          btnExecutePasteMining.disabled = false;
+          btnExecutePasteMining.textContent = 'Khai Phá Văn Bản Đã Dán';
+        }
+      });
+    }
+
+    // 7. Company Websites Directory Modal
+    const dirSearchInput = document.getElementById('dirSearchInput');
+    const dirExchangeSelect = document.getElementById('dirExchangeSelect');
+    const dirHasWebOnly = document.getElementById('dirHasWebOnly');
+    const companyDirectoryTbody = document.getElementById('companyDirectoryTbody');
+
+    if (btnOpenCompanyDirectory && companyDirectoryModal) {
+      btnOpenCompanyDirectory.addEventListener('click', () => {
+        companyDirectoryModal.style.display = 'flex';
+        loadCompanyDirectory();
+      });
+    }
+
+    if (btnCloseCompanyModal && companyDirectoryModal) {
+      btnCloseCompanyModal.addEventListener('click', () => {
+        companyDirectoryModal.style.display = 'none';
+      });
+    }
+
+    async function loadCompanyDirectory() {
+      if (!companyDirectoryTbody) return;
+      companyDirectoryTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Đang tải danh bạ website...</td></tr>';
+
+      const q = dirSearchInput ? dirSearchInput.value : '';
+      const ex = dirExchangeSelect ? dirExchangeSelect.value : '';
+      const hasWeb = dirHasWebOnly ? dirHasWebOnly.checked : false;
+
+      try {
+        const res = await fetch(`/api/news/companies?query=${encodeURIComponent(q)}&exchange=${encodeURIComponent(ex)}&has_website_only=${hasWeb}&limit=150`);
+        const data = await res.json();
+        renderCompanyDirectoryTable(data.companies || []);
+      } catch (err) {
+        companyDirectoryTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-danger); padding: 20px;">Lỗi: ${err.message}</td></tr>`;
+      }
+    }
+
+    if (dirSearchInput) {
+      let debounceTimer;
+      dirSearchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(loadCompanyDirectory, 250);
+      });
+    }
+    if (dirExchangeSelect) dirExchangeSelect.addEventListener('change', loadCompanyDirectory);
+    if (dirHasWebOnly) dirHasWebOnly.addEventListener('change', loadCompanyDirectory);
+
+    function renderCompanyDirectoryTable(companies) {
+      if (!companyDirectoryTbody) return;
+      companyDirectoryTbody.innerHTML = '';
+      if (!companies || companies.length === 0) {
+        companyDirectoryTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Không tìm thấy doanh nghiệp nào.</td></tr>';
+        return;
+      }
+
+      companies.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(c.ticker)}</strong></td>
+          <td><span class="badge-source badge-official">${escapeHtml(c.exchange || 'HOSE/HNX')}</span></td>
+          <td>${escapeHtml(c.name || '')}</td>
+          <td>${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" style="color: var(--brand-primary);">${escapeHtml(c.website)}</a>` : '<span style="color: var(--text-muted); font-style: italic;">Auto-Discovery</span>'}</td>
+          <td>${c.ir_portal ? `<a href="${escapeHtml(c.ir_portal)}" target="_blank" style="color: var(--text-secondary);">Cổng IR ↗</a>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+          <td style="text-align: center;">
+            <button class="btn btn-secondary btn-sm btn-edit-company-web" data-ticker="${escapeHtml(c.ticker)}" data-web="${escapeHtml(c.website || '')}">Sửa</button>
+          </td>
+        `;
+        companyDirectoryTbody.appendChild(tr);
+      });
+
+      // Add edit listeners
+      companyDirectoryTbody.querySelectorAll('.btn-edit-company-web').forEach(b => {
+        b.addEventListener('click', async () => {
+          const t = b.getAttribute('data-ticker');
+          const currentWeb = b.getAttribute('data-web');
+          const newWeb = prompt(`Nhập URL website cho mã ${t}:`, currentWeb);
+          if (newWeb !== null) {
+            try {
+              const res = await fetch('/api/news/companies/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticker: t, website: newWeb.trim() }),
+              });
+              if (res.ok) {
+                alert(`Đã cập nhật website cho ${t}!`);
+                loadCompanyDirectory();
+              }
+            } catch (err) {
+              alert(`Lỗi: ${err.message}`);
+            }
+          }
+        });
+      });
+    }
+  }
+
   // Helper utils
 
   function escapeHtml(text) {
@@ -2228,4 +2975,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCatalog();
   loadDictionariesList();
   loadFinancialStatus();
+  initNewsTab();
 });
+

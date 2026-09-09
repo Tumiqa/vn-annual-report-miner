@@ -55,12 +55,19 @@ from arminer.data.pdf_source import PDFSource
 from arminer.data.catalog import UnifiedCatalog
 from arminer.core.dictionary_manager import DictionaryManager
 from arminer.data.zenodo_downloader import ZenodoDownloader
+from arminer.data.news_scraper import (
+    CompanyWebsiteResolver,
+    UniversalNewsExtractor,
+    MultiSourceNewsAggregator,
+)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "arminer_downloads"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 zenodo_downloader = ZenodoDownloader()
+news_resolver = CompanyWebsiteResolver()
+news_aggregator = MultiSourceNewsAggregator(resolver=news_resolver)
 
 app = FastAPI(title="arminer Web Studio", description="Enterprise Annual Report Miner", version="0.2.0")
 
@@ -2031,6 +2038,444 @@ def download_file(filename: str):
         filename=filename,
         media_type="application/octet-stream",
     )
+
+
+# =====================================================================
+# News Mining & Multi-Source Crawler Endpoints
+# =====================================================================
+
+class CompanyWebsiteUpdateRequest(BaseModel):
+    ticker: str
+    website: Optional[str] = None
+    ir_portal: Optional[str] = None
+
+
+class NewsScrapeRequest(BaseModel):
+    tickers: List[str]
+    sources: List[str] = [
+        "company_website", "cafef", "vnexpress", "cafebiz",
+        "tinnhanhchungkhoan", "vneconomy", "vietnamnet"
+    ]
+    target_articles_per_ticker: int = 20
+    year_from: Optional[int] = 2020
+    year_to: Optional[int] = 2026
+    custom_urls: Optional[List[str]] = None
+
+
+class NewsMineRequest(BaseModel):
+    tickers: List[str]
+    sources: List[str] = [
+        "company_website", "cafef", "vnexpress", "cafebiz",
+        "tinnhanhchungkhoan", "vneconomy", "vietnamnet"
+    ]
+    target_articles_per_ticker: int = 20
+    year_from: Optional[int] = 2020
+    year_to: Optional[int] = 2026
+    custom_urls: Optional[List[str]] = None
+    topic: Optional[str] = "blockchain"
+    keywords: Optional[str] = None
+    threshold: int = 85
+
+
+class NewsPasteMineRequest(BaseModel):
+    ticker: str = "CUSTOM"
+    text: str
+    title: Optional[str] = "Văn bản nhập thủ công"
+    topic: Optional[str] = "blockchain"
+    keywords: Optional[str] = None
+    threshold: int = 85
+
+
+@app.get("/api/news/sources")
+def get_news_sources():
+    """Danh sách các nguồn tin tức tài chính được hỗ trợ."""
+    return {
+        "sources": [
+            {
+                "id": "company_website",
+                "name": "Website chính thức công ty",
+                "badge": "Chính thống",
+                "desc": "Cào tự động mục tin tức, quan hệ cổ đông (IR) trên website DN (~1,430+ mã)",
+                "default": True,
+            },
+            {
+                "id": "cafef",
+                "name": "CafeF",
+                "badge": "Tốc độ cao",
+                "desc": "Trang tin tức & dữ liệu tài chính - chứng khoán hàng đầu Việt Nam",
+                "default": True,
+            },
+            {
+                "id": "vnexpress",
+                "name": "VnExpress Kinh Doanh",
+                "badge": "Báo lớn",
+                "desc": "Báo điện tử nhiều người đọc nhất Việt Nam, chuyên mục kinh doanh & thị trường",
+                "default": True,
+            },
+            {
+                "id": "cafebiz",
+                "name": "CafeBiz",
+                "badge": "Kinh tế DN",
+                "desc": "Thông tin chuyên sâu về kinh doanh, doanh nghiệp và tài chính đầu tư",
+                "default": True,
+            },
+            {
+                "id": "tinnhanhchungkhoan",
+                "name": "Tin Nhanh Chứng Khoán (ĐTCK)",
+                "badge": "UBCKNN",
+                "desc": "Báo Đầu tư Chứng khoán - cơ quan ngôn luận của Ủy ban Chứng khoán Nhà nước",
+                "default": True,
+            },
+            {
+                "id": "vneconomy",
+                "name": "VnEconomy",
+                "badge": "Kinh tế",
+                "desc": "Tạp chí Kinh tế Việt Nam - phân tích vĩ mô & thông tin doanh nghiệp",
+                "default": True,
+            },
+            {
+                "id": "vietnamnet",
+                "name": "VietnamNet Kinh Doanh",
+                "badge": "Chính luận",
+                "desc": "Báo VietnamNet - chuyên trang tin tức kinh doanh và doanh nghiệp niêm yết",
+                "default": True,
+            },
+            {
+                "id": "custom",
+                "name": "URL Tùy chỉnh",
+                "badge": "Linh hoạt",
+                "desc": "Dán danh sách các đường link bài viết cụ thể để thu thập",
+                "default": False,
+            },
+        ]
+    }
+
+
+@app.get("/api/news/companies")
+def get_news_companies(
+    query: Optional[str] = Query(None),
+    exchange: Optional[str] = Query(None),
+    has_website_only: bool = Query(False),
+    limit: int = Query(100),
+):
+    """Tra cứu danh bạ website doanh nghiệp niêm yết."""
+    companies = news_resolver.list_companies(
+        query=query,
+        exchange=exchange,
+        has_website_only=has_website_only,
+        limit=limit,
+    )
+    total_in_db = len(news_resolver._db)
+    with_website_count = sum(1 for v in news_resolver._db.values() if v.get("website"))
+    return {
+        "total_in_db": total_in_db,
+        "with_website_count": with_website_count,
+        "companies": companies,
+    }
+
+
+@app.post("/api/news/companies/update")
+def update_news_company(req: CompanyWebsiteUpdateRequest):
+    """Cập nhật hoặc thêm thủ công URL website cho mã chứng khoán."""
+    news_resolver.update_company(req.ticker, website=req.website, ir_portal=req.ir_portal)
+    return {"success": True, "company": news_resolver.get_company(req.ticker)}
+
+
+@app.post("/api/news/scrape-stream")
+async def scrape_news_stream(req: NewsScrapeRequest):
+    """Cào tin tức đa nguồn có streaming tiến độ và tự động bù đắp thiếu hụt."""
+    async def event_generator():
+        all_articles = []
+        total_tickers = len(req.tickers)
+
+        for i, ticker in enumerate(req.tickers):
+            t = ticker.upper().strip()
+            yield {"event": "progress", "data": json.dumps({
+                "phase": "crawl",
+                "current_ticker_idx": i + 1,
+                "total_tickers": total_tickers,
+                "ticker": t,
+                "message": f"Đang cào tin tức [{i + 1}/{total_tickers}]: {t} (năm {req.year_from or ''}-{req.year_to or ''})...",
+            }, ensure_ascii=False)}
+            await asyncio.sleep(0)
+
+            loop = asyncio.get_event_loop()
+            articles = await loop.run_in_executor(
+                None,
+                lambda: news_aggregator.crawl_ticker(
+                    ticker=t,
+                    sources=req.sources,
+                    target_articles=req.target_articles_per_ticker,
+                    year_from=req.year_from,
+                    year_to=req.year_to,
+                    custom_urls=req.custom_urls,
+                )
+            )
+            all_articles.extend(articles)
+
+            yield {"event": "progress", "data": json.dumps({
+                "phase": "crawl",
+                "current_ticker_idx": i + 1,
+                "total_tickers": total_tickers,
+                "ticker": t,
+                "articles_found": len(articles),
+                "message": f"Hoàn tất {t}: đã thu thập {len(articles)} bài viết.",
+            }, ensure_ascii=False)}
+            await asyncio.sleep(0)
+
+        preview = [{
+            "ticker": a.get("ticker"),
+            "year": a.get("published_year") or "",
+            "news_source": a.get("news_source"),
+            "title": a.get("title"),
+            "published_date": a.get("published_date"),
+            "url": a.get("url"),
+            "word_count": a.get("word_count"),
+            "snippet": (a.get("text") or "")[:150] + "...",
+        } for a in all_articles]
+
+        yield {"event": "complete", "data": json.dumps({
+            "total_articles": len(all_articles),
+            "articles": preview,
+        }, ensure_ascii=False)}
+
+    return EventSourceResponse(event_generator())
+
+
+@app.post("/api/news/mine-stream")
+async def mine_news_stream(req: NewsMineRequest):
+    """Crawl tin tức + khai phá từ điển nghiên cứu trong một luồng streaming duy nhất."""
+    async def event_generator():
+        all_articles: List[Dict[str, Any]] = []
+        total_tickers = len(req.tickers)
+
+        for i, ticker in enumerate(req.tickers):
+            t = ticker.upper().strip()
+            yield {"event": "progress", "data": json.dumps({
+                "phase": "crawl",
+                "current": i + 1,
+                "total": total_tickers,
+                "ticker": t,
+                "message": f"[{i + 1}/{total_tickers}] Đang thu thập tin tức: {t} từ {len(req.sources)} nguồn (năm {req.year_from or ''}-{req.year_to or ''})...",
+            }, ensure_ascii=False)}
+            await asyncio.sleep(0)
+
+            loop = asyncio.get_event_loop()
+            articles = await loop.run_in_executor(
+                None,
+                lambda: news_aggregator.crawl_ticker(
+                    ticker=t,
+                    sources=req.sources,
+                    target_articles=req.target_articles_per_ticker,
+                    year_from=req.year_from,
+                    year_to=req.year_to,
+                    custom_urls=req.custom_urls,
+                )
+            )
+            all_articles.extend(articles)
+
+        if not all_articles:
+            yield {"event": "error", "data": json.dumps({
+                "detail": "Không thu thập được bài viết nào phù hợp bộ lọc từ các nguồn đã chọn. Hãy thử nới rộng khoảng năm hoặc chọn thêm nguồn báo."
+            }, ensure_ascii=False)}
+            return
+
+        yield {"event": "progress", "data": json.dumps({
+            "phase": "mining",
+            "current": 0,
+            "total": len(all_articles),
+            "message": f"Bắt đầu khai phá văn bản trên {len(all_articles)} bài báo...",
+        }, ensure_ascii=False)}
+        await asyncio.sleep(0)
+
+        flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
+        core_dict = flex_dict.to_core_dictionary()
+        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
+        calc = SmartVariableCalculator()
+
+        article_rows = []
+        all_snippets = []
+        all_raw_keywords = []
+
+        for idx, art in enumerate(all_articles):
+            text = art.get("text") or ""
+            words = text.split()
+            total_words = len(words)
+            text_len = len(text)
+
+            matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
+
+            vars_r = calc.calculate_all(
+                matches, total_words,
+                category_names=flex_dict.categories,
+                topic_prefix=req.topic or "news",
+                total_dict_keywords=len(flex_dict.entries),
+                classification_rules=flex_dict.classification_rules,
+            )
+
+            row = {
+                "ticker": art["ticker"],
+                "year": art.get("published_year") or "",
+                "news_source": art.get("news_source", ""),
+                "title": art.get("title", ""),
+                "published_date": art.get("published_date", ""),
+                "url": art.get("url", ""),
+                "word_count": total_words,
+                **vars_r,
+            }
+            article_rows.append(row)
+
+            kw_counts = {}
+            for m in matches:
+                kw = m.get("keyword_canonical", m.get("keyword_found", ""))
+                cat = m.get("category", "default")
+                kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
+
+            for (kw, cat), cnt in kw_counts.items():
+                all_raw_keywords.append({
+                    "ticker": art["ticker"],
+                    "title": art.get("title", "")[:60],
+                    "keyword": kw,
+                    "category": cat,
+                    "frequency": cnt,
+                })
+
+            for m in matches[:3]:
+                pos = m.get("position", 0)
+                kw = m.get("keyword_found", "")
+                snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
+                all_snippets.append({
+                    "ticker": art["ticker"],
+                    "source": art.get("news_source", ""),
+                    "title": art.get("title", ""),
+                    "url": art.get("url", ""),
+                    "keyword": kw,
+                    "category": m.get("category", "default"),
+                    "context": snippet,
+                })
+
+            if (idx + 1) % 5 == 0 or idx == len(all_articles) - 1:
+                yield {"event": "progress", "data": json.dumps({
+                    "phase": "mining",
+                    "current": idx + 1,
+                    "total": len(all_articles),
+                    "message": f"Đang khai phá {idx + 1}/{len(all_articles)}: {art.get('title', '')[:35]}...",
+                }, ensure_ascii=False)}
+                await asyncio.sleep(0)
+
+        df_articles = pd.DataFrame(article_rows)
+
+        firm_summary = []
+        freq_col = next((c for c in df_articles.columns if "frequency" in c.lower()), None)
+        dummy_col = next((c for c in df_articles.columns if "dummy" in c.lower()), None)
+
+        for ticker, grp in df_articles.groupby("ticker"):
+            tot_art = len(grp)
+            tot_words = grp["word_count"].sum()
+            tot_hits = grp[freq_col].sum() if freq_col else 0
+            art_with_hits = (grp[dummy_col] > 0).sum() if dummy_col else 0
+            hit_ratio = round(art_with_hits / tot_art * 100, 2) if tot_art > 0 else 0
+            density = round(tot_hits / tot_words * 1000, 4) if tot_words > 0 else 0
+
+            firm_summary.append({
+                "ticker": ticker,
+                "year_range": f"{req.year_from or ''}-{req.year_to or ''}",
+                "total_articles": tot_art,
+                "articles_with_hits": int(art_with_hits),
+                "article_hit_ratio_pct": hit_ratio,
+                "total_mentions": int(tot_hits),
+                "total_words": int(tot_words),
+                "keyword_density_per_1k": density,
+            })
+
+        df_firms = pd.DataFrame(firm_summary)
+        raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else pd.DataFrame()
+
+        out_xlsx = DOWNLOAD_DIR / "news_panel_data.xlsx"
+        try:
+            with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
+                df_firms.to_excel(writer, sheet_name="Firm_Summary", index=False)
+                df_articles.to_excel(writer, sheet_name="Articles_Panel", index=False)
+                if not raw_df.empty:
+                    raw_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
+        except Exception as e:
+            logger.error(f"Failed writing news_panel_data.xlsx: {e}")
+
+        out_csv = DOWNLOAD_DIR / "news_panel_data.csv"
+        df_articles.to_csv(out_csv, index=False, encoding="utf-8-sig")
+
+        out_dta = DOWNLOAD_DIR / "news_panel_data.dta"
+        try:
+            from arminer.core.smart_mode import sanitize_stata_dataframe
+            stata_df, labels = sanitize_stata_dataframe(df_firms)
+            stata_df.to_stata(out_dta, write_index=False, version=118, variable_labels=labels)
+        except Exception as e:
+            logger.warning(f"News Stata export failed: {e}")
+
+        total_mentions = int(df_firms["total_mentions"].sum()) if "total_mentions" in df_firms.columns else 0
+        firms_with_hits = int((df_firms["articles_with_hits"] > 0).sum()) if "articles_with_hits" in df_firms.columns else 0
+
+        yield {"event": "complete", "data": json.dumps({
+            "total_articles": len(df_articles),
+            "total_firms": len(df_firms),
+            "firms_with_hits": firms_with_hits,
+            "total_mentions": total_mentions,
+            "firm_rows": df_firms.to_dict(orient="records"),
+            "article_rows": df_articles.head(50).to_dict(orient="records"),
+            "snippets": all_snippets[:50],
+            "excel_download": "/api/download/news_panel_data.xlsx",
+            "csv_download": "/api/download/news_panel_data.csv",
+            "dta_download": "/api/download/news_panel_data.dta",
+        }, ensure_ascii=False, default=str)}
+
+    return EventSourceResponse(event_generator())
+
+
+@app.post("/api/news/mine-text")
+def mine_news_text(req: NewsPasteMineRequest):
+    """Khai phá từ điển trực tiếp trên văn bản paste thủ công."""
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Văn bản không được để trống.")
+
+    flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
+    core_dict = flex_dict.to_core_dictionary()
+    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
+    calc = SmartVariableCalculator()
+
+    text = req.text.strip()
+    words = text.split()
+    total_words = len(words)
+    text_len = len(text)
+
+    matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
+
+    vars_r = calc.calculate_all(
+        matches, total_words,
+        category_names=flex_dict.categories,
+        topic_prefix=req.topic or "news",
+        total_dict_keywords=len(flex_dict.entries),
+        classification_rules=flex_dict.classification_rules,
+    )
+
+    snippets = []
+    for m in matches[:10]:
+        pos = m.get("position", 0)
+        kw = m.get("keyword_found", "")
+        snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
+        snippets.append({
+            "keyword": kw,
+            "category": m.get("category", "default"),
+            "context": snippet,
+        })
+
+    return {
+        "ticker": req.ticker,
+        "title": req.title,
+        "total_words": total_words,
+        "total_hits": len(matches),
+        "variables": vars_r,
+        "snippets": snippets,
+    }
 
 
 # Mount static files

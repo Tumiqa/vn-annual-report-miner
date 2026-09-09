@@ -1,10 +1,10 @@
 <p align="center">
   <h1 align="center">vn-annual-report-miner</h1>
   <p align="center">
-    <strong>Bộ công cụ khai phá Báo cáo Thường niên & Báo cáo Tài chính Doanh nghiệp niêm yết Việt Nam</strong>
+    <strong>Bộ công cụ khai phá Báo cáo Thường niên, Tin tức Báo chí Doanh nghiệp & Báo cáo Tài chính niêm yết Việt Nam</strong>
   </p>
   <p align="center">
-    Khai phá từ khóa văn bản BCTN (14,000+ báo cáo Zenodo) • Phân tích 702 chỉ tiêu BCTC & 75 tỷ số tài chính • Xuất Panel Data chuẩn cho hồi quy kinh tế lượng (Stata, Python, R, Excel VBA Macro)
+    Khai phá từ khóa văn bản BCTN (14,000+ báo cáo Zenodo) • Khai phá tin tức đa nguồn (8 cổng báo chí & website ~1,433 doanh nghiệp) • Phân tích 702 chỉ tiêu BCTC & 75 tỷ số tài chính • Xuất Panel Data chuẩn cho hồi quy kinh tế lượng (Stata, Python, R, Excel VBA Macro)
   </p>
 </p>
 
@@ -20,9 +20,10 @@
 ## Điểm nổi bật
 
 - **Dành cho mọi người (kể cả chưa từng viết code)**: Cung cấp giao diện đồ họa Web Studio trực quan, thao tác hoàn toàn bằng chuột.
-- **Cài đặt 1 lệnh trọn gói**: Tự động cài đặt toàn bộ tính năng (Web UI, BCTC 702 chỉ tiêu, xuất Stata `.dta`, thuật toán Fuzzy) trong duy nhất một lần chạy.
+- **Cài đặt 1 lệnh trọn gói**: Tự động cài đặt toàn bộ tính năng (Web UI, BCTC 702 chỉ tiêu, Khai phá tin tức đa nguồn, xuất Stata `.dta`, thuật toán Fuzzy) trong duy nhất một lần chạy.
 - **Tương thích mọi hệ điều hành**: Hoạt động mượt mà trên **Windows**, **macOS** (MacBook chip M1/M2/M3/Intel) và **Linux**.
-- **Kho 14,000+ BCTN gốc (Zenodo 2000–2025)**: Tra cứu và tải các file PDF gốc được tự động phân nhóm theo Mã CK, Ngành hoặc Năm dạng ZIP.
+- **Kho 14,000+ BCTN gốc (Zenodo 2000–2025)**: Tra cứu và tải các file PDF gốc được tự động phân nhóm theo Mã CK, Ngành hoặc Năm dạng ZIP; khai phá văn bản và hiển thị kết quả tại chỗ.
+- **Khai phá Tin tức Đa nguồn (News Text Mining)**: Thu thập và khai phá toàn văn bài báo từ 8 nguồn tin lớn (CafeF, Tin Nhanh Chứng Khoán, VnEconomy, VnExpress Kinh Doanh, CafeBiz, VietnamNet, Website chính thức ~1,433 doanh nghiệp niêm yết) với bộ lọc năm thông minh và cơ chế bù đắp hạn ngạch tự động.
 - **702 chỉ tiêu BCTC & 75 tỷ số tài chính**: Dữ liệu chuẩn mực của 692 công ty niêm yết (HSX & HNX), phân bổ 13 nhóm kế toán và các tỷ số WiData chuyên sâu (Margin, FVTPL, AFS...).
 - **Excel Macro VBA thông minh (`.xlsm`)**: Tự động lọc mã chứng khoán theo ô `B2` và đồng bộ đa sheet chỉ với 1 click.
 - **Đầu ra chuẩn Panel Data**: Sẵn sàng đưa vào Stata (`.dta`), R, Python (`.csv`, `.parquet`) hoặc Excel (`.xlsx`, `.xlsm`).
@@ -107,20 +108,36 @@ arminer financial fetch -t VCB,HPG,VNM -y 2018-2024 -o bctc.xlsx
 
 ### 1. Phân hệ Web Studio
 
-Web Studio cung cấp quy trình nghiên cứu khép kín với 6 phân hệ:
+Web Studio cung cấp quy trình nghiên cứu khép kín với các phân hệ độc lập, tự hiển thị kết quả tại chỗ:
 
 | Phân hệ | Nghiệp vụ nghiên cứu |
 |---|---|
-| **Kho Báo Cáo Zenodo** | Tra cứu 13,982 BCTN, lọc theo Mã CK / Ngành / Năm, tải gói ZIP chứa PDF gốc. |
+| **Báo Cáo Thường Niên (Zenodo)** | Tra cứu 13,982 BCTN, lọc theo Mã CK / Ngành / Năm, tải gói ZIP chứa PDF gốc, khai phá văn bản và hiển thị kết quả ngay tại chỗ. |
+| **Khai Phá Tin Tức Đa Nguồn** | Thu thập và khai phá toàn văn bài báo từ 8 nguồn tin lớn (CafeF, Tin Nhanh CK, VnEconomy, VnExpress, CafeBiz, VietnamNet, Website chính thức ~1,433 DN), lọc theo dải năm, tự bù quota, xuất Panel Data. |
 | **Báo Cáo Tài Chính** | Truy vấn 702 chỉ tiêu BCTC & 75 chỉ số tài chính, xuất Excel đa sheet kèm Macro VBA hoặc Stata. |
 | **Biên Tập Từ Điển** | Quản lý hệ thống từ khóa nghiên cứu (phân nhóm category, từ đồng nghĩa, trọng số). |
 | **Tải File Riêng** | Quét các tệp PDF/TXT lưu trữ trên máy tính cá nhân. |
-| **Kết Quả Nghiên Cứu** | Trực quan hóa Panel Data, trích xuất đoạn ngữ cảnh (snippets), thống kê mô tả. |
-| **Ghép Nối Dữ Liệu** | Tự động ghép nối biến Text Mining và biến Tài chính theo cặp `(ticker, year)` để ước lượng mô hình. |
+| **Ghép Nối Dữ Liệu** | Tự động ghép nối biến Text Mining và biến Tài chính theo cặp `(ticker, year)` để ước lượng mô hình hồi quy. |
 
 ---
 
-### 2. Tải BCTN gốc từ Zenodo dạng ZIP
+### 2. Phân hệ Khai phá Tin tức Doanh nghiệp Đa Nguồn (News Text Mining)
+
+Phân hệ giải quyết bài toán nghiên cứu tâm lý thị trường, mức độ chú ý của truyền thông và công bố thông tin đột xuất của doanh nghiệp:
+
+- **Bao phủ 8 nguồn tin tài chính & website doanh nghiệp**:
+  - **Website chính thức của công ty**: Tự động liên kết danh bạ ~1,433 mã cổ phiếu trên 3 sàn HoSE, HNX, UPCoM; tích hợp cơ chế *Auto-Discovery* dò tìm domain và giao diện chỉnh sửa URL linh hoạt.
+  - **6 cổng thông tin kinh tế - chứng khoán lớn chịu cào**: CafeF, Tin Nhanh Chứng Khoán (ĐTCK - cơ quan ngôn luận UBCKNN), VnEconomy, VnExpress Kinh Doanh, CafeBiz, VietnamNet Kinh Doanh.
+  - **URL Tùy chỉnh & Chế độ Fallback**: Cho phép dán trực tiếp danh sách link bài viết hoặc dán toàn văn bài báo (Paste Text) khi website nguồn bật tường lửa chặn bot.
+- **Cơ chế bù đắp hạn ngạch thông minh ("Thiếu nguồn này thì nguồn khác đắp vào")**: Khi người dùng đặt mục tiêu (ví dụ: 20 bài / mã CK), nếu website doanh nghiệp chỉ có vài bài hoặc lỗi kết nối, hệ thống tự động tăng hạn ngạch truy vấn sang các cổng báo chí lớn khác để đảm bảo luôn gom đủ quota cho phân tích.
+- **Bộ lọc theo năm xuất bản (`Từ năm` — `Đến năm`)**: Thuật toán đa tầng tự động phân tích ngày đăng từ thẻ ISO datetime, cấu trúc URL slug và dòng mở đầu bài viết để lọc chuẩn xác các bài báo xuất bản trong dải năm nghiên cứu.
+- **Trích xuất toàn văn sạch bằng Trafilatura**: Tự động loại bỏ hoàn toàn mã JavaScript, banner quảng cáo, menu điều hướng và bình luận rác.
+- **Nhập mã siêu tốc & Phân cấp ngành ICB**: Hỗ trợ gõ/dán danh sách mã cách nhau bằng dấu phẩy (`VCB, BID, CTG, FPT...`), chọn theo 2 cấp ngành ICB (Cấp 1 & Cấp 2) với nút *Thêm theo ngành*, hoặc bấm chọn nhanh theo rổ chỉ số (VN30, VN100, HNX30, Ngân hàng, BĐS, Chứng khoán, Công nghệ).
+- **Đầu ra chuẩn Panel Data**: Xuất file Excel 3 sheets (`Firm_Summary`, `Articles_Panel`, `Context_Snippets`), Stata `.dta` và CSV với đầy đủ biến tần suất, biến quy mô, từ khóa xuất hiện và đoạn ngữ cảnh highlight.
+
+---
+
+### 3. Tải BCTN gốc từ Zenodo dạng ZIP
 
 Hệ thống cho phép tải trực tiếp file PDF gốc từ Zenodo về máy tính với tốc độ cao (Range Request) và tự động đóng gói theo 3 cấu trúc thư mục tùy chọn:
 
@@ -138,7 +155,7 @@ Hệ thống cho phép tải trực tiếp file PDF gốc từ Zenodo về máy 
 
 ---
 
-### 3. Hệ thống Báo cáo Tài chính & 75 Tỷ số chuẩn
+### 4. Hệ thống Báo cáo Tài chính & 75 Tỷ số chuẩn
 
 - **702 chỉ tiêu BCTC**: Phân bổ chuẩn mực theo 13 nhóm kế toán (Tài sản ngắn/dài hạn, Nợ phải trả ngắn/dài hạn, Vốn CSH, Kết quả KD, 4 nhóm Lưu chuyển tiền tệ, Ngoại bảng CTCK, Thuyết minh FVTPL/HTM/AFS).
 - **75 tỷ số tài chính chuẩn hóa WiData**:
@@ -148,7 +165,7 @@ Hệ thống cho phép tải trực tiếp file PDF gốc từ Zenodo về máy 
   - *Cơ cấu tài sản & Chi phí*: % FVTPL, % AFS, % HTM, % Tiền mặt, % Chi phí hoạt động, Chi phí dự phòng...
   - *Tăng trưởng cùng kỳ (YoY)* & *Quy mô*: Tăng trưởng Doanh thu, LNST, Tài sản, VCSH, Quy mô Logarit `ln(Tổng tài sản)`...
 
-### 4. File Excel chuyên nghiệp (`.xlsx`) — Chọn mã CK tự động
+### 5. File Excel chuyên nghiệp (`.xlsx`) — Chọn mã CK tự động
 
 Khi xuất dữ liệu tài chính từ Web Studio, hệ thống tạo file `financial_data.xlsx` gồm 8 sheet:
 
@@ -170,7 +187,7 @@ Khi xuất dữ liệu tài chính từ Web Studio, hệ thống tạo file `fin
 
 ---
 
-### 5. Định dạng Từ khóa & Thuật toán Khớp mờ (Fuzzy Matching)
+### 6. Định dạng Từ khóa & Thuật toán Khớp mờ (Fuzzy Matching)
 
 Hệ thống hỗ trợ nạp từ khóa linh hoạt từ file `.txt`, `.csv`, `.xlsx` hoặc `.yaml`:
 
@@ -194,7 +211,7 @@ Thuật toán **Sliding-window Levenshtein** thích ứng:
 
 ---
 
-### 6. Bảng tra cứu lệnh CLI
+### 7. Bảng tra cứu lệnh CLI
 
 ```bash
 arminer --help
