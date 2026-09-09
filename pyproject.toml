@@ -50,6 +50,8 @@ dependencies = [
     "python-multipart>=0.0.6",
     "vnfinancialdata>=0.1.0",
     "pyreadstat>=1.2.0",
+    "beautifulsoup4>=4.12.0",
+    "trafilatura>=1.6.0",
 ]
 
 [project.optional-dependencies]
