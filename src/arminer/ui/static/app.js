@@ -1491,6 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (finSelectedItems.size === 0) {
       container.innerHTML = '<span style="color: var(--text-muted); font-size: 12px;">Chọn chỉ tiêu từ danh mục bên trái hoặc dùng Preset</span>';
+      updateFinQuerySummary();
       return;
     }
 
@@ -1507,6 +1508,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       container.appendChild(chip);
     });
+    updateFinQuerySummary();
   }
 
   // Clear all
@@ -1908,15 +1910,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (nTickers === 0) {
       el.textContent = '';
     } else {
-      const parts = [];
-      if (nItems > 0) parts.push(`${nItems} chỉ tiêu BCTC`);
-      if (nRatios > 0) parts.push(`${nRatios} chỉ số tài chính`);
-      if (parts.length === 0) {
-        parts.push('0 chỉ tiêu / chỉ số (vui lòng chọn bên trên)');
-      }
-      el.textContent = `${nTickers} mã × ${parts.join(' + ')} × (${y1}–${y2})`;
+      el.textContent = `${nTickers} mã × ${nItems} chỉ tiêu × ${nRatios} chỉ số × (${y1}–${y2})`;
     }
   }
+
+  const finYearFromInput = document.getElementById('finYearFrom');
+  if (finYearFromInput) finYearFromInput.addEventListener('input', updateFinQuerySummary);
+  const finYearToInput = document.getElementById('finYearTo');
+  if (finYearToInput) finYearToInput.addEventListener('input', updateFinQuerySummary);
 
   // ─── Smart Filter: Only show items that actually exist for the selected tickers ───
   const btnFinSmartFilter = document.getElementById('btnFinSmartFilter');
@@ -2091,8 +2092,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (chk) ratios.push(chk.value);
         }
       });
-      const exchange = document.getElementById('finExchangeSelect').value || null;
-      const dropEmpty = document.getElementById('finDropEmpty') ? document.getElementById('finDropEmpty').checked : true;
+      const exchange = document.getElementById('finExchangeSelect')?.value || null;
+      const dropEmpty = true; // Luôn mặc định: có số liệu là lấy hết, cột 100% rỗng thì tự động loại bỏ
 
       // Nếu chưa chọn chỉ tiêu BCTC nhưng đã có chỉ tiêu đã lọc, tự động lấy
       if (itemCodes.length === 0 && finSmartFilterActive && finAvailableItemCodes && finAvailableItemCodes.size > 0) {
