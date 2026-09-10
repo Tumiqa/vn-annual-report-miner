@@ -1829,6 +1829,9 @@ def populate_financial_sheets(
     - Data_BCTC (Hidden raw data sheet for formulas)
     - Data_TySo (Hidden ratio data sheet for formulas - if ratios selected)
     """
+    # Force Excel to recalculate all INDEX/MATCH dynamic formulas on workbook open
+    wb.calculation.fullCalcOnLoad = True
+
     # Compute academic financial ratios
     pivot = compute_financial_ratios(pivot)
 
