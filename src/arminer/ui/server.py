@@ -2378,9 +2378,14 @@ async def mine_news_stream(req: NewsMineRequest):
 
         # Resolve research dictionary keywords
         flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
-        topic_kws = [e.keyword for e in flex_dict.entries[:15]] if flex_dict.entries else []
+        topic_kws = []
         if req.keywords:
             topic_kws.extend([k.strip() for k in req.keywords.split(",") if k.strip()])
+        elif flex_dict and flex_dict.entries:
+            for e in flex_dict.entries:
+                kw = e.get("keyword") if isinstance(e, dict) else getattr(e, "keyword", None)
+                if kw and kw not in topic_kws:
+                    topic_kws.append(kw)
 
         for i, ticker in enumerate(req.tickers):
             t = ticker.upper().strip()
