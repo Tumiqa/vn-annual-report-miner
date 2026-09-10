@@ -144,7 +144,7 @@ class UnifiedCatalog:
 
 
     def get_sectors(self) -> Dict[str, Any]:
-        """Lấy danh sách ngành ICB L1 và L2 kèm số lượng báo cáo thực tế trong Zenodo (13,982 file)."""
+        """Lấy danh sách ngành ICB L1..L4 kèm số lượng báo cáo thực tế trong Zenodo (13,982 file)."""
         self.initialize()
         tree = self.industry_classifier.get_taxonomy_tree()
 
@@ -153,19 +153,20 @@ class UnifiedCatalog:
         if self._zenodo_df is not None:
             ticker_counts = self._zenodo_df["ticker_folder"].astype(str).str.upper().value_counts().to_dict()
 
-        for s in tree["sectors"]:
-            l1_name = s["name"]
+        for s in tree.get("sectors", []):
             l1_count = 0
-            for sub in s["subsectors"]:
-                l2_name = sub["name"]
-                sub_tickers = [
-                    t for t, (l1, l2) in self.industry_classifier._ticker_map.items()
-                    if l1 == l1_name and l2 == l2_name
-                ]
-                sub_count = sum(ticker_counts.get(t, 0) for t in sub_tickers)
+            for sub in s.get("subsectors", []):
+                sub_count = sum(ticker_counts.get(t, 0) for t in sub.get("tickers", []))
                 sub["report_count"] = sub_count
                 sub["local_report_count"] = sub_count  # backward compat
                 l1_count += sub_count
+
+                for l3 in sub.get("subsectors_l3", []):
+                    l3_count = sum(ticker_counts.get(t, 0) for t in l3.get("tickers", []))
+                    l3["report_count"] = l3_count
+                    for l4 in l3.get("subsectors_l4", []):
+                        l4_count = sum(ticker_counts.get(t, 0) for t in l4.get("tickers", []))
+                        l4["report_count"] = l4_count
 
             s["report_count"] = l1_count
             s["local_report_count"] = l1_count  # backward compat
@@ -179,16 +180,14 @@ class UnifiedCatalog:
         year_to: Optional[int] = None,
         icb_l1: Optional[str] = None,
         icb_l2: Optional[str] = None,
+        icb_l3: Optional[str] = None,
+        icb_l4: Optional[str] = None,
         sector: Optional[str] = None,
         source_filter: str = "all",
         limit: int = 500,
         return_total: bool = False,
     ) -> List[Dict[str, Any]] | Tuple[List[Dict[str, Any]], int]:
-        """Search the Zenodo master catalog (13,982 reports).
-        
-        The primary and default source is Zenodo. Local files are only included
-        if source_filter is 'local_only' (for Tab 3 / CLI compatibility).
-        """
+        """Search the Zenodo master catalog (13,982 reports) with 4-level ICB filters."""
         self.initialize()
         results: List[Dict[str, Any]] = []
         total_matched = 0
@@ -205,17 +204,20 @@ class UnifiedCatalog:
             if year_to:
                 df = df[df["year_full"] <= year_to]
 
-            # Industry filter
+            # Industry filter (L1, L2, L3, L4)
             if sector:
                 matching_tickers = {
-                    t for t, (l1, l2) in self.industry_classifier._ticker_map.items()
-                    if l1 == sector or l2 == sector
+                    t for t, info in self.industry_classifier._ticker_full_map.items()
+                    if sector in [info.get("icb_l1"), info.get("icb_l2"), info.get("icb_l3"), info.get("icb_l4")]
                 }
                 df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
-            elif icb_l1 or icb_l2:
+            elif icb_l1 or icb_l2 or icb_l3 or icb_l4:
                 matching_tickers = {
-                    t for t, (l1, l2) in self.industry_classifier._ticker_map.items()
-                    if (not icb_l1 or l1 == icb_l1) and (not icb_l2 or l2 == icb_l2)
+                    t for t, info in self.industry_classifier._ticker_full_map.items()
+                    if (not icb_l1 or info.get("icb_l1") == icb_l1)
+                    and (not icb_l2 or info.get("icb_l2") == icb_l2)
+                    and (not icb_l3 or info.get("icb_l3") == icb_l3)
+                    and (not icb_l4 or info.get("icb_l4") == icb_l4)
                 }
                 df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
 
@@ -227,7 +229,7 @@ class UnifiedCatalog:
             for _, row in df_slice.iterrows():
                 t = str(row["ticker_folder"]).upper()
                 y = int(row["year_full"]) if pd.notna(row["year_full"]) else 0
-                l1, l2 = self.industry_classifier.get_industry(t)
+                c_info = self.industry_classifier.get_industry_full(t)
 
                 results.append({
                     "record_id": str(row["record_id"]),
@@ -237,8 +239,11 @@ class UnifiedCatalog:
                     "relative_path": str(row["relative_path"]),
                     "archive_period": str(row["archive_period"]),
                     "source": "zenodo",
-                    "icb_l1": l1,
-                    "icb_l2": l2,
+                    "icb_l1": c_info.get("icb_l1", "Khác"),
+                    "icb_l2": c_info.get("icb_l2", "Chưa phân loại"),
+                    "icb_l3": c_info.get("icb_l3", ""),
+                    "icb_l4": c_info.get("icb_l4", ""),
+                    "icb_code": c_info.get("icb_code", ""),
                     "file_size_mb": float(row["file_size_mb"]) if pd.notna(row["file_size_mb"]) else 0.0,
                     "status": "available",
                 })
@@ -276,6 +281,8 @@ class UnifiedCatalog:
         year_to: Optional[int] = None,
         icb_l1: Optional[str] = None,
         icb_l2: Optional[str] = None,
+        icb_l3: Optional[str] = None,
+        icb_l4: Optional[str] = None,
         sector: Optional[str] = None,
     ) -> List[str]:
         """Lấy toàn bộ record_id khớp bộ lọc từ Zenodo mà không bị giới hạn số lượng."""
@@ -293,14 +300,17 @@ class UnifiedCatalog:
 
         if sector:
             matching_tickers = {
-                t for t, (l1, l2) in self.industry_classifier._ticker_map.items()
-                if l1 == sector or l2 == sector
+                t for t, info in self.industry_classifier._ticker_full_map.items()
+                if sector in [info.get("icb_l1"), info.get("icb_l2"), info.get("icb_l3"), info.get("icb_l4")]
             }
             df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
-        elif icb_l1 or icb_l2:
+        elif icb_l1 or icb_l2 or icb_l3 or icb_l4:
             matching_tickers = {
-                t for t, (l1, l2) in self.industry_classifier._ticker_map.items()
-                if (not icb_l1 or l1 == icb_l1) and (not icb_l2 or l2 == icb_l2)
+                t for t, info in self.industry_classifier._ticker_full_map.items()
+                if (not icb_l1 or info.get("icb_l1") == icb_l1)
+                and (not icb_l2 or info.get("icb_l2") == icb_l2)
+                and (not icb_l3 or info.get("icb_l3") == icb_l3)
+                and (not icb_l4 or info.get("icb_l4") == icb_l4)
             }
             df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
 

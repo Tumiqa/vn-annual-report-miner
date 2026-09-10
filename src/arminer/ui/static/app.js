@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const catTickerInput = document.getElementById('catTickerInput');
   const catSectorL1 = document.getElementById('catSectorL1');
   const catSectorL2 = document.getElementById('catSectorL2');
+  const catSectorL3 = document.getElementById('catSectorL3');
+  const catSectorL4 = document.getElementById('catSectorL4');
   const catYearFrom = document.getElementById('catYearFrom');
   const catYearTo = document.getElementById('catYearTo');
   const catLimitSelect = document.getElementById('catLimitSelect');
@@ -58,14 +60,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       sectorsHierarchy = data.sectors || [];
 
-      catSectorL1.innerHTML = '<option value="">Tất cả ngành (L1)</option>';
-      sectorsHierarchy.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.name;
-        const countStr = (s.report_count || s.local_report_count || 0).toLocaleString();
-        opt.textContent = `${s.name} (${s.total_tickers} mã | ${countStr} báo cáo)`;
-        catSectorL1.appendChild(opt);
-      });
+      if (catSectorL1) {
+        catSectorL1.innerHTML = '<option value="">Tất cả ngành (L1)</option>';
+        sectorsHierarchy.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.name;
+          const countStr = (s.report_count || s.local_report_count || 0).toLocaleString();
+          opt.textContent = `${s.name} (${s.total_tickers} mã | ${countStr} báo cáo)`;
+          catSectorL1.appendChild(opt);
+        });
+      }
+      if (catSectorL2) catSectorL2.innerHTML = '<option value="">Tất cả ngành (L2)</option>';
+      if (catSectorL3) catSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+      if (catSectorL4) catSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
     } catch (err) {
       console.error('Lỗi tải danh mục ngành:', err);
     }
@@ -74,9 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (catSectorL1) {
     catSectorL1.addEventListener('change', () => {
       const selectedL1 = catSectorL1.value;
-      catSectorL2.innerHTML = '<option value="">Tất cả phân ngành (L2)</option>';
+      if (catSectorL2) catSectorL2.innerHTML = '<option value="">Tất cả ngành (L2)</option>';
+      if (catSectorL3) catSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+      if (catSectorL4) catSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
 
-      if (selectedL1) {
+      if (selectedL1 && catSectorL2) {
         const found = sectorsHierarchy.find(s => s.name === selectedL1);
         if (found && found.subsectors) {
           found.subsectors.forEach(sub => {
@@ -93,7 +102,57 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (catSectorL2) {
-    catSectorL2.addEventListener('change', loadCatalog);
+    catSectorL2.addEventListener('change', () => {
+      const selectedL1 = catSectorL1 ? catSectorL1.value : '';
+      const selectedL2 = catSectorL2.value;
+      if (catSectorL3) catSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+      if (catSectorL4) catSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+      if (selectedL1 && selectedL2 && catSectorL3) {
+        const foundL1 = sectorsHierarchy.find(s => s.name === selectedL1);
+        const foundL2 = foundL1 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === selectedL2) : null;
+        if (foundL2 && foundL2.subsectors_l3) {
+          foundL2.subsectors_l3.forEach(l3 => {
+            const opt = document.createElement('option');
+            opt.value = l3.name;
+            const countStr = (l3.report_count || 0).toLocaleString();
+            opt.textContent = `${l3.name} (${l3.ticker_count} mã | ${countStr} báo cáo)`;
+            catSectorL3.appendChild(opt);
+          });
+        }
+      }
+      loadCatalog();
+    });
+  }
+
+  if (catSectorL3) {
+    catSectorL3.addEventListener('change', () => {
+      const selectedL1 = catSectorL1 ? catSectorL1.value : '';
+      const selectedL2 = catSectorL2 ? catSectorL2.value : '';
+      const selectedL3 = catSectorL3.value;
+      if (catSectorL4) catSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+      if (selectedL1 && selectedL2 && selectedL3 && catSectorL4) {
+        const foundL1 = sectorsHierarchy.find(s => s.name === selectedL1);
+        const foundL2 = foundL1 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === selectedL2) : null;
+        const foundL3 = foundL2 && foundL2.subsectors_l3 ? foundL2.subsectors_l3.find(s => s.name === selectedL3) : null;
+        if (foundL3 && foundL3.subsectors_l4) {
+          foundL3.subsectors_l4.forEach(l4 => {
+            const opt = document.createElement('option');
+            opt.value = l4.name;
+            const countStr = (l4.report_count || 0).toLocaleString();
+            const codeStr = l4.code ? `[${l4.code}] ` : '';
+            opt.textContent = `${codeStr}${l4.name} (${l4.ticker_count} mã | ${countStr} báo cáo)`;
+            catSectorL4.appendChild(opt);
+          });
+        }
+      }
+      loadCatalog();
+    });
+  }
+
+  if (catSectorL4) {
+    catSectorL4.addEventListener('change', loadCatalog);
   }
 
   if (catLimitSelect) {
@@ -111,6 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ticker = catTickerInput.value.trim();
     const l1 = catSectorL1 ? catSectorL1.value : '';
     const l2 = catSectorL2 ? catSectorL2.value : '';
+    const l3 = catSectorL3 ? catSectorL3.value : '';
+    const l4 = catSectorL4 ? catSectorL4.value : '';
     const yFrom = catYearFrom.value;
     const yTo = catYearTo.value;
     const limit = catLimitSelect ? catLimitSelect.value : '500';
@@ -119,6 +180,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ticker) params.append('ticker', ticker);
     if (l1) params.append('icb_l1', l1);
     if (l2) params.append('icb_l2', l2);
+    if (l3) params.append('icb_l3', l3);
+    if (l4) params.append('icb_l4', l4);
     if (yFrom) params.append('year_from', yFrom);
     if (yTo) params.append('year_to', yTo);
     params.append('limit', limit);
@@ -162,7 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="tabular">${r.year}</td>
         <td>
           <span class="badge badge-cat" style="margin-bottom: 2px;">${escapeHtml(r.icb_l1 || 'Chưa phân loại')}</span>
-          ${r.icb_l2 ? `<div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(r.icb_l2)}</div>` : ''}
+          ${r.icb_l2 ? `<div style="font-size: 11px; color: var(--text-secondary); font-weight: 500;">${escapeHtml(r.icb_l2)}</div>` : ''}
+          ${r.icb_l4 ? `<div style="font-size: 10px; color: var(--brand-primary);">${escapeHtml(r.icb_code ? `[${r.icb_code}] ${r.icb_l4}` : r.icb_l4)}</div>` : (r.icb_l3 ? `<div style="font-size: 10px; color: var(--text-muted);">${escapeHtml(r.icb_l3)}</div>` : '')}
         </td>
         <td style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(r.file_name)}">
           ${escapeHtml(r.file_name)}
@@ -263,6 +327,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const ticker = catTickerInput.value.trim();
       const l1 = catSectorL1 ? catSectorL1.value : '';
       const l2 = catSectorL2 ? catSectorL2.value : '';
+      const l3 = catSectorL3 ? catSectorL3.value : '';
+      const l4 = catSectorL4 ? catSectorL4.value : '';
       const yFrom = catYearFrom.value;
       const yTo = catYearTo.value;
 
@@ -270,6 +336,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ticker) params.append('ticker', ticker);
       if (l1) params.append('icb_l1', l1);
       if (l2) params.append('icb_l2', l2);
+      if (l3) params.append('icb_l3', l3);
+      if (l4) params.append('icb_l4', l4);
       if (yFrom) params.append('year_from', yFrom);
       if (yTo) params.append('year_to', yTo);
 
@@ -1699,57 +1767,139 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const l1Sel = document.getElementById('finSectorL1');
-      if (!l1Sel) return;
-      l1Sel.innerHTML = '<option value="">Tất cả ngành</option>';
-      finSectorTree.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.name;
-        opt.textContent = `${s.name} (${s.total_tickers} mã)`;
-        l1Sel.appendChild(opt);
-      });
+      const l2Sel = document.getElementById('finSectorL2');
+      const l3Sel = document.getElementById('finSectorL3');
+      const l4Sel = document.getElementById('finSectorL4');
+
+      if (l1Sel) {
+        l1Sel.innerHTML = '<option value="">Tất cả ngành (L1)</option>';
+        finSectorTree.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.name;
+          opt.textContent = `${s.name} (${s.total_tickers} mã)`;
+          l1Sel.appendChild(opt);
+        });
+      }
+      if (l2Sel) l2Sel.innerHTML = '<option value="">Tất cả ngành (L2)</option>';
+      if (l3Sel) l3Sel.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+      if (l4Sel) l4Sel.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
     } catch (e) {
       console.error('Load fin sectors error:', e);
     }
   }
 
-  // L1 → L2 cascade
+  // L1 → L2 → L3 → L4 cascade for Financial Tab
   const finSectorL1 = document.getElementById('finSectorL1');
+  const finSectorL2 = document.getElementById('finSectorL2');
+  const finSectorL3 = document.getElementById('finSectorL3');
+  const finSectorL4 = document.getElementById('finSectorL4');
+
   if (finSectorL1) {
     finSectorL1.addEventListener('change', () => {
-      const l2Sel = document.getElementById('finSectorL2');
-      l2Sel.innerHTML = '<option value="">Tất cả phân ngành</option>';
+      if (finSectorL2) finSectorL2.innerHTML = '<option value="">Tất cả ngành (L2)</option>';
+      if (finSectorL3) finSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+      if (finSectorL4) finSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
       const selectedL1 = finSectorL1.value;
-      if (!selectedL1) return;
+      if (!selectedL1 || !finSectorL2) return;
       const found = finSectorTree.find(s => s.name === selectedL1);
       if (found && found.subsectors) {
         found.subsectors.forEach(sub => {
           const opt = document.createElement('option');
           opt.value = sub.name;
           opt.textContent = `${sub.name} (${sub.ticker_count} mã)`;
-          l2Sel.appendChild(opt);
+          finSectorL2.appendChild(opt);
         });
       }
     });
   }
 
-  // "Thêm ngành" button
+  if (finSectorL2) {
+    finSectorL2.addEventListener('change', () => {
+      if (finSectorL3) finSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+      if (finSectorL4) finSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+      const selectedL1 = finSectorL1 ? finSectorL1.value : '';
+      const selectedL2 = finSectorL2.value;
+      if (!selectedL1 || !selectedL2 || !finSectorL3) return;
+      const foundL1 = finSectorTree.find(s => s.name === selectedL1);
+      const foundL2 = foundL1 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === selectedL2) : null;
+      if (foundL2 && foundL2.subsectors_l3) {
+        foundL2.subsectors_l3.forEach(l3 => {
+          const opt = document.createElement('option');
+          opt.value = l3.name;
+          opt.textContent = `${l3.name} (${l3.ticker_count} mã)`;
+          finSectorL3.appendChild(opt);
+        });
+      }
+    });
+  }
+
+  if (finSectorL3) {
+    finSectorL3.addEventListener('change', () => {
+      if (finSectorL4) finSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+      const selectedL1 = finSectorL1 ? finSectorL1.value : '';
+      const selectedL2 = finSectorL2 ? finSectorL2.value : '';
+      const selectedL3 = finSectorL3.value;
+      if (!selectedL1 || !selectedL2 || !selectedL3 || !finSectorL4) return;
+      const foundL1 = finSectorTree.find(s => s.name === selectedL1);
+      const foundL2 = foundL1 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === selectedL2) : null;
+      const foundL3 = foundL2 && foundL2.subsectors_l3 ? foundL2.subsectors_l3.find(s => s.name === selectedL3) : null;
+      if (foundL3 && foundL3.subsectors_l4) {
+        foundL3.subsectors_l4.forEach(l4 => {
+          const opt = document.createElement('option');
+          opt.value = l4.name;
+          const codeStr = l4.code ? `[${l4.code}] ` : '';
+          opt.textContent = `${codeStr}${l4.name} (${l4.ticker_count} mã)`;
+          finSectorL4.appendChild(opt);
+        });
+      }
+    });
+  }
+
+  // "Thêm ngành" button for Financial Tab
   const btnFinAddSector = document.getElementById('btnFinAddSector');
   if (btnFinAddSector) {
     btnFinAddSector.addEventListener('click', () => {
-      const l1 = document.getElementById('finSectorL1').value;
-      const l2 = document.getElementById('finSectorL2').value;
-      if (!l1) { alert('Vui lòng chọn ngành ICB L1 trước!'); return; }
-      const found = finSectorTree.find(s => s.name === l1);
-      if (!found) return;
-      let tickersToAdd = [];
-      if (l2) {
-        const sub = found.subsectors.find(s => s.name === l2);
-        if (sub) tickersToAdd = sub.tickers || [];
-      } else {
-        found.subsectors.forEach(sub => {
-          tickersToAdd.push(...(sub.tickers || []));
-        });
+      const l1 = finSectorL1 ? finSectorL1.value : '';
+      const l2 = finSectorL2 ? finSectorL2.value : '';
+      const l3 = finSectorL3 ? finSectorL3.value : '';
+      const l4 = finSectorL4 ? finSectorL4.value : '';
+
+      if (!l1 && !l2 && !l3 && !l4) {
+        alert('Vui lòng chọn ít nhất một cấp ngành ICB (L1, L2, L3, hoặc L4) trước khi bấm thêm!');
+        return;
       }
+
+      let tickersToAdd = [];
+      const foundL1 = finSectorTree.find(s => s.name === l1);
+      if (foundL1) {
+        const foundL2 = l2 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === l2) : null;
+        if (foundL2) {
+          const foundL3 = l3 && foundL2.subsectors_l3 ? foundL2.subsectors_l3.find(s => s.name === l3) : null;
+          if (foundL3) {
+            const foundL4 = l4 && foundL3.subsectors_l4 ? foundL3.subsectors_l4.find(s => s.name === l4) : null;
+            if (foundL4) {
+              tickersToAdd = foundL4.tickers || [];
+            } else {
+              tickersToAdd = foundL3.tickers || [];
+            }
+          } else {
+            tickersToAdd = foundL2.tickers || [];
+          }
+        } else {
+          (foundL1.subsectors || []).forEach(sub => {
+            tickersToAdd.push(...(sub.tickers || []));
+          });
+        }
+      }
+
+      if (tickersToAdd.length === 0) {
+        alert('Không tìm thấy mã nào trong phân ngành đã chọn.');
+        return;
+      }
+
       tickersToAdd.forEach(t => finSelectedTickers.add(t.toUpperCase()));
       renderFinTickerPills();
     });
@@ -2296,6 +2446,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const newsTickerPills = document.getElementById('newsTickerPills');
     const newsSectorL1 = document.getElementById('newsSectorL1');
     const newsSectorL2 = document.getElementById('newsSectorL2');
+    const newsSectorL3 = document.getElementById('newsSectorL3');
+    const newsSectorL4 = document.getElementById('newsSectorL4');
     const btnNewsAddSector = document.getElementById('btnNewsAddSector');
     const btnClearNewsTickers = document.getElementById('btnClearNewsTickers');
     const quickGroupBtns = document.querySelectorAll('.news-quick-group');
@@ -2449,6 +2601,9 @@ document.addEventListener('DOMContentLoaded', () => {
             newsSectorL1.appendChild(opt);
           });
         }
+        if (newsSectorL2) newsSectorL2.innerHTML = '<option value="">Tất cả ngành (L2)</option>';
+        if (newsSectorL3) newsSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+        if (newsSectorL4) newsSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
       } catch (e) {
         console.error('Lỗi tải ngành cho news tab:', e);
       }
@@ -2458,9 +2613,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newsSectorL1) {
       newsSectorL1.addEventListener('change', () => {
         const selectedL1 = newsSectorL1.value;
-        if (!newsSectorL2) return;
-        newsSectorL2.innerHTML = '<option value="">Tất cả phân ngành (L2)</option>';
-        if (selectedL1 && newsSectorTree) {
+        if (newsSectorL2) newsSectorL2.innerHTML = '<option value="">Tất cả ngành (L2)</option>';
+        if (newsSectorL3) newsSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+        if (newsSectorL4) newsSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+        if (selectedL1 && newsSectorTree && newsSectorL2) {
           const found = newsSectorTree.find(s => s.name === selectedL1);
           if (found && found.subsectors) {
             found.subsectors.forEach(sub => {
@@ -2474,12 +2631,61 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    if (newsSectorL2) {
+      newsSectorL2.addEventListener('change', () => {
+        const selectedL1 = newsSectorL1 ? newsSectorL1.value : '';
+        const selectedL2 = newsSectorL2.value;
+        if (newsSectorL3) newsSectorL3.innerHTML = '<option value="">Tất cả ngành (L3)</option>';
+        if (newsSectorL4) newsSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+        if (selectedL1 && selectedL2 && newsSectorTree && newsSectorL3) {
+          const foundL1 = newsSectorTree.find(s => s.name === selectedL1);
+          const foundL2 = foundL1 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === selectedL2) : null;
+          if (foundL2 && foundL2.subsectors_l3) {
+            foundL2.subsectors_l3.forEach(l3 => {
+              const opt = document.createElement('option');
+              opt.value = l3.name;
+              opt.textContent = `${l3.name} (${(l3.tickers || []).length} mã)`;
+              newsSectorL3.appendChild(opt);
+            });
+          }
+        }
+      });
+    }
+
+    if (newsSectorL3) {
+      newsSectorL3.addEventListener('change', () => {
+        const selectedL1 = newsSectorL1 ? newsSectorL1.value : '';
+        const selectedL2 = newsSectorL2 ? newsSectorL2.value : '';
+        const selectedL3 = newsSectorL3.value;
+        if (newsSectorL4) newsSectorL4.innerHTML = '<option value="">Tất cả phân ngành (L4)</option>';
+
+        if (selectedL1 && selectedL2 && selectedL3 && newsSectorTree && newsSectorL4) {
+          const foundL1 = newsSectorTree.find(s => s.name === selectedL1);
+          const foundL2 = foundL1 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === selectedL2) : null;
+          const foundL3 = foundL2 && foundL2.subsectors_l3 ? foundL2.subsectors_l3.find(s => s.name === selectedL3) : null;
+          if (foundL3 && foundL3.subsectors_l4) {
+            foundL3.subsectors_l4.forEach(l4 => {
+              const opt = document.createElement('option');
+              opt.value = l4.name;
+              const codeStr = l4.code ? `[${l4.code}] ` : '';
+              opt.textContent = `${codeStr}${l4.name} (${(l4.tickers || []).length} mã)`;
+              newsSectorL4.appendChild(opt);
+            });
+          }
+        }
+      });
+    }
+
     if (btnNewsAddSector) {
       btnNewsAddSector.addEventListener('click', () => {
         const l1 = newsSectorL1 ? newsSectorL1.value : '';
         const l2 = newsSectorL2 ? newsSectorL2.value : '';
-        if (!l1 && !l2) {
-          alert('Vui lòng chọn Ngành hoặc Phân ngành trước khi thêm.');
+        const l3 = newsSectorL3 ? newsSectorL3.value : '';
+        const l4 = newsSectorL4 ? newsSectorL4.value : '';
+
+        if (!l1 && !l2 && !l3 && !l4) {
+          alert('Vui lòng chọn ít nhất một cấp ngành (L1, L2, L3, hoặc L4) trước khi thêm.');
           return;
         }
         if (!newsSectorTree || newsSectorTree.length === 0) {
@@ -2488,17 +2694,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let tickersToAdd = [];
-        if (l1) {
-          const foundL1 = newsSectorTree.find(s => s.name === l1);
-          if (foundL1) {
-            if (l2) {
-              const sub = (foundL1.subsectors || []).find(s => s.name === l2);
-              if (sub && sub.tickers) tickersToAdd = sub.tickers;
+        const foundL1 = newsSectorTree.find(s => s.name === l1);
+        if (foundL1) {
+          const foundL2 = l2 && foundL1.subsectors ? foundL1.subsectors.find(s => s.name === l2) : null;
+          if (foundL2) {
+            const foundL3 = l3 && foundL2.subsectors_l3 ? foundL2.subsectors_l3.find(s => s.name === l3) : null;
+            if (foundL3) {
+              const foundL4 = l4 && foundL3.subsectors_l4 ? foundL3.subsectors_l4.find(s => s.name === l4) : null;
+              if (foundL4) {
+                tickersToAdd = foundL4.tickers || [];
+              } else {
+                tickersToAdd = foundL3.tickers || [];
+              }
             } else {
-              (foundL1.subsectors || []).forEach(sub => {
-                if (sub.tickers) tickersToAdd.push(...sub.tickers);
-              });
+              tickersToAdd = foundL2.tickers || [];
             }
+          } else {
+            (foundL1.subsectors || []).forEach(sub => {
+              if (sub.tickers) tickersToAdd.push(...sub.tickers);
+            });
           }
         } else if (l2) {
           newsSectorTree.forEach(s => {
@@ -3018,18 +3232,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadCompanyDirectory() {
       if (!companyDirectoryTbody) return;
-      companyDirectoryTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Đang tải danh bạ website...</td></tr>';
+      companyDirectoryTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Đang tải danh bạ doanh nghiệp & phân ngành ICB...</td></tr>';
 
       const q = dirSearchInput ? dirSearchInput.value : '';
       const ex = dirExchangeSelect ? dirExchangeSelect.value : '';
       const hasWeb = dirHasWebOnly ? dirHasWebOnly.checked : false;
 
       try {
-        const res = await fetch(`/api/news/companies?query=${encodeURIComponent(q)}&exchange=${encodeURIComponent(ex)}&has_website_only=${hasWeb}&limit=150`);
+        const res = await fetch(`/api/news/companies?query=${encodeURIComponent(q)}&exchange=${encodeURIComponent(ex)}&has_website_only=${hasWeb}&limit=200`);
         const data = await res.json();
         renderCompanyDirectoryTable(data.companies || []);
       } catch (err) {
-        companyDirectoryTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-danger); padding: 20px;">Lỗi: ${err.message}</td></tr>`;
+        companyDirectoryTbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--color-danger); padding: 20px;">Lỗi: ${err.message}</td></tr>`;
       }
     }
 
@@ -3047,18 +3261,32 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!companyDirectoryTbody) return;
       companyDirectoryTbody.innerHTML = '';
       if (!companies || companies.length === 0) {
-        companyDirectoryTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">Không tìm thấy doanh nghiệp nào.</td></tr>';
+        companyDirectoryTbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Không tìm thấy doanh nghiệp nào.</td></tr>';
         return;
       }
 
       companies.forEach(c => {
         const tr = document.createElement('tr');
+        const exch = (c.exchange || 'HOSE').toUpperCase();
+        let exchBadge = '<span class="badge" style="background: rgba(37,99,235,0.1); color: #2563eb; font-weight: 600;">HOSE</span>';
+        if (exch === 'HNX') {
+          exchBadge = '<span class="badge" style="background: rgba(79,70,229,0.1); color: #4f46e5; font-weight: 600;">HNX</span>';
+        } else if (exch === 'UPCOM') {
+          exchBadge = '<span class="badge" style="background: rgba(245,158,11,0.12); color: #b45309; font-weight: 600;">UPCoM</span>';
+        }
+
         tr.innerHTML = `
-          <td><strong>${escapeHtml(c.ticker)}</strong></td>
-          <td><span class="badge-source badge-official">${escapeHtml(c.exchange || 'HOSE/HNX')}</span></td>
+          <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${escapeHtml(c.ticker)}</strong></td>
+          <td>${exchBadge}</td>
           <td>${escapeHtml(c.name || '')}</td>
-          <td>${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" style="color: var(--brand-primary);">${escapeHtml(c.website)}</a>` : '<span style="color: var(--text-muted); font-style: italic;">Auto-Discovery</span>'}</td>
-          <td>${c.ir_portal ? `<a href="${escapeHtml(c.ir_portal)}" target="_blank" style="color: var(--text-secondary);">Cổng IR ↗</a>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+          <td>
+            <span class="badge badge-cat" style="font-size: 11px;">${escapeHtml(c.icb_l1 || '—')}</span>
+            ${c.icb_l2 ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(c.icb_l2)}</div>` : ''}
+            ${c.icb_l4 ? `<div style="font-size: 10px; color: var(--brand-primary);">${escapeHtml(c.icb_l4)}</div>` : (c.icb_l3 ? `<div style="font-size: 10px; color: var(--text-muted);">${escapeHtml(c.icb_l3)}</div>` : '')}
+          </td>
+          <td style="text-align: center;"><span class="tabular" style="font-size: 11px; font-weight: 600; color: var(--text-muted);">${escapeHtml(c.icb_code || '—')}</span></td>
+          <td>${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" style="color: var(--brand-primary); word-break: break-all;">${escapeHtml(c.website)}</a>` : '<span style="color: var(--text-muted); font-style: italic;">Auto-Discovery</span>'}</td>
+          <td style="text-align: center;">${c.ir_portal ? `<a href="${escapeHtml(c.ir_portal)}" target="_blank" style="color: var(--text-secondary);">Cổng IR ↗</a>` : '<span style="color: var(--text-muted);">-</span>'}</td>
           <td style="text-align: center;">
             <button class="btn btn-secondary btn-sm btn-edit-company-web" data-ticker="${escapeHtml(c.ticker)}" data-web="${escapeHtml(c.website || '')}">Sửa</button>
           </td>

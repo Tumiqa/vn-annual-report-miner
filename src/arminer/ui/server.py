@@ -123,16 +123,20 @@ def search_catalog(
     year_to: Optional[int] = Query(None),
     icb_l1: Optional[str] = Query(None),
     icb_l2: Optional[str] = Query(None),
+    icb_l3: Optional[str] = Query(None),
+    icb_l4: Optional[str] = Query(None),
     source_filter: str = Query("all"),
     limit: int = Query(500),
 ):
-    """Tìm kiếm báo cáo trong kho dữ liệu với lọc theo ngành ICB."""
+    """Tìm kiếm báo cáo trong kho dữ liệu với lọc theo 4 cấp ngành ICB FiinPro."""
     results, total_matched = catalog.search(
         ticker=ticker,
         year_from=year_from,
         year_to=year_to,
         icb_l1=icb_l1,
         icb_l2=icb_l2,
+        icb_l3=icb_l3,
+        icb_l4=icb_l4,
         source_filter=source_filter,
         limit=limit,
         return_total=True,
@@ -151,6 +155,8 @@ def get_matched_catalog_ids(
     year_to: Optional[int] = Query(None),
     icb_l1: Optional[str] = Query(None),
     icb_l2: Optional[str] = Query(None),
+    icb_l3: Optional[str] = Query(None),
+    icb_l4: Optional[str] = Query(None),
 ):
     """Lấy danh sách toàn bộ record_id khớp bộ lọc từ Zenodo mà không bị giới hạn hiển thị."""
     matched_ids = catalog.get_matched_record_ids(
@@ -159,6 +165,8 @@ def get_matched_catalog_ids(
         year_to=year_to,
         icb_l1=icb_l1,
         icb_l2=icb_l2,
+        icb_l3=icb_l3,
+        icb_l4=icb_l4,
     )
     return {
         "total_matched": len(matched_ids),
@@ -1223,10 +1231,31 @@ def financial_tickers_by_sector():
             filt_tickers = [t for t in sub.get("tickers", []) if t.upper() in valid_tickers]
             if filt_tickers:
                 sector_total += len(filt_tickers)
+                l3_list = []
+                for l3 in sub.get("subsectors_l3", []):
+                    filt_l3_tickers = [t for t in l3.get("tickers", []) if t.upper() in valid_tickers]
+                    if filt_l3_tickers:
+                        l4_list = []
+                        for l4 in l3.get("subsectors_l4", []):
+                            filt_l4_tickers = [t for t in l4.get("tickers", []) if t.upper() in valid_tickers]
+                            if filt_l4_tickers:
+                                l4_list.append({
+                                    "name": l4["name"],
+                                    "code": l4.get("code", ""),
+                                    "ticker_count": len(filt_l4_tickers),
+                                    "tickers": sorted(filt_l4_tickers),
+                                })
+                        l3_list.append({
+                            "name": l3["name"],
+                            "ticker_count": len(filt_l3_tickers),
+                            "tickers": sorted(filt_l3_tickers),
+                            "subsectors_l4": l4_list,
+                        })
                 sub_list.append({
                     "name": sub["name"],
                     "ticker_count": len(filt_tickers),
                     "tickers": sorted(filt_tickers),
+                    "subsectors_l3": l3_list,
                 })
         if sub_list:
             filtered_sectors.append({
@@ -2326,6 +2355,17 @@ def get_news_companies(
         has_website_only=has_website_only,
         limit=limit,
     )
+    catalog.industry_classifier.initialize()
+    for c in companies:
+        t = c.get("ticker", "")
+        full_info = catalog.industry_classifier.get_industry_full(t)
+        c["icb_l1"] = full_info.get("icb_l1", "")
+        c["icb_l2"] = full_info.get("icb_l2", "")
+        c["icb_l3"] = full_info.get("icb_l3", "")
+        c["icb_l4"] = full_info.get("icb_l4", "")
+        c["icb_code"] = full_info.get("icb_code", "")
+        c["source"] = full_info.get("source", "FiinPro / Vietcap IQ & Sở GDCK")
+
     total_in_db = len(news_resolver._db)
     with_website_count = sum(1 for v in news_resolver._db.values() if v.get("website"))
     return {

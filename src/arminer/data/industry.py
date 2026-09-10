@@ -241,9 +241,13 @@ class IndustryClassifier:
             target_exchanges = {e.upper().strip() for e in exchanges}
 
         # Khởi tạo cây từ danh mục chuẩn ICB_LEVEL2
-        tree: Dict[str, Dict[str, List[str]]] = {}
+        # Cấu trúc: L1 -> L2 -> L3 -> L4 -> [tickers]
+        nested_tree: Dict[str, Dict[str, Dict[str, Dict[str, List[str]]]]] = {}
+        l4_codes: Dict[str, str] = {}
+
+        # Pre-initialize L1 and L2
         for l1, l2_list in ICB_LEVEL2.items():
-            tree[l1] = {l2: [] for l2 in l2_list}
+            nested_tree[l1] = {l2: {} for l2 in l2_list}
 
         total_matched = 0
         for ticker, info in self._ticker_full_map.items():
@@ -253,29 +257,72 @@ class IndustryClassifier:
 
             l1 = info.get("icb_l1", "Khác / Chưa phân loại")
             l2 = info.get("icb_l2", "Chưa phân loại")
+            l3 = info.get("icb_l3", "Chưa phân loại")
+            l4 = info.get("icb_l4", "Chưa phân loại")
+            code = info.get("icb_code", "")
+            if code and l4 not in l4_codes:
+                l4_codes[l4] = code
 
-            if l1 not in tree:
-                tree[l1] = {}
-            if l2 not in tree[l1]:
-                tree[l1][l2] = []
+            if l1 not in nested_tree:
+                nested_tree[l1] = {}
+            if l2 not in nested_tree[l1]:
+                nested_tree[l1][l2] = {}
+            if l3 not in nested_tree[l1][l2]:
+                nested_tree[l1][l2][l3] = {}
+            if l4 not in nested_tree[l1][l2][l3]:
+                nested_tree[l1][l2][l3][l4] = []
 
-            tree[l1][l2].append(ticker)
+            nested_tree[l1][l2][l3][l4].append(ticker)
             total_matched += 1
 
         result = []
-        for l1, sub in tree.items():
-            total_tickers = sum(len(tickers) for tickers in sub.values())
-            sub_list = []
-            for l2, tickers in sub.items():
-                sub_list.append({
+        for l1, l2_dict in nested_tree.items():
+            l1_tickers_set = set()
+            sub_l2_list = []
+
+            for l2, l3_dict in l2_dict.items():
+                l2_tickers_set = set()
+                sub_l3_list = []
+
+                for l3, l4_dict in l3_dict.items():
+                    l3_tickers_set = set()
+                    sub_l4_list = []
+
+                    for l4, tickers in l4_dict.items():
+                        sorted_t = sorted(tickers)
+                        l3_tickers_set.update(sorted_t)
+                        sub_l4_list.append({
+                            "name": l4,
+                            "code": l4_codes.get(l4, ""),
+                            "ticker_count": len(sorted_t),
+                            "tickers": sorted_t,
+                        })
+
+                    # Sắp xếp L4 theo ticker_count giảm dần
+                    sub_l4_list.sort(key=lambda x: (-x["ticker_count"], x["name"]))
+                    l2_tickers_set.update(l3_tickers_set)
+                    sub_l3_list.append({
+                        "name": l3,
+                        "ticker_count": len(l3_tickers_set),
+                        "tickers": sorted(list(l3_tickers_set)),
+                        "subsectors_l4": sub_l4_list,
+                    })
+
+                # Sắp xếp L3 theo ticker_count giảm dần
+                sub_l3_list.sort(key=lambda x: (-x["ticker_count"], x["name"]))
+                l1_tickers_set.update(l2_tickers_set)
+                sub_l2_list.append({
                     "name": l2,
-                    "ticker_count": len(tickers),
-                    "tickers": sorted(tickers),
+                    "ticker_count": len(l2_tickers_set),
+                    "tickers": sorted(list(l2_tickers_set)),
+                    "subsectors_l3": sub_l3_list,
                 })
+
+            sub_l2_list.sort(key=lambda x: (-x["ticker_count"], x["name"]))
             result.append({
                 "name": l1,
-                "total_tickers": total_tickers,
-                "subsectors": sub_list,
+                "total_tickers": len(l1_tickers_set),
+                "subsectors": sub_l2_list,
             })
 
         return {

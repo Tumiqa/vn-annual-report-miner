@@ -76,9 +76,23 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Phân ngành Cấp 2 (ICB L2):</label>
+            <label class="form-label">Ngành Cấp 2 (ICB L2):</label>
             <select id="catSectorL2" class="form-select">
-              <option value="">Tất cả phân ngành (L2)</option>
+              <option value="">Tất cả ngành (L2)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ngành Cấp 3 (ICB L3):</label>
+            <select id="catSectorL3" class="form-select">
+              <option value="">Tất cả ngành (L3)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phân ngành Cấp 4 (ICB L4):</label>
+            <select id="catSectorL4" class="form-select">
+              <option value="">Tất cả phân ngành (L4)</option>
             </select>
           </div>
 
@@ -369,24 +383,36 @@
             <span style="font-size: 11px; color: var(--text-muted);">— Chọn theo ngành hoặc nhập mã CK</span>
           </div>
 
-          <div class="filter-grid" style="grid-template-columns: 1fr 1fr auto auto 90px 90px; margin-bottom: 10px;">
+          <div class="filter-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) auto auto 90px 90px; margin-bottom: 10px;">
             <div class="form-group">
               <label class="form-label">Ngành ICB L1:</label>
               <select id="finSectorL1" class="form-select">
-                <option value="">Tất cả ngành</option>
+                <option value="">Tất cả ngành (L1)</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Phân ngành L2:</label>
+              <label class="form-label">Ngành L2:</label>
               <select id="finSectorL2" class="form-select">
-                <option value="">Tất cả phân ngành</option>
+                <option value="">Tất cả ngành (L2)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngành L3:</label>
+              <select id="finSectorL3" class="form-select">
+                <option value="">Tất cả ngành (L3)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phân ngành L4:</label>
+              <select id="finSectorL4" class="form-select">
+                <option value="">Tất cả phân ngành (L4)</option>
               </select>
             </div>
             <div class="form-group" style="align-self: flex-end;">
               <button id="btnFinAddSector" class="btn btn-secondary btn-sm" style="white-space: nowrap;" title="Thêm toàn bộ mã cổ phiếu thuộc ngành đã chọn">Thêm ngành</button>
             </div>
             <div class="form-group" style="align-self: flex-end;">
-              <button id="btnFinAddAllTickers" class="btn btn-secondary btn-sm" style="white-space: nowrap;" title="Chọn toàn bộ 692 mã trên sàn HSX & HNX">Chọn tất cả mã</button>
+              <button id="btnFinAddAllTickers" class="btn btn-secondary btn-sm" style="white-space: nowrap;" title="Chọn toàn bộ mã trên sàn HSX & HNX">Chọn tất cả mã</button>
             </div>
             <div class="form-group">
               <label class="form-label">Từ năm:</label>
@@ -637,9 +663,9 @@
         <div class="news-config-grid">
           <!-- Left: Tickers & Sources Selection -->
           <div class="news-col-left">
-            <!-- Sector filter & add buttons -->
+            <!-- Sector filter & add buttons (4 cấp ICB FiinPro) -->
             <div style="background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 12px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                 <div class="form-group" style="margin-bottom: 0;">
                   <label class="form-label" style="font-size: 12px;">Ngành ICB L1:</label>
                   <select id="newsSectorL1" class="form-select" style="width: 100%;">
@@ -647,9 +673,23 @@
                   </select>
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" style="font-size: 12px;">Phân ngành L2:</label>
+                  <label class="form-label" style="font-size: 12px;">Ngành L2:</label>
                   <select id="newsSectorL2" class="form-select" style="width: 100%;">
-                    <option value="">Tất cả phân ngành (L2)</option>
+                    <option value="">Tất cả ngành (L2)</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 12px;">Ngành L3:</label>
+                  <select id="newsSectorL3" class="form-select" style="width: 100%;">
+                    <option value="">Tất cả ngành (L3)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 12px;">Phân ngành L4:</label>
+                  <select id="newsSectorL4" class="form-select" style="width: 100%;">
+                    <option value="">Tất cả phân ngành (L4)</option>
                   </select>
                 </div>
               </div>
@@ -678,14 +718,21 @@
 
             <!-- Quick Add Ticker Groups -->
             <div style="margin-bottom: 14px;">
-              <span style="font-size: 11px; color: var(--text-muted); margin-right: 6px;">Chọn nhanh nhóm mã:</span>
+              <span style="font-size: 11px; color: var(--text-muted); margin-right: 6px;">Chọn nhanh nhóm ngành FiinPro:</span>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VCB, BID, CTG, TCB, MBB, VPB, ACB, STB, HDB, VIB">Ngân hàng (Top 10)</button>
-                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="SSI, VND, VCI, HCM, SHS, MBS, FTS, CTS, BSI, AGR, VDS, TVS, VIX">Chứng khoán (Top 13)</button>
-                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="HPG, HSG, NKG, VGS">Thép & Kim loại</button>
-                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="FPT, CMG, ELC, ITD">Công nghệ TT</button>
-                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VHM, NVL, KDH, DIG, PDR, DXG, NLG, CEO">Bất động sản</button>
-                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VNM, MSN, SAB, MWG, FRT, DGW">Bán lẻ & Tiêu dùng</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VCB, BID, CTG, TCB, MBB, VPB, ACB, STB, HDB, VIB, SHB, TPB, LPB, MSB, OCB, SSB">Ngân hàng (16 mã)</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="SSI, VND, VCI, HCM, SHS, MBS, FTS, CTS, BSI, AGR, VDS, TVS, VIX, ORS">Chứng khoán (14 mã)</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VHM, NVL, KDH, DIG, PDR, DXG, NLG, CEO, HDC, SCR, AGG, DXS">Bất động sản</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="HPG, HSG, NKG, VGS, TLH, POM, TVN">Thép & Kim loại</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="DGC, DPM, DCM, BFC, CSV, LAS, PHR, DPR, GVR">Hóa chất & Phân bón</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="GAS, PLX, PVD, PVS, PVC, PVB, BSR, OIL">Dầu khí & Năng lượng</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VNM, MSN, SAB, KDC, VHC, ANV, FMC, QNS, DBC, BAF, HAG">Thực phẩm & Thủy sản</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="MWG, FRT, DGW, PET, HAX, PNJ">Bán lẻ & Hàng cá nhân</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="FPT, CMG, ELC, ITD, CTR, FOX, VGI">Công nghệ & Viễn thông</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="DHG, IMP, TRA, DVN, DBD, DMC, OPC, DCL, TNH">Dược phẩm & Y tế</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="POW, PGV, GEG, NT2, PPC, HND, VSH, BWE, TDM">Điện & Nước</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="VCG, CTD, HBC, CII, FCN, PC1, LCG, HHV, C4G, HT1, BCC">Xây dựng & Vật liệu</button>
+                <button type="button" class="btn btn-secondary btn-sm news-quick-group" data-tickers="GMD, HAH, VSC, PVT, VOS, VTO, VJC, HVN, ACV">Vận tải & Logistics</button>
               </div>
             </div>
 
@@ -967,21 +1014,26 @@
 
       <!-- Modal: Company Websites Directory Management -->
       <div id="companyDirectoryModal" class="modal-backdrop" style="display: none;">
-        <div class="modal-card" style="max-width: 900px; width: 95%;">
+        <div class="modal-card" style="max-width: 1100px; width: 95%;">
           <div class="card-header" style="margin-bottom: 14px;">
             <div>
-              <h3 class="card-title">Danh Bạ Website Doanh Nghiệp Niêm Yết (~1,430+ Công Ty)</h3>
-              <p class="card-desc">Xem, tra cứu hoặc chỉnh sửa URL trang chủ và Cổng IR của từng doanh nghiệp.</p>
+              <h3 class="card-title">Danh Bạ Doanh Nghiệp &amp; Phân Ngành FiinPro ICB (1,562 Công Ty)</h3>
+              <p class="card-desc">Bao gồm 707 doanh nghiệp niêm yết (HOSE, HNX dùng trong hệ thống) và 855 doanh nghiệp giao dịch (UPCoM phục vụ nghiên cứu mở rộng).</p>
             </div>
-            <button id="btnCloseCompanyModal" class="btn btn-secondary btn-sm">Đóng</button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <a href="/api/companies/master-dataset?format=xlsx" class="btn btn-secondary btn-sm" download style="color: var(--brand-primary); font-weight: 600;" title="Tải file Excel định dạng Segoe UI, freeze panes, chuẩn FiinPro">Tải Master Excel (.xlsx)</a>
+              <a href="/api/companies/master-dataset?format=csv" class="btn btn-secondary btn-sm" download title="Tải file CSV UTF-8 with BOM">Tải Master CSV</a>
+              <button id="btnCloseCompanyModal" class="btn btn-secondary btn-sm">Đóng</button>
+            </div>
           </div>
 
-          <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-            <input type="text" id="dirSearchInput" class="form-input" placeholder="Tìm theo mã CK, tên công ty, hoặc domain...">
-            <select id="dirExchangeSelect" class="form-select" style="width: 130px;">
-              <option value="">Tất cả sàn</option>
-              <option value="HOSE">Sàn HOSE</option>
-              <option value="HNX">Sàn HNX</option>
+          <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+            <input type="text" id="dirSearchInput" class="form-input" placeholder="Tìm theo mã CK, tên công ty, ngành ICB, hoặc domain..." style="flex: 1; min-width: 220px;">
+            <select id="dirExchangeSelect" class="form-select" style="width: 200px;">
+              <option value="">Tất cả sàn (1,562 mã)</option>
+              <option value="HOSE">Sàn HOSE (406 mã)</option>
+              <option value="HNX">Sàn HNX (301 mã)</option>
+              <option value="UPCOM">Sàn UPCoM (855 mã — Tham khảo)</option>
             </select>
             <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; cursor: pointer;">
               <input type="checkbox" id="dirHasWebOnly" checked>
@@ -989,16 +1041,18 @@
             </label>
           </div>
 
-          <div class="table-wrapper" style="max-height: 400px; overflow-y: auto; margin-bottom: 14px;">
+          <div class="table-wrapper" style="max-height: 440px; overflow-y: auto; margin-bottom: 14px;">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th style="width: 70px;">Mã CK</th>
-                  <th style="width: 60px;">Sàn</th>
-                  <th>Tên Doanh Nghiệp</th>
-                  <th>Trang Chủ</th>
-                  <th>Cổng IR</th>
-                  <th style="width: 70px; text-align: center;">Thao Tác</th>
+                  <th style="width: 75px;">Mã CK</th>
+                  <th style="width: 75px;">Sàn</th>
+                  <th style="min-width: 200px;">Tên Doanh Nghiệp</th>
+                  <th style="min-width: 220px;">Phân Ngành FiinPro ICB (L1 / L2 / L4)</th>
+                  <th style="width: 75px; text-align: center;">Mã ICB</th>
+                  <th>Trang Chủ Website</th>
+                  <th style="width: 85px; text-align: center;">Cổng IR</th>
+                  <th style="width: 60px; text-align: center;">Sửa</th>
                 </tr>
               </thead>
               <tbody id="companyDirectoryTbody">
