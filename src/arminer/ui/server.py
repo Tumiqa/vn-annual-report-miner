@@ -1941,9 +1941,21 @@ async def financial_query(req: FinancialQueryRequest):
         # Replace inf with None
         pivot = pivot.replace([float('inf'), float('-inf')], None)
 
-        # Sap xep thu tu cot khoa hoc: ticker, year, toan bo chi tieu BCTC da chon, toan bo chi so tai chinh da chon
+        # Map company_name from company_websites.json
+        comp_name_map = {}
+        fixtures_file = FIXTURES_DIR / "company_websites.json"
+        if fixtures_file.exists():
+            try:
+                with open(fixtures_file, "r", encoding="utf-8") as f:
+                    web_db = json.load(f)
+                comp_name_map = {k: v.get("name") for k, v in web_db.items() if v.get("name")}
+            except Exception:
+                pass
+        pivot["company_name"] = pivot["ticker"].map(comp_name_map).fillna("")
+
+        # Sap xep thu tu cot khoa hoc: ticker, company_name, year, toan bo chi tieu BCTC da chon, toan bo chi so tai chinh da chon
         # TUYET DOI KHONG giu lai cac chi so khong duoc chon trong file xuat!
-        ordered_cols = ["ticker", "year"] + [c for c in target_item_codes if c in pivot.columns] + [r for r in active_ratios if r in pivot.columns]
+        ordered_cols = ["ticker", "company_name", "year"] + [c for c in target_item_codes if c in pivot.columns] + [r for r in active_ratios if r in pivot.columns]
         other_cols = [c for c in pivot.columns if c not in ordered_cols and c not in FINANCIAL_RATIOS]
         pivot = pivot[ordered_cols + other_cols]
 
@@ -1958,7 +1970,7 @@ async def financial_query(req: FinancialQueryRequest):
         col_info = []
         fin_codebook = []
         for col in pivot.columns:
-            if col in ("ticker", "year"):
+            if col in ("ticker", "company_name", "year"):
                 continue
             is_ratio = col in FINANCIAL_RATIOS
             if is_ratio:

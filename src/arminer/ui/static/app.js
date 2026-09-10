@@ -2220,7 +2220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finDtaEl) finDtaEl.href = data.dta_download || '#';
 
     // Header
-    let headerHtml = '<tr><th>Mã CK</th><th>Năm</th>';
+    let headerHtml = '<tr><th>Mã CK</th><th>Tên Doanh Nghiệp</th><th>Năm</th>';
     data.columns.forEach(col => {
       const label = col.is_ratio ? `<strong>${col.name}</strong>` : col.name;
       headerHtml += `<th style="text-align: right; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(col.code)}">${label}</th>`;
@@ -2233,6 +2233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     (data.preview || []).forEach(row => {
       const tr = document.createElement('tr');
       let html = `<td><strong style="font-family: var(--font-mono);">${row.ticker || '--'}</strong></td>`;
+      html += `<td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(row.company_name || '')}">${row.company_name || '--'}</td>`;
       html += `<td class="tabular">${row.year || '--'}</td>`;
       data.columns.forEach(col => {
         const val = row[col.code];

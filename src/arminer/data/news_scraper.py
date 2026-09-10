@@ -667,6 +667,9 @@ class MultiSourceNewsAggregator:
             if extracted and extracted.get("text"):
                 extracted["news_source"] = source_name
                 extracted["ticker"] = ticker
+                comp = self.resolver.get_company(ticker)
+                if comp and comp.get("name"):
+                    extracted["company_name"] = comp["name"]
                 return extracted
         except Exception as e:
             logger.debug(f"Fetch article failed for {url}: {e}")
@@ -692,6 +695,16 @@ class MultiSourceNewsAggregator:
         collected_articles: List[Dict[str, Any]] = []
         seen_titles: List[str] = []
 
+        comp = self.resolver.get_company(t)
+        company_name = (comp.get("name") or "") if comp else ""
+        clean_name = re.sub(
+            r"^(công ty|ctcp|ngân hàng|tập đoàn|tổng công ty)\s+(cổ phần|thương mại cổ phần|tmcp|tnhh)?\s*",
+            "", company_name, flags=re.I
+        ).strip()
+        clean_name = re.sub(r"(Chứng khoán|Bảo hiểm|Ngân hàng)$", "", clean_name).strip()
+        if not clean_name or clean_name.upper() == t:
+            clean_name = ""
+
         def is_duplicate(title: str) -> bool:
             t_clean = re.sub(r"[^\w\s]", "", title.lower()).strip()
             for prev in seen_titles:
@@ -708,7 +721,17 @@ class MultiSourceNewsAggregator:
         target_per_source = max(5, ((target_articles * multiplier) // max(1, len(sources))) + 4)
 
         if progress_cb:
-            progress_cb(f"Đang tìm kiếm link bài viết cho {t}...", 0, target_articles)
+            progress_cb(f"Đang tìm kiếm link bài viết cho {t} ({company_name})...", 0, target_articles)
+
+        def collect_portal_links(scraper_cls, portal_name: str) -> List[str]:
+            """Collect links by ticker first, then expand with company name for maximum recall."""
+            links = scraper_cls.get_article_links(t, max_links=target_per_source)
+            if len(links) < target_per_source and clean_name:
+                extra = scraper_cls.get_article_links(clean_name, max_links=target_per_source - len(links))
+                for u in extra:
+                    if u not in links:
+                        links.append(u)
+            return links
 
         # 1. Custom URLs
         if "custom" in sources and custom_urls:
@@ -725,43 +748,37 @@ class MultiSourceNewsAggregator:
         if "cafef" in sources:
             if progress_cb:
                 progress_cb(f"Đang tìm tin tức {t} trên CafeF...", len(collected_articles), target_articles)
-            cafef_links = CafeFScraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["cafef"] = cafef_links
+            links_by_source["cafef"] = collect_portal_links(CafeFScraper, "CafeF")
 
         # 4. Tin Nhanh Chung Khoan
         if "tinnhanhchungkhoan" in sources:
             if progress_cb:
                 progress_cb(f"Đang tìm tin {t} trên Tin Nhanh Chứng Khoán...", len(collected_articles), target_articles)
-            tn_links = TinNhanhCKScraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["tinnhanhchungkhoan"] = tn_links
+            links_by_source["tinnhanhchungkhoan"] = collect_portal_links(TinNhanhCKScraper, "TinNhanhCK")
 
         # 5. VnEconomy
         if "vneconomy" in sources:
             if progress_cb:
                 progress_cb(f"Đang tìm tin {t} trên VnEconomy...", len(collected_articles), target_articles)
-            vne_links = VnEconomyScraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["vneconomy"] = vne_links
+            links_by_source["vneconomy"] = collect_portal_links(VnEconomyScraper, "VnEconomy")
 
         # 6. VnExpress Kinh Doanh
         if "vnexpress" in sources:
             if progress_cb:
                 progress_cb(f"Đang tìm tin {t} trên VnExpress Kinh Doanh...", len(collected_articles), target_articles)
-            vnex_links = VnExpressScraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["vnexpress"] = vnex_links
+            links_by_source["vnexpress"] = collect_portal_links(VnExpressScraper, "VnExpress")
 
         # 7. CafeBiz
         if "cafebiz" in sources:
             if progress_cb:
                 progress_cb(f"Đang tìm tin {t} trên CafeBiz...", len(collected_articles), target_articles)
-            biz_links = CafeBizScraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["cafebiz"] = biz_links
+            links_by_source["cafebiz"] = collect_portal_links(CafeBizScraper, "CafeBiz")
 
         # 8. VietnamNet Kinh Doanh
         if "vietnamnet" in sources:
             if progress_cb:
                 progress_cb(f"Đang tìm tin {t} trên VietnamNet...", len(collected_articles), target_articles)
-            vnn_links = VietnamNetScraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["vietnamnet"] = vnn_links
+            links_by_source["vietnamnet"] = collect_portal_links(VietnamNetScraper, "VietnamNet")
 
         # Interleave links from sources to achieve a balanced and diverse aggregation
         all_candidate_links: List[Tuple[str, str]] = []  # (url, source_name)
