@@ -187,6 +187,43 @@ def add_catalog_folder(req: AddFolderRequest):
 
 
 
+@app.get("/api/companies/master-dataset")
+def get_companies_master_dataset(
+    exchange: Optional[str] = Query(None),
+    icb_l1: Optional[str] = Query(None),
+    icb_l2: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+):
+    """Tra cứu danh bạ toàn bộ doanh nghiệp (HOSE, HNX, UPCoM) chuẩn phân ngành FiinPro ICB 4 cấp."""
+    catalog.industry_classifier.initialize()
+    full_map = catalog.industry_classifier._ticker_full_map
+
+    results = []
+    q_clean = q.upper().strip() if q else None
+    target_ex = exchange.upper().strip() if exchange else None
+
+    for ticker, info in full_map.items():
+        if target_ex and info.get("exchange", "").upper() != target_ex:
+            continue
+        if icb_l1 and info.get("icb_l1") != icb_l1:
+            continue
+        if icb_l2 and info.get("icb_l2") != icb_l2:
+            continue
+        if q_clean:
+            name = info.get("name", "").upper()
+            s_name = info.get("short_name", "").upper()
+            if q_clean not in ticker and q_clean not in name and q_clean not in s_name:
+                continue
+        results.append(info)
+
+    return {
+        "total": len(results),
+        "companies": results,
+        "excel_download": "/api/download/danh_sach_doanh_nghiep_niem_yet.xlsx",
+        "csv_download": "/api/download/danh_sach_doanh_nghiep_niem_yet.csv",
+    }
+
+
 # =====================================================================
 # Dictionary Studio Endpoints (Thêm / Sửa / Xóa Từ Điển)
 # =====================================================================
