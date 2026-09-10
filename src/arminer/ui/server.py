@@ -2179,10 +2179,11 @@ class NewsScrapeRequest(BaseModel):
         "company_website", "cafef", "vnexpress", "cafebiz",
         "tinnhanhchungkhoan", "vneconomy", "vietnamnet"
     ]
-    target_articles_per_ticker: int = 20
+    target_articles_per_ticker: Optional[int] = None
     year_from: Optional[int] = 2020
     year_to: Optional[int] = 2026
     custom_urls: Optional[List[str]] = None
+    keywords: Optional[str] = None
 
 
 class NewsMineRequest(BaseModel):
@@ -2191,7 +2192,7 @@ class NewsMineRequest(BaseModel):
         "company_website", "cafef", "vnexpress", "cafebiz",
         "tinnhanhchungkhoan", "vneconomy", "vietnamnet"
     ]
-    target_articles_per_ticker: int = 20
+    target_articles_per_ticker: Optional[int] = None
     year_from: Optional[int] = 2020
     year_to: Optional[int] = 2026
     custom_urls: Optional[List[str]] = None
@@ -2306,7 +2307,7 @@ def update_news_company(req: CompanyWebsiteUpdateRequest):
 
 @app.post("/api/news/scrape-stream")
 async def scrape_news_stream(req: NewsScrapeRequest):
-    """Cào tin tức đa nguồn có streaming tiến độ và tự động bù đắp thiếu hụt."""
+    """Cào tin tức đa nguồn không giới hạn với kiểm định công ty và từ khóa chuẩn."""
     async def event_generator():
         all_articles = []
         total_tickers = len(req.tickers)
@@ -2318,7 +2319,7 @@ async def scrape_news_stream(req: NewsScrapeRequest):
                 "current_ticker_idx": i + 1,
                 "total_tickers": total_tickers,
                 "ticker": t,
-                "message": f"Đang cào tin tức [{i + 1}/{total_tickers}]: {t} (năm {req.year_from or ''}-{req.year_to or ''})...",
+                "message": f"Đang cào tin tức tối đa [{i + 1}/{total_tickers}]: {t} (năm {req.year_from or ''}-{req.year_to or ''})...",
             }, ensure_ascii=False)}
             await asyncio.sleep(0)
 
@@ -2332,6 +2333,7 @@ async def scrape_news_stream(req: NewsScrapeRequest):
                     year_from=req.year_from,
                     year_to=req.year_to,
                     custom_urls=req.custom_urls,
+                    keywords=req.keywords,
                 )
             )
             all_articles.extend(articles)
@@ -2342,18 +2344,20 @@ async def scrape_news_stream(req: NewsScrapeRequest):
                 "total_tickers": total_tickers,
                 "ticker": t,
                 "articles_found": len(articles),
-                "message": f"Hoàn tất {t}: đã thu thập {len(articles)} bài viết.",
+                "message": f"Hoàn tất {t}: đã xác nhận & thu thập {len(articles)} bài viết chuẩn.",
             }, ensure_ascii=False)}
             await asyncio.sleep(0)
 
         preview = [{
             "ticker": a.get("ticker"),
+            "company_name": a.get("company_name") or (news_resolver.get_company(a.get("ticker", "")) or {}).get("name", ""),
             "year": a.get("published_year") or "",
             "news_source": a.get("news_source"),
             "title": a.get("title"),
             "published_date": a.get("published_date"),
             "url": a.get("url"),
             "word_count": a.get("word_count"),
+            "company_confirmed": a.get("company_confirmed", True),
             "snippet": (a.get("text") or "")[:150] + "...",
         } for a in all_articles]
 
@@ -2367,10 +2371,16 @@ async def scrape_news_stream(req: NewsScrapeRequest):
 
 @app.post("/api/news/mine-stream")
 async def mine_news_stream(req: NewsMineRequest):
-    """Crawl tin tức + khai phá từ điển nghiên cứu trong một luồng streaming duy nhất."""
+    """Crawl tin tức không giới hạn + khai phá từ điển nghiên cứu trong một luồng streaming duy nhất."""
     async def event_generator():
         all_articles: List[Dict[str, Any]] = []
         total_tickers = len(req.tickers)
+
+        # Resolve research dictionary keywords
+        flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
+        topic_kws = [e.keyword for e in flex_dict.entries[:15]] if flex_dict.entries else []
+        if req.keywords:
+            topic_kws.extend([k.strip() for k in req.keywords.split(",") if k.strip()])
 
         for i, ticker in enumerate(req.tickers):
             t = ticker.upper().strip()
@@ -2393,6 +2403,7 @@ async def mine_news_stream(req: NewsMineRequest):
                     year_from=req.year_from,
                     year_to=req.year_to,
                     custom_urls=req.custom_urls,
+                    keywords=topic_kws if topic_kws else None,
                 )
             )
             all_articles.extend(articles)
@@ -2411,7 +2422,6 @@ async def mine_news_stream(req: NewsMineRequest):
         }, ensure_ascii=False)}
         await asyncio.sleep(0)
 
-        flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
         core_dict = flex_dict.to_core_dictionary()
         matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
         calc = SmartVariableCalculator()
@@ -2438,6 +2448,7 @@ async def mine_news_stream(req: NewsMineRequest):
 
             row = {
                 "ticker": art["ticker"],
+                "company_name": art.get("company_name") or (news_resolver.get_company(art["ticker"]) or {}).get("name", ""),
                 "year": art.get("published_year") or "",
                 "news_source": art.get("news_source", ""),
                 "title": art.get("title", ""),
@@ -2528,6 +2539,14 @@ async def mine_news_stream(req: NewsMineRequest):
 
         df_firm_year = pd.DataFrame(firm_year_summary)
         if not df_firm_year.empty:
+            df_firm_year["company_name"] = df_firm_year["ticker"].map(
+                lambda tk: (news_resolver.get_company(tk) or {}).get("name", "")
+            )
+            cols = list(df_firm_year.columns)
+            if "company_name" in cols:
+                cols.remove("company_name")
+                cols.insert(1, "company_name")
+                df_firm_year = df_firm_year[cols]
             df_firm_year = df_firm_year.sort_values(by=["ticker", "year"]).reset_index(drop=True)
 
         raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else pd.DataFrame()

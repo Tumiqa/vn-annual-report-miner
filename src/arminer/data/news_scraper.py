@@ -353,12 +353,12 @@ class CafeFScraper:
     BASE_SEARCH_URL = "https://cafef.vn/tim-kiem.chn?keywords={ticker}&page={page}"
 
     @classmethod
-    def get_article_links(cls, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = max(1, (max_links + 19) // 20)
+        max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
 
-        while len(links) < max_links and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -375,7 +375,7 @@ class CafeFScraper:
                         if full_url not in links:
                             links.append(full_url)
                             found_in_page += 1
-                            if len(links) >= max_links:
+                            if max_links is not None and len(links) >= max_links:
                                 break
 
                 if found_in_page == 0:
@@ -394,12 +394,12 @@ class CafeBizScraper:
     BASE_SEARCH_URL = "https://cafebiz.vn/search.chn?keywords={ticker}&page={page}"
 
     @classmethod
-    def get_article_links(cls, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = max(1, (max_links + 19) // 20)
+        max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
 
-        while len(links) < max_links and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -415,7 +415,7 @@ class CafeBizScraper:
                         if full_url not in links:
                             links.append(full_url)
                             found_in_page += 1
-                            if len(links) >= max_links:
+                            if max_links is not None and len(links) >= max_links:
                                 break
 
                 if found_in_page == 0:
@@ -434,12 +434,12 @@ class VnExpressScraper:
     BASE_SEARCH_URL = "https://timkiem.vnexpress.net/?q={ticker}&cate_code=kinh-doanh&page={page}"
 
     @classmethod
-    def get_article_links(cls, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = max(1, (max_links + 14) // 15)
+        max_pages = 30 if max_links is None else max(1, (max_links + 14) // 15)
 
-        while len(links) < max_links and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -454,7 +454,7 @@ class VnExpressScraper:
                         if href not in links and not any(x in href for x in ["/video/", "/podcast/", "/anh/"]):
                             links.append(href)
                             found_in_page += 1
-                            if len(links) >= max_links:
+                            if max_links is not None and len(links) >= max_links:
                                 break
 
                 if found_in_page == 0:
@@ -473,12 +473,12 @@ class VietnamNetScraper:
     BASE_SEARCH_URL = "https://vietnamnet.vn/tim-kiem?q={ticker}&c=kinh-doanh&page={page}"
 
     @classmethod
-    def get_article_links(cls, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = max(1, (max_links + 14) // 15)
+        max_pages = 30 if max_links is None else max(1, (max_links + 14) // 15)
 
-        while len(links) < max_links and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -494,7 +494,7 @@ class VietnamNetScraper:
                         if full_url not in links and not any(x in full_url for x in ["/video/", "/podcast/"]):
                             links.append(full_url)
                             found_in_page += 1
-                            if len(links) >= max_links:
+                            if max_links is not None and len(links) >= max_links:
                                 break
 
                 if found_in_page == 0:
@@ -513,12 +513,12 @@ class TinNhanhCKScraper:
     BASE_SEARCH_URL = "https://tinnhanhchungkhoan.vn/tim-kiem/?q={ticker}&page={page}"
 
     @classmethod
-    def get_article_links(cls, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = max(1, (max_links + 19) // 20)
+        max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
 
-        while len(links) < max_links and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -529,13 +529,12 @@ class TinNhanhCKScraper:
                 found_in_page = 0
                 for a in soup.find_all("a", href=True):
                     href = a["href"]
-                    # TinNhanhCK article links typically contain -post[0-9]+.html or /tin-tuc-
                     if re.search(r"-post\d+\.html$", href) or re.search(r"-\d+\.html$", href):
                         full_url = href if href.startswith("http") else urljoin("https://tinnhanhchungkhoan.vn", href)
                         if full_url not in links:
                             links.append(full_url)
                             found_in_page += 1
-                            if len(links) >= max_links:
+                            if max_links is not None and len(links) >= max_links:
                                 break
 
                 if found_in_page == 0:
@@ -554,7 +553,7 @@ class VnEconomyScraper:
     BASE_SEARCH_URL = "https://vneconomy.vn/tim-kiem.htm?q={ticker}"
 
     @classmethod
-    def get_article_links(cls, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker))
         try:
@@ -563,12 +562,11 @@ class VnEconomyScraper:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 for a in soup.find_all("a", href=True):
                     href = a["href"]
-                    # VnEconomy articles end with .htm and have slug
                     if href.endswith(".htm") and not any(x in href for x in ["tim-kiem", "tag", "chuyen-muc"]):
                         full_url = href if href.startswith("http") else urljoin("https://vneconomy.vn", href)
                         if full_url not in links and len(full_url.split("/")[-1]) > 10:
                             links.append(full_url)
-                            if len(links) >= max_links:
+                            if max_links is not None and len(links) >= max_links:
                                 break
         except Exception as e:
             logger.warning(f"VnEconomy search failed for {ticker}: {e}")
@@ -582,7 +580,7 @@ class CompanyWebsiteScraper:
     def __init__(self, resolver: CompanyWebsiteResolver):
         self.resolver = resolver
 
-    def get_article_links(self, ticker: str, max_links: int = 30) -> List[str]:
+    def get_article_links(self, ticker: str, max_links: Optional[int] = None) -> List[str]:
         comp = self.resolver.get_company(ticker)
         website = self.resolver.resolve_website(ticker)
         if not website:
@@ -605,7 +603,7 @@ class CompanyWebsiteScraper:
 
         domain_failed = False
         for target_url in target_urls:
-            if domain_failed or len(article_links) >= max_links:
+            if domain_failed or (max_links is not None and len(article_links) >= max_links):
                 break
             try:
                 resp = requests.get(target_url, headers=DEFAULT_HEADERS, timeout=4)
@@ -629,11 +627,10 @@ class CompanyWebsiteScraper:
                             "tin-tuc", "news", "bai-viet", "thong-bao", "su-kien",
                             "co-dong", "quan-he", "detail", "post", "article", "press"
                         ])
-                        # Slug should be reasonably long
                         slug = path_lower.rstrip("/").split("/")[-1]
                         if is_news and len(slug) > 8 and full_url != target_url:
                             article_links.add(full_url)
-                            if len(article_links) >= max_links:
+                            if max_links is not None and len(article_links) >= max_links:
                                 break
             except (requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as e:
                 logger.debug(f"Connection failed for {domain} ({e}), skipping remaining paths for this company.")
@@ -645,10 +642,141 @@ class CompanyWebsiteScraper:
         return list(article_links)
 
 
+def extract_company_brand_tokens(
+    ticker: str,
+    company_name: str,
+    website: Optional[str] = None
+) -> Tuple[str, List[str]]:
+    """
+    Extracts clean company name and brand tokens for search expansion and strict verification.
+    """
+    t = ticker.upper().strip()
+    clean_name = re.sub(
+        r"^(công ty|ctcp|ngân hàng|tập đoàn|tổng công ty)\s+(cổ phần|thương mại cổ phần|tmcp|tnhh)?\s*",
+        "", company_name, flags=re.I
+    ).strip()
+    clean_name = re.sub(r"(Chứng khoán|Bảo hiểm|Ngân hàng)$", "", clean_name).strip()
+    if not clean_name or clean_name.upper() == t:
+        clean_name = ""
+
+    tokens: Set[str] = set()
+    if clean_name and len(clean_name) >= 3:
+        tokens.add(clean_name)
+
+    # Specific brand tokens for well-known listed entities
+    if "Thủy sản Cửu Long" in company_name or "Cửu Long An Giang" in company_name:
+        tokens.add("Thủy sản Cửu Long")
+        tokens.add("Cửu Long An Giang")
+    if "Hòa Phát" in company_name:
+        tokens.add("Hòa Phát")
+    if "Vinamilk" in company_name or "Sữa Việt Nam" in company_name:
+        tokens.add("Vinamilk")
+        tokens.add("Sữa Việt Nam")
+    if "Vietcombank" in company_name or "Ngoại thương Việt Nam" in company_name:
+        tokens.add("Vietcombank")
+        tokens.add("Ngoại thương")
+
+    # Domain brand extraction: e.g. "https://www.vinamilk.com.vn" -> "vinamilk"
+    if website:
+        parsed = urlparse(website)
+        netloc = parsed.netloc.replace("www.", "").lower()
+        domain_parts = netloc.split(".")
+        if domain_parts:
+            dom = domain_parts[0]
+            if len(dom) >= 3 and dom not in ["com", "vn", "net", "org", "gov", "info"]:
+                tokens.add(dom)
+
+    return clean_name, sorted(list(tokens), key=len, reverse=True)
+
+
+def is_company_confirmed(
+    art: Dict[str, Any],
+    ticker: str,
+    company_name: str,
+    clean_name: str,
+    brand_tokens: Optional[List[str]] = None,
+) -> bool:
+    """
+    Strictly verifies if the article actually pertains to the target company.
+    Rules:
+    1. Official company website articles are always confirmed.
+    2. Custom URLs provided by user are always confirmed.
+    3. For portal articles, title and text MUST mention either:
+       - The ticker code as a standalone token or with financial prefix (e.g. '(ACL)', 'mã ACL', 'cổ phiếu ACL', 'ACL')
+       - The full official company name
+       - The clean company name or recognizable brand tokens (e.g. 'Thủy sản Cửu Long', 'Vinamilk', 'Hòa Phát')
+    """
+    src = art.get("news_source", "")
+    if src == "company_website" or "custom" in src:
+        return True
+
+    title = (art.get("title") or "").strip()
+    text = (art.get("text") or "")[:4000]
+    combined = f"{title}\n{text}"
+    combined_lower = combined.lower()
+
+    t_upper = ticker.upper().strip()
+
+    # 1. Ticker pattern matching
+    ticker_patterns = [
+        rf"\({t_upper}\)",
+        rf"\({t_upper}:",
+        rf"\({t_upper}/",
+        rf"(?i)\bmã\s+(?:chứng\s+khoán\s+|ck\s+)?{t_upper}\b",
+        rf"(?i)\bcổ\s+phiếu\s+{t_upper}\b",
+        rf"(?i)\b(?:hose|hnx|upcom):\s*{t_upper}\b",
+        rf"\b{t_upper}\b",
+    ]
+    for pat in ticker_patterns:
+        if re.search(pat, combined):
+            return True
+
+    # 2. Full company name matching
+    if company_name and len(company_name) > 6:
+        if company_name.lower() in combined_lower:
+            return True
+
+    # 3. Clean company name matching
+    if clean_name and len(clean_name) >= 4:
+        if clean_name.lower() in combined_lower:
+            return True
+
+    # 4. Brand tokens matching
+    if brand_tokens:
+        for token in brand_tokens:
+            if token and len(token) >= 4 and token.lower() in combined_lower:
+                return True
+
+    return False
+
+
+def is_keyword_confirmed(
+    art: Dict[str, Any],
+    keywords: Optional[List[str]],
+) -> bool:
+    """
+    Verifies if the article contains at least one of the target keywords.
+    If keywords is None or empty, returns True (no keyword filter).
+    """
+    if not keywords:
+        return True
+
+    title = (art.get("title") or "").lower()
+    text = (art.get("text") or "").lower()
+    combined = f"{title}\n{text}"
+
+    for kw in keywords:
+        k = kw.strip().lower()
+        if k and k in combined:
+            return True
+
+    return False
+
+
 class MultiSourceNewsAggregator:
     """
     Coordinates crawling across all sources with dynamic quota backfill
-    ("thiếu nguồn này thì nguồn khác đắp vào") and deduplication.
+    and strict company/keyword verification ("hết sức có thể").
     """
 
     def __init__(self, resolver: Optional[CompanyWebsiteResolver] = None):
@@ -679,16 +807,16 @@ class MultiSourceNewsAggregator:
         self,
         ticker: str,
         sources: List[str],
-        target_articles: int = 25,
+        target_articles: Optional[int] = None,
         year_from: Optional[int] = None,
         year_to: Optional[int] = None,
         custom_urls: Optional[List[str]] = None,
+        keywords: Optional[List[str] | str] = None,
         progress_cb: Optional[Callable[[str, int, int], None]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Gathers articles for a ticker across requested sources.
-        Implements dynamic backfill: if source X returns fewer than target,
-        other sources are queried for additional articles to reach target_articles.
+        Gathers articles for a ticker across requested sources without limits (when target_articles is None).
+        Strictly confirms exact company identity and validates keywords ("có từ khóa chuẩn là lụm thôi").
         Optionally filters by publication year range [year_from, year_to].
         """
         t = ticker.upper().strip()
@@ -697,13 +825,16 @@ class MultiSourceNewsAggregator:
 
         comp = self.resolver.get_company(t)
         company_name = (comp.get("name") or "") if comp else ""
-        clean_name = re.sub(
-            r"^(công ty|ctcp|ngân hàng|tập đoàn|tổng công ty)\s+(cổ phần|thương mại cổ phần|tmcp|tnhh)?\s*",
-            "", company_name, flags=re.I
-        ).strip()
-        clean_name = re.sub(r"(Chứng khoán|Bảo hiểm|Ngân hàng)$", "", clean_name).strip()
-        if not clean_name or clean_name.upper() == t:
-            clean_name = ""
+        website = comp.get("website") if comp else None
+        clean_name, brand_tokens = extract_company_brand_tokens(t, company_name, website)
+
+        # Parse keywords into normalized list
+        kw_list: Optional[List[str]] = None
+        if keywords:
+            if isinstance(keywords, str):
+                kw_list = [k.strip() for k in keywords.split(",") if k.strip()]
+            elif isinstance(keywords, (list, tuple, set)):
+                kw_list = [str(k).strip() for k in keywords if str(k).strip()]
 
         def is_duplicate(title: str) -> bool:
             t_clean = re.sub(r"[^\w\s]", "", title.lower()).strip()
@@ -716,18 +847,20 @@ class MultiSourceNewsAggregator:
 
         # Phase 1: Collect article links per source
         links_by_source: Dict[str, List[str]] = {}
-        # Fetch slightly higher buffer if year filtering is active to account for filtered years
-        multiplier = 2 if (year_from or year_to) else 1
-        target_per_source = max(5, ((target_articles * multiplier) // max(1, len(sources))) + 4)
+        target_per_source = None
+        if target_articles is not None and target_articles > 0:
+            multiplier = 2 if (year_from or year_to) else 1
+            target_per_source = max(5, ((target_articles * multiplier) // max(1, len(sources))) + 4)
 
         if progress_cb:
-            progress_cb(f"Đang tìm kiếm link bài viết cho {t} ({company_name})...", 0, target_articles)
+            progress_cb(f"Đang tìm kiếm link bài viết cho {t} ({company_name or 'DN niêm yết'})...", 0, target_articles or 0)
 
         def collect_portal_links(scraper_cls, portal_name: str) -> List[str]:
-            """Collect links by ticker first, then expand with company name for maximum recall."""
+            """Collect links by ticker first, then expand with clean company name for exhaustive recall."""
             links = scraper_cls.get_article_links(t, max_links=target_per_source)
-            if len(links) < target_per_source and clean_name:
-                extra = scraper_cls.get_article_links(clean_name, max_links=target_per_source - len(links))
+            if clean_name and (target_per_source is None or len(links) < target_per_source):
+                rem = None if target_per_source is None else (target_per_source - len(links))
+                extra = scraper_cls.get_article_links(clean_name, max_links=rem)
                 for u in extra:
                     if u not in links:
                         links.append(u)
@@ -735,53 +868,54 @@ class MultiSourceNewsAggregator:
 
         # 1. Custom URLs
         if "custom" in sources and custom_urls:
-            links_by_source["custom"] = custom_urls[:target_articles * multiplier]
+            links_by_source["custom"] = custom_urls if target_articles is None else custom_urls[:target_articles * 2]
 
         # 2. Company Website
         if "company_website" in sources:
             if progress_cb:
-                progress_cb(f"Đang quét trang tin tức trên website {t}...", len(collected_articles), target_articles)
+                progress_cb(f"Đang quét trang tin tức trên website {t}...", len(collected_articles), target_articles or 0)
             comp_links = self.company_scraper.get_article_links(t, max_links=target_per_source)
             links_by_source["company_website"] = comp_links
 
         # 3. CafeF
         if "cafef" in sources:
             if progress_cb:
-                progress_cb(f"Đang tìm tin tức {t} trên CafeF...", len(collected_articles), target_articles)
+                progress_cb(f"Đang tìm tin tức {t} trên CafeF...", len(collected_articles), target_articles or 0)
             links_by_source["cafef"] = collect_portal_links(CafeFScraper, "CafeF")
 
         # 4. Tin Nhanh Chung Khoan
         if "tinnhanhchungkhoan" in sources:
             if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên Tin Nhanh Chứng Khoán...", len(collected_articles), target_articles)
+                progress_cb(f"Đang tìm tin {t} trên Tin Nhanh Chứng Khoán...", len(collected_articles), target_articles or 0)
             links_by_source["tinnhanhchungkhoan"] = collect_portal_links(TinNhanhCKScraper, "TinNhanhCK")
 
         # 5. VnEconomy
         if "vneconomy" in sources:
             if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên VnEconomy...", len(collected_articles), target_articles)
+                progress_cb(f"Đang tìm tin {t} trên VnEconomy...", len(collected_articles), target_articles or 0)
             links_by_source["vneconomy"] = collect_portal_links(VnEconomyScraper, "VnEconomy")
 
         # 6. VnExpress Kinh Doanh
         if "vnexpress" in sources:
             if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên VnExpress Kinh Doanh...", len(collected_articles), target_articles)
+                progress_cb(f"Đang tìm tin {t} trên VnExpress Kinh Doanh...", len(collected_articles), target_articles or 0)
             links_by_source["vnexpress"] = collect_portal_links(VnExpressScraper, "VnExpress")
 
         # 7. CafeBiz
         if "cafebiz" in sources:
             if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên CafeBiz...", len(collected_articles), target_articles)
+                progress_cb(f"Đang tìm tin {t} trên CafeBiz...", len(collected_articles), target_articles or 0)
             links_by_source["cafebiz"] = collect_portal_links(CafeBizScraper, "CafeBiz")
 
         # 8. VietnamNet Kinh Doanh
         if "vietnamnet" in sources:
             if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên VietnamNet...", len(collected_articles), target_articles)
+                progress_cb(f"Đang tìm tin {t} trên VietnamNet...", len(collected_articles), target_articles or 0)
             links_by_source["vietnamnet"] = collect_portal_links(VietnamNetScraper, "VietnamNet")
 
         # Interleave links from sources to achieve a balanced and diverse aggregation
         all_candidate_links: List[Tuple[str, str]] = []  # (url, source_name)
+        seen_urls: Set[str] = set()
         source_keys = list(links_by_source.keys())
         max_len = max([len(v) for v in links_by_source.values()]) if links_by_source else 0
 
@@ -789,33 +923,37 @@ class MultiSourceNewsAggregator:
             for s_key in source_keys:
                 s_links = links_by_source[s_key]
                 if idx < len(s_links):
-                    all_candidate_links.append((s_links[idx], s_key))
+                    u = s_links[idx]
+                    if u not in seen_urls:
+                        seen_urls.add(u)
+                        all_candidate_links.append((u, s_key))
 
-        # Backfill expansion: if total links < target_articles and portals can provide more
-        existing_urls = {u for u, _ in all_candidate_links}
-        if len(all_candidate_links) < (target_articles * multiplier):
-            needed = (target_articles * multiplier) - len(all_candidate_links)
+        # Backfill expansion only if target_articles is specifically configured
+        if target_articles is not None and len(all_candidate_links) < (target_articles * 2):
+            needed = (target_articles * 2) - len(all_candidate_links)
             for backfill_src, scraper_fn in [
-                ("cafef", lambda: CafeFScraper.get_article_links(t, max_links=target_per_source + needed + 10)),
-                ("cafebiz", lambda: CafeBizScraper.get_article_links(t, max_links=target_per_source + needed + 10)),
-                ("vnexpress", lambda: VnExpressScraper.get_article_links(t, max_links=target_per_source + needed + 10)),
+                ("cafef", lambda: CafeFScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
+                ("cafebiz", lambda: CafeBizScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
+                ("vnexpress", lambda: VnExpressScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
             ]:
                 if backfill_src in sources:
                     extra_links = scraper_fn()
                     for u in extra_links:
-                        if u not in existing_urls:
+                        if u not in seen_urls:
+                            seen_urls.add(u)
                             all_candidate_links.append((u, f"{backfill_src} (bù đắp)"))
-                            existing_urls.add(u)
-                            if len(all_candidate_links) >= (target_articles * multiplier):
+                            if len(all_candidate_links) >= (target_articles * 2):
                                 break
-                if len(all_candidate_links) >= (target_articles * multiplier):
+                if len(all_candidate_links) >= (target_articles * 2):
                     break
 
         # Phase 2: Fetch articles content concurrently
         total_links = len(all_candidate_links)
         logger.info(f"Starting content extraction for {t}: {total_links} links queued")
+        if progress_cb:
+            progress_cb(f"Đang phân tích & trích xuất nội dung {total_links} link cho {t}...", 0, target_articles or total_links)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             future_to_meta = {
                 executor.submit(self.fetch_article, url, src, t): (url, src)
                 for url, src in all_candidate_links
@@ -843,17 +981,31 @@ class MultiSourceNewsAggregator:
                             if year_to is not None and art_year > year_to:
                                 continue
 
+                        # 1. Strict Company Confirmation
+                        if not is_company_confirmed(art, t, company_name, clean_name, brand_tokens):
+                            logger.debug(f"Article dropped (unconfirmed company): {art.get('title')}")
+                            continue
+
+                        # 2. Keyword Confirmation ("có từ khóa chuẩn là lụm thôi")
+                        if not is_keyword_confirmed(art, kw_list):
+                            logger.debug(f"Article dropped (missing required keywords): {art.get('title')}")
+                            continue
+
+                        art["company_confirmed"] = True
                         collected_articles.append(art)
                         if progress_cb:
                             progress_cb(
-                                f"Đã thu thập: {art['title'][:40]}... ({src})",
+                                f"Đã lụm [{len(collected_articles)}]: {art['title'][:40]}... ({src})",
                                 len(collected_articles),
-                                target_articles,
+                                target_articles or total_links,
                             )
-                        if len(collected_articles) >= target_articles:
-                            break
+
+                        # Only break if an explicit quota limit was requested
+                        if target_articles is not None and target_articles > 0:
+                            if len(collected_articles) >= target_articles:
+                                break
                 except Exception as e:
                     logger.debug(f"Error processing article {url}: {e}")
 
-        logger.info(f"Finished crawling for {t}: collected {len(collected_articles)} articles")
+        logger.info(f"Finished crawling for {t}: collected {len(collected_articles)} verified articles")
         return collected_articles

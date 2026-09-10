@@ -2314,7 +2314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const customUrlsContainer = document.getElementById('customUrlsContainer');
     const customUrlsInput = document.getElementById('customUrlsInput');
 
-    const newsTargetArticles = document.getElementById('newsTargetArticles');
+    const newsCustomKeywords = document.getElementById('newsCustomKeywords');
     const newsTopicSelect = document.getElementById('newsTopicSelect');
 
     const btnExecuteNewsMining = document.getElementById('btnExecuteNewsMining');
@@ -2548,7 +2548,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return Array.from(newsSelectedTickers);
     }
 
-    // 2. Custom URLs toggle
+    // Toggle Custom URLs textarea
     if (srcCustomUrls && customUrlsContainer) {
       srcCustomUrls.addEventListener('change', () => {
         customUrlsContainer.style.display = srcCustomUrls.checked ? 'block' : 'none';
@@ -2556,16 +2556,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getSelectedSources() {
-      const s = [];
-      if (srcCompanyWeb && srcCompanyWeb.checked) s.push('company_website');
-      if (srcCafeF && srcCafeF.checked) s.push('cafef');
-      if (srcVnExpress && srcVnExpress.checked) s.push('vnexpress');
-      if (srcCafeBiz && srcCafeBiz.checked) s.push('cafebiz');
-      if (srcTinNhanhCK && srcTinNhanhCK.checked) s.push('tinnhanhchungkhoan');
-      if (srcVnEconomy && srcVnEconomy.checked) s.push('vneconomy');
-      if (srcVietnamNet && srcVietnamNet.checked) s.push('vietnamnet');
-      if (srcCustomUrls && srcCustomUrls.checked) s.push('custom');
-      return s;
+      const sources = [];
+      if (srcCompanyWeb && srcCompanyWeb.checked) sources.push('company_website');
+      if (srcCafeF && srcCafeF.checked) sources.push('cafef');
+      if (srcVnExpress && srcVnExpress.checked) sources.push('vnexpress');
+      if (srcCafeBiz && srcCafeBiz.checked) sources.push('cafebiz');
+      if (srcTinNhanhCK && srcTinNhanhCK.checked) sources.push('tinnhanhchungkhoan');
+      if (srcVnEconomy && srcVnEconomy.checked) sources.push('vneconomy');
+      if (srcVietnamNet && srcVietnamNet.checked) sources.push('vietnamnet');
+      if (srcCustomUrls && srcCustomUrls.checked) sources.push('custom');
+      return sources;
     }
 
     function getCustomUrlsList() {
@@ -2573,7 +2573,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return customUrlsInput.value.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
     }
 
-    // 3. Scrape Only Stream
+    // 3. Scrape Only Stream (Chế độ Cào Tối Đa Không Giới Hạn)
     if (btnOnlyScrapeNews) {
       btnOnlyScrapeNews.addEventListener('click', async () => {
         const tickers = getEnteredTickers();
@@ -2589,19 +2589,19 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const targetPerTicker = parseInt(newsTargetArticles ? newsTargetArticles.value : '20') || 20;
         const yearFrom = newsYearFrom ? parseInt(newsYearFrom.value) || 2020 : 2020;
         const yearTo = newsYearTo ? parseInt(newsYearTo.value) || 2026 : 2026;
+        const customKeywords = newsCustomKeywords ? newsCustomKeywords.value.trim() : '';
 
         btnOnlyScrapeNews.disabled = true;
         newsProgressCard.style.display = 'block';
         newsPreviewCard.style.display = 'none';
         newsResultsCard.style.display = 'none';
 
-        newsProgressPhase.textContent = 'Khởi động crawler...';
+        newsProgressPhase.textContent = 'Khởi động crawler tối đa...';
         newsProgressBarFill.style.width = '5%';
         newsProgressPercent.textContent = '5%';
-        newsProgressMessage.textContent = `Đang kết nối tới ${sources.length} nguồn tin tức (năm ${yearFrom}-${yearTo})...`;
+        newsProgressMessage.textContent = `Đang kết nối tới ${sources.length} nguồn tin tức (năm ${yearFrom}-${yearTo}, cào hết sức có thể)...`;
 
         try {
           const resp = await fetch('/api/news/scrape-stream', {
@@ -2610,10 +2610,11 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({
               tickers: tickers,
               sources: sources,
-              target_articles_per_ticker: targetPerTicker,
+              target_articles_per_ticker: null,
               year_from: yearFrom,
               year_to: yearTo,
               custom_urls: customUrls,
+              keywords: customKeywords || null,
             }),
           });
 
@@ -2646,7 +2647,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   if (eventData.articles) {
                     newsProgressBarFill.style.width = '100%';
                     newsProgressPercent.textContent = '100%';
-                    newsProgressPhase.textContent = 'Đã hoàn tất thu thập tin tức!';
+                    newsProgressPhase.textContent = 'Đã hoàn tất thu thập & xác nhận tin tức!';
                     currentPreviewArticles = eventData.articles;
                     renderPreviewTable(eventData.articles);
                   }
@@ -2668,7 +2669,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (previewArticleCount) previewArticleCount.textContent = articles.length;
 
       if (!articles || articles.length === 0) {
-        newsPreviewTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Không thu thập được bài viết nào phù hợp bộ lọc năm.</td></tr>';
+        newsPreviewTableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Không thu thập được bài viết nào phù hợp bộ lọc năm hoặc từ khóa.</td></tr>';
         newsPreviewCard.style.display = 'block';
         return;
       }
@@ -2677,6 +2678,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${escapeHtml(a.ticker)}</strong></td>
+          <td><span style="font-size: 12px; font-weight: 500; color: var(--text-primary);">${escapeHtml(a.company_name || '—')}</span></td>
           <td class="tabular">${escapeHtml(a.year || '—')}</td>
           <td><span class="badge-source badge-official">${escapeHtml(a.news_source)}</span></td>
           <td>
@@ -2716,10 +2718,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const targetPerTicker = parseInt(newsTargetArticles ? newsTargetArticles.value : '20') || 20;
       const yearFrom = newsYearFrom ? parseInt(newsYearFrom.value) || 2020 : 2020;
       const yearTo = newsYearTo ? parseInt(newsYearTo.value) || 2026 : 2026;
       const topic = newsTopicSelect ? newsTopicSelect.value : 'blockchain';
+      const customKeywords = newsCustomKeywords ? newsCustomKeywords.value.trim() : '';
 
       if (btnExecuteNewsMining) btnExecuteNewsMining.disabled = true;
       if (btnMineFromPreview) btnMineFromPreview.disabled = true;
@@ -2738,11 +2740,12 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             tickers: tickers,
             sources: sources,
-            target_articles_per_ticker: targetPerTicker,
+            target_articles_per_ticker: null,
             year_from: yearFrom,
             year_to: yearTo,
             custom_urls: customUrls,
             topic: topic,
+            keywords: customKeywords || null,
             threshold: 85,
           }),
         });

@@ -8,6 +8,9 @@ from arminer.data.news_scraper import (
     CompanyWebsiteResolver,
     UniversalNewsExtractor,
     MultiSourceNewsAggregator,
+    extract_company_brand_tokens,
+    is_company_confirmed,
+    is_keyword_confirmed,
 )
 
 
@@ -111,4 +114,63 @@ def test_universal_news_extractor_with_year():
     res = extractor.extract_from_html(sample_html, "https://fpt.com/news/1")
     assert res is not None
     assert res["published_year"] == 2024
+
+
+def test_extract_company_brand_tokens():
+    clean_name, tokens = extract_company_brand_tokens(
+        "ACL",
+        "Công ty Cổ phần Xuất nhập khẩu Thủy sản Cửu Long An Giang",
+        "http://cuulongfish.com.vn"
+    )
+    assert "Thủy sản Cửu Long" in tokens
+    assert "Cửu Long An Giang" in tokens
+    assert "cuulongfish" in tokens
+
+
+def test_is_company_confirmed_positive():
+    comp_name = "Công ty Cổ phần Xuất nhập khẩu Thủy sản Cửu Long An Giang"
+    clean_name, tokens = extract_company_brand_tokens("ACL", comp_name, "http://cuulongfish.com.vn")
+
+    # 1. Ticker in title with parenthesis
+    art1 = {"title": "Xuất khẩu cá tra tăng tốc, (ACL) đạt lãi cao", "text": "Doanh thu quý này...", "news_source": "cafef"}
+    assert is_company_confirmed(art1, "ACL", comp_name, clean_name, tokens) is True
+
+    # 2. Company brand in body
+    art2 = {"title": "Doanh nghiệp thủy sản miền Tây bứt phá", "text": "Thủy sản Cửu Long đã ký được các hợp đồng lớn...", "news_source": "vnexpress"}
+    assert is_company_confirmed(art2, "ACL", comp_name, clean_name, tokens) is True
+
+    # 3. Company website source is always confirmed
+    art3 = {"title": "Thông báo họp ĐHĐCĐ", "text": "Nội dung họp...", "news_source": "company_website"}
+    assert is_company_confirmed(art3, "ACL", comp_name, clean_name, tokens) is True
+
+
+def test_is_company_confirmed_negative_noise():
+    comp_name = "Công ty Cổ phần Xuất nhập khẩu Thủy sản Cửu Long An Giang"
+    clean_name, tokens = extract_company_brand_tokens("ACL", comp_name, "http://cuulongfish.com.vn")
+
+    # Unrelated news matching homonym word (e.g. sông Cửu Long, no company / ticker)
+    noise_art = {
+        "title": "Mùa lũ đồng bằng sông Cửu Long năm nay về muộn",
+        "text": "Nông dân các tỉnh An Giang và Đồng Tháp đang chuẩn bị cho vụ lúa mới theo khuyến cáo...",
+        "news_source": "cafef"
+    }
+    assert is_company_confirmed(noise_art, "ACL", comp_name, clean_name, tokens) is False
+
+
+def test_is_keyword_confirmed():
+    art = {
+        "title": "Doanh nghiệp đẩy mạnh chuyển đổi số và ESG trong năm 2024",
+        "text": "Các giải pháp trí tuệ nhân tạo và tự động hóa giúp tối ưu hóa chi phí vận hành..."
+    }
+    # Matches keyword
+    assert is_keyword_confirmed(art, ["chuyển đổi số", "blockchain"]) is True
+    assert is_keyword_confirmed(art, ["trí tuệ nhân tạo"]) is True
+
+    # No match
+    assert is_keyword_confirmed(art, ["bất động sản", "trái phiếu"]) is False
+
+    # No keywords specified -> always True
+    assert is_keyword_confirmed(art, None) is True
+    assert is_keyword_confirmed(art, []) is True
+
 
