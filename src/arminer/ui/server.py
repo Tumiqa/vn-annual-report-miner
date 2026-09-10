@@ -1566,7 +1566,7 @@ def financial_presets():
             {
                 "id": "basic",
                 "name": "Cơ bản (Nghiên cứu)",
-                "description": "5 chỉ tiêu cốt lõi + 4 tỷ số tài chính",
+                "description": "5 chỉ tiêu cốt lõi + 4 chỉ số tài chính",
                 "items": [
                     {"code": "bs_tong_tai_san", "name": "Tổng tài sản", "statement": "balance_sheet"},
                     {"code": "bs_von_chu_so_huu", "name": "Vốn chủ sở hữu", "statement": "balance_sheet"},
@@ -1574,7 +1574,7 @@ def financial_presets():
                     {"code": "is_doanh_thu_thuan", "name": "Doanh thu thuần", "statement": "income_statement"},
                     {"code": "is_loi_nhuan_sau_thue", "name": "Lợi nhuận sau thuế", "statement": "income_statement"},
                 ],
-                "ratios": ["roa", "roe", "size", "leverage"],
+                "ratios": ["roa", "roe", "debt_to_assets", "size_ln"],
             },
             {
                 "id": "full",
@@ -1597,12 +1597,12 @@ def financial_presets():
                     {"code": "is_chi_phi_quan_ly_doanh_nghiep", "name": "Chi phí QLDN", "statement": "income_statement"},
                     {"code": "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh", "name": "Lưu chuyển tiền thuần từ HĐKD", "statement": "cash_flow"},
                 ],
-                "ratios": ["roa", "roe", "size", "leverage", "gross_margin", "net_margin", "current_ratio", "debt_to_equity"],
+                "ratios": ["roa", "roe", "gross_margin", "net_margin", "current_ratio", "debt_to_equity", "debt_to_assets", "size_ln"],
             },
             {
                 "id": "banking",
-                "name": "Ngân hàng",
-                "description": "Chỉ tiêu đặc thù ngành ngân hàng",
+                "name": "Ngân hàng (CAMELS)",
+                "description": "Chỉ tiêu & chỉ số đặc thù ngành ngân hàng",
                 "items": [
                     {"code": "bs_tong_tai_san", "name": "Tổng tài sản", "statement": "balance_sheet"},
                     {"code": "bs_von_chu_so_huu", "name": "Vốn chủ sở hữu", "statement": "balance_sheet"},
@@ -1612,12 +1612,28 @@ def financial_presets():
                     {"code": "is_loi_nhuan_sau_thue", "name": "Lợi nhuận sau thuế", "statement": "income_statement"},
                     {"code": "bs_du_phong_rui_ro_cho_vay_khach_hang", "name": "Dự phòng rủi ro cho vay khách hàng", "statement": "balance_sheet"},
                 ],
-                "ratios": ["roa", "roe", "size"],
+                "ratios": ["roa", "roe", "bank_nim", "bank_cir", "bank_ldr", "bank_provision_coverage", "bank_loans_to_assets", "bank_deposits_to_assets", "bank_equity_to_assets", "size_ln"],
+            },
+            {
+                "id": "securities",
+                "name": "Công ty Chứng khoán",
+                "description": "Chỉ tiêu & chỉ số đặc thù CTCK (Margin, FVTPL, AFS, Môi giới)",
+                "items": [
+                    {"code": "bs_tong_tai_san", "name": "Tổng tài sản", "statement": "balance_sheet"},
+                    {"code": "bs_von_chu_so_huu", "name": "Vốn chủ sở hữu", "statement": "balance_sheet"},
+                    {"code": "sec_cho_vay_margin", "name": "Cho vay ký quỹ (Margin)", "statement": "balance_sheet"},
+                    {"code": "sec_tai_san_tai_chinh_fvtpl", "name": "Tài sản tài chính FVTPL", "statement": "balance_sheet"},
+                    {"code": "sec_tai_san_tai_chinh_afs", "name": "Tài sản tài chính AFS", "statement": "balance_sheet"},
+                    {"code": "sec_doanh_thu_moi_gioi", "name": "Doanh thu môi giới", "statement": "income_statement"},
+                    {"code": "sec_lai_tu_cac_tai_san_tai_chinh_fvtpl", "name": "Lãi tự doanh FVTPL", "statement": "income_statement"},
+                    {"code": "is_loi_nhuan_sau_thue", "name": "Lợi nhuận sau thuế", "statement": "income_statement"},
+                ],
+                "ratios": ["roa", "roe", "margin_to_equity", "pct_margin_loans", "pct_fvtpl", "pct_afs", "pct_brokerage_rev", "pct_proprietary_rev", "size_ln"],
             },
             {
                 "id": "profitability",
-                "name": "Phân tích khả năng sinh lời",
-                "description": "Các chỉ tiêu và tỷ số sinh lời chuyên sâu",
+                "name": "Khả năng sinh lời & Hiệu quả vốn",
+                "description": "Các chỉ tiêu và tỷ số sinh lời chuyên sâu (ROA, ROE, ROCE, ROIC, Biên LN)",
                 "items": [
                     {"code": "bs_tong_tai_san", "name": "Tổng tài sản", "statement": "balance_sheet"},
                     {"code": "bs_von_chu_so_huu", "name": "Vốn chủ sở hữu", "statement": "balance_sheet"},
@@ -1629,12 +1645,12 @@ def financial_presets():
                     {"code": "is_ebitda", "name": "EBITDA", "statement": "income_statement"},
                     {"code": "is_gia_von_hang_ban", "name": "Giá vốn hàng bán", "statement": "income_statement"},
                 ],
-                "ratios": ["roa", "roe", "gross_margin", "net_margin", "ebit_margin"],
+                "ratios": ["roa", "roe", "roce", "roic", "gross_margin", "operating_margin", "ebitda_margin", "net_margin", "ebt_margin"],
             },
             {
                 "id": "solvency",
-                "name": "Phân tích khả năng thanh toán",
-                "description": "Nợ, vốn, hàng tồn kho và hệ số thanh khoản",
+                "name": "Cấu trúc vốn & Thanh toán",
+                "description": "Nợ, vốn, khả năng thanh toán và đòn bẩy tài chính",
                 "items": [
                     {"code": "bs_tong_tai_san", "name": "Tổng tài sản", "statement": "balance_sheet"},
                     {"code": "bs_von_chu_so_huu", "name": "Vốn chủ sở hữu", "statement": "balance_sheet"},
@@ -1646,7 +1662,7 @@ def financial_presets():
                     {"code": "bs_vay_va_no_dai_han", "name": "Vay và nợ dài hạn", "statement": "balance_sheet"},
                     {"code": "bs_hang_ton_kho", "name": "Hàng tồn kho", "statement": "balance_sheet"},
                 ],
-                "ratios": ["leverage", "debt_to_equity", "current_ratio", "quick_ratio", "equity_multiplier"],
+                "ratios": ["debt_to_assets", "debt_to_equity", "current_ratio", "quick_ratio", "cash_ratio", "equity_multiplier", "interest_coverage"],
             },
         ]
     }

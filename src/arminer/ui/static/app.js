@@ -1362,15 +1362,44 @@ document.addEventListener('DOMContentLoaded', () => {
           lbl.dataset.code = r.code;
           lbl.title = `${r.name}: ${r.formula}`;
           lbl.innerHTML = `<input type="checkbox" value="${r.code}" ${isChecked ? 'checked' : ''}> ${escapeHtml(r.name)}`;
+          const chk = lbl.querySelector('input');
+          if (chk) {
+            chk.addEventListener('change', () => {
+              updateFinRatiosBadge();
+              updateFinQuerySummary();
+            });
+          }
           listDiv.appendChild(lbl);
         });
 
         groupDiv.appendChild(listDiv);
         container.appendChild(groupDiv);
       }
+      updateFinRatiosBadge();
+      updateFinQuerySummary();
     } catch (e) {
       console.error('Load ratios error:', e);
       container.innerHTML = '<div style="color: var(--color-danger); font-size: 12px;">Lỗi tải danh mục chỉ số tài chính</div>';
+    }
+  }
+
+  function updateFinRatiosBadge() {
+    const countEl = document.getElementById('finRatiosCount');
+    if (!countEl) return;
+    const total = Object.keys(finAvailableRatios || {}).length || 116;
+    let visible = 0;
+    let checked = 0;
+    document.querySelectorAll('#finRatiosContainer .fin-ratio-chk').forEach(lbl => {
+      if (lbl.style.display !== 'none') {
+        visible++;
+        const chk = lbl.querySelector('input[type="checkbox"]');
+        if (chk && chk.checked) checked++;
+      }
+    });
+    if (visible < total) {
+      countEl.textContent = `(${visible}/${total} khả dụng — Đã chọn: ${checked})`;
+    } else {
+      countEl.textContent = `(${total} chỉ số — Đã chọn: ${checked})`;
     }
   }
 
@@ -1440,6 +1469,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.fin-ratio-chk input').forEach(chk => {
         chk.checked = preset.ratios.includes(chk.value);
       });
+      updateFinRatiosBadge();
+      updateFinQuerySummary();
     });
   }
 
@@ -1549,6 +1580,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (chk) chk.checked = true;
         }
       });
+      updateFinRatiosBadge();
+      updateFinQuerySummary();
     });
   }
 
@@ -1558,6 +1591,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('#finRatiosContainer input[type="checkbox"]').forEach(chk => {
         chk.checked = false;
       });
+      updateFinRatiosBadge();
+      updateFinQuerySummary();
     });
   }
 
@@ -1861,12 +1896,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el) return;
     const nTickers = finSelectedTickers.size;
     const nItems = finSelectedItems.size;
+    let nRatios = 0;
+    document.querySelectorAll('#finRatiosContainer .fin-ratio-chk').forEach(lbl => {
+      if (lbl.style.display !== 'none') {
+        const chk = lbl.querySelector('input[type="checkbox"]');
+        if (chk && chk.checked) nRatios++;
+      }
+    });
     const y1 = document.getElementById('finYearFrom')?.value || '2014';
     const y2 = document.getElementById('finYearTo')?.value || '2024';
     if (nTickers === 0) {
       el.textContent = '';
     } else {
-      el.textContent = `${nTickers} mã × ${nItems || '?'} chỉ tiêu × (${y1}–${y2})`;
+      const parts = [];
+      if (nItems > 0) parts.push(`${nItems} chỉ tiêu BCTC`);
+      if (nRatios > 0) parts.push(`${nRatios} chỉ số tài chính`);
+      if (parts.length === 0) {
+        parts.push('0 chỉ tiêu / chỉ số (vui lòng chọn bên trên)');
+      }
+      el.textContent = `${nTickers} mã × ${parts.join(' + ')} × (${y1}–${y2})`;
     }
   }
 
@@ -1919,12 +1967,24 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
 
+        // Tự động chọn tất cả chỉ tiêu có số liệu đã lọc
+        if (finAllItems && finAllItems.length > 0) {
+          finSelectedItems.clear();
+          finAllItems.forEach(item => {
+            if (finAvailableItemCodes.has(item.item_code)) {
+              finSelectedItems.set(item.item_code, item);
+            }
+          });
+          renderFinSelectedItems();
+          updateAccordionCheckboxes();
+        }
+
         finSmartFilterActive = true;
         if (btnFinShowAll702) btnFinShowAll702.style.display = 'inline-flex';
         if (finSmartFilterBadge) {
           finSmartFilterBadge.style.display = 'inline';
           const tickerDisplay = probeTickers.length > 20 ? probeTickers.slice(0, 20) + '...' : probeTickers;
-          finSmartFilterBadge.textContent = `Đã lọc: ${visibleCount}/${finAllItems.length} chỉ tiêu có số liệu (${tickerDisplay})`;
+          finSmartFilterBadge.textContent = `Đã lọc & chọn: ${visibleCount}/${finAllItems.length} chỉ tiêu có số liệu (${tickerDisplay})`;
         }
         if (btnFinSelectAll702) {
           btnFinSelectAll702.textContent = `Chọn tất cả (${visibleCount})`;
@@ -1939,12 +1999,13 @@ document.addEventListener('DOMContentLoaded', () => {
               let groupVisible = 0;
               group.querySelectorAll('.fin-ratio-chk').forEach(lbl => {
                 const code = lbl.dataset.code;
+                const chk = lbl.querySelector('input[type="checkbox"]');
                 if (availRatiosSet.has(code)) {
                   lbl.style.display = 'inline-flex';
+                  if (chk) chk.checked = true; // TỰ ĐỘNG CHỌN TẤT CẢ CHỈ SỐ KHẢ DỤNG!
                   groupVisible++;
                 } else {
                   lbl.style.display = 'none';
-                  const chk = lbl.querySelector('input[type="checkbox"]');
                   if (chk) chk.checked = false;
                 }
               });
@@ -1958,13 +2019,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
               }
             });
-            const finRatiosCount = document.getElementById('finRatiosCount');
-            if (finRatiosCount) {
-              const totalRatios = Object.keys(finAvailableRatios || {}).length || 116;
-              finRatiosCount.textContent = `(${data.total_ratios || data.available_ratios.length}/${totalRatios} khả dụng)`;
-            }
+            updateFinRatiosBadge();
           }
         }
+        updateFinQuerySummary();
       } catch (err) {
         alert(`Lỗi: ${err.message}`);
       } finally {
@@ -2000,12 +2058,9 @@ document.addEventListener('DOMContentLoaded', () => {
             titleEl.textContent = `${titleEl.dataset.groupName} (${titleEl.dataset.total})`;
           }
         });
-        const finRatiosCount = document.getElementById('finRatiosCount');
-        if (finRatiosCount) {
-          const totalRatios = Object.keys(finAvailableRatios || {}).length || 116;
-          finRatiosCount.textContent = `(${totalRatios} chỉ số)`;
-        }
+        updateFinRatiosBadge();
       }
+      updateFinQuerySummary();
     });
   }
 
@@ -2028,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tickers = Array.from(finSelectedTickers);
       const startYear = parseInt(document.getElementById('finYearFrom').value) || 2014;
       const endYear = parseInt(document.getElementById('finYearTo').value) || 2024;
-      const itemCodes = Array.from(finSelectedItems.keys());
+      let itemCodes = Array.from(finSelectedItems.keys());
       const ratios = [];
       document.querySelectorAll('.fin-ratio-chk').forEach(lbl => {
         if (lbl.style.display !== 'none') {
@@ -2039,8 +2094,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const exchange = document.getElementById('finExchangeSelect').value || null;
       const dropEmpty = document.getElementById('finDropEmpty') ? document.getElementById('finDropEmpty').checked : true;
 
-      if (itemCodes.length === 0) {
-        alert('Vui lòng chọn ít nhất 1 chỉ tiêu tài chính hoặc dùng Preset!');
+      // Nếu chưa chọn chỉ tiêu BCTC nhưng đã có chỉ tiêu đã lọc, tự động lấy
+      if (itemCodes.length === 0 && finSmartFilterActive && finAvailableItemCodes && finAvailableItemCodes.size > 0) {
+        itemCodes = Array.from(finAvailableItemCodes);
+      }
+
+      if (itemCodes.length === 0 && ratios.length === 0) {
+        alert('Vui lòng chọn ít nhất 1 chỉ tiêu BCTC hoặc 1 chỉ số tài chính!');
         return;
       }
 
