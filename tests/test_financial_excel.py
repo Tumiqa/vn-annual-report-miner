@@ -99,15 +99,20 @@ def test_bctc_report_has_dynamic_formulas(tmp_path: Path):
     # Find the first data row (after header at row 4 and possible section header at row 5)
     first_formula_row = None
     for r in range(5, 20):
-        cell = ws_bc.cell(row=r, column=4)  # First year column (D)
+        cell = ws_bc.cell(row=r, column=5)  # First year column (E, following D: Trạng thái)
         if cell.value and str(cell.value).startswith("=IFERROR"):
             first_formula_row = r
             break
 
     assert first_formula_row is not None, "No INDEX/MATCH formula found in BCTC report"
 
-    # Verify formula structure
-    formula = str(ws_bc.cell(row=first_formula_row, column=4).value)
+    # Verify status column formula (Column D)
+    status_formula = str(ws_bc.cell(row=first_formula_row, column=4).value)
+    assert "COUNTIF(" in status_formula
+    assert "✓ Có số liệu" in status_formula
+
+    # Verify year formula structure (Column E)
+    formula = str(ws_bc.cell(row=first_formula_row, column=5).value)
     assert "INDEX(Data_BCTC!" in formula
     assert "MATCH($B$2" in formula
     assert "IFERROR" in formula
@@ -135,14 +140,19 @@ def test_tyso_report_has_dynamic_formulas(tmp_path: Path):
     # Find first formula row
     first_formula_row = None
     for r in range(5, 20):
-        cell = ws_ts.cell(row=r, column=5)  # First year column (E)
+        cell = ws_ts.cell(row=r, column=6)  # First year column (F, following E: Trạng thái)
         if cell.value and str(cell.value).startswith("=IFERROR"):
             first_formula_row = r
             break
 
     assert first_formula_row is not None, "No INDEX/MATCH formula found in TySo report"
 
-    formula = str(ws_ts.cell(row=first_formula_row, column=5).value)
+    # Verify status column formula (Column E)
+    status_formula = str(ws_ts.cell(row=first_formula_row, column=5).value)
+    assert "COUNTIF(" in status_formula
+    assert "✓ Có số liệu" in status_formula
+
+    formula = str(ws_ts.cell(row=first_formula_row, column=6).value)
     assert "INDEX(Data_TySo!" in formula
     assert "MATCH($B$2" in formula
 

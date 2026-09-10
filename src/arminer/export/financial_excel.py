@@ -1471,10 +1471,14 @@ def _create_hidden_tyso_sheet(ws, pivot, tickers, years, active_ratios):
 # SHEET: Bao_Cao_Tai_Chinh (Report with INDEX/MATCH formulas)
 # =====================================================================
 
-def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
-    """Create visible BCTC report with dynamic INDEX/MATCH formulas."""
+# =====================================================================
+# SHEET: Bao_Cao_Tai_Chinh (Report with INDEX/MATCH formulas)
+# =====================================================================
+
+def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row, data_lookup=None):
+    """Create visible BCTC report with dynamic INDEX/MATCH formulas and Smart Status Filter."""
     ws.sheet_properties.tabColor = _NAVY
-    max_col = 3 + len(years)
+    max_col = 4 + len(years)
 
     # Row 1: Title
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
@@ -1497,9 +1501,12 @@ def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
     dv.add(ws["B2"])
 
     ws.cell(row=2, column=3, value="← Chọn mã CK, dữ liệu bên dưới tự động cập nhật").font = _SMALL_FONT
+    ws.cell(row=2, column=4, value="Bộ lọc:").font = _LABEL_FONT
+    ws.cell(row=2, column=4).alignment = Alignment(horizontal="right", vertical="center")
+    ws.cell(row=2, column=5, value="Bấm lọc cột 'Trạng thái' → Bỏ tích '— Trống' để ẩn sạch dòng trống khi đổi mã").font = Font(name="Segoe UI", size=9, italic=True, color=_TEAL)
 
     # Row 4: Column headers
-    headers = ["Phân nhóm báo cáo", "Mã chỉ tiêu", "Tên chỉ tiêu"] + [str(y) for y in years]
+    headers = ["Phân nhóm báo cáo", "Mã chỉ tiêu", "Tên chỉ tiêu", "Trạng thái"] + [str(y) for y in years]
     for col_idx, h in enumerate(headers, 1):
         cell = ws.cell(row=4, column=col_idx, value=h)
         cell.font = _HEADER_FONT
@@ -1511,13 +1518,26 @@ def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
     row = 5
     current_category = None
     item_count = 0
+    t0 = tickers[0]
+
+    first_y_col = get_column_letter(5)
+    last_y_col = get_column_letter(4 + len(years))
+
+    cat_header_row = None
+    cat_items_with_data = 0
 
     for _, mrow in df_master.iterrows():
         cat = str(mrow["category"])
 
         # Section header row when category changes
         if cat != current_category:
+            if cat_header_row is not None and cat_items_with_data == 0:
+                ws.row_dimensions[cat_header_row].hidden = True
+
             current_category = cat
+            cat_header_row = row
+            cat_items_with_data = 0
+
             ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=max_col)
             sc = ws.cell(row=row, column=1, value=f"  {cat}")
             sc.font = _SECTION_FONT
@@ -1530,12 +1550,33 @@ def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
         icode = str(mrow["item_code"])
         iname = str(mrow["item_name"])
 
+        # Check if t0 has actual non-zero data for this item
+        has_t0_data = False
+        if data_lookup:
+            for y in years:
+                v = data_lookup.get((t0, icode, y))
+                if v is not None and pd.notna(v) and v != 0 and v != 0.0 and str(v).strip() not in ("", "None", "nan"):
+                    has_t0_data = True
+                    break
+
+        if has_t0_data:
+            cat_items_with_data += 1
+        else:
+            # Pre-hide row for default ticker so report opens 100% clean!
+            ws.row_dimensions[row].hidden = True
+
         ws.cell(row=row, column=1, value=cat).font = _SMALL_FONT
         ws.cell(row=row, column=1).alignment = _LEFT
         ws.cell(row=row, column=2, value=icode).font = _BODY_FONT
         ws.cell(row=row, column=2).alignment = _LEFT
         ws.cell(row=row, column=3, value=iname).font = _BODY_FONT
         ws.cell(row=row, column=3).alignment = _LEFT
+
+        # Column 4: Smart Status indicator with formula
+        status_formula = f'=IF(COUNTIF({first_y_col}{row}:{last_y_col}{row},">0")+COUNTIF({first_y_col}{row}:{last_y_col}{row},"<0")>0,"✓ Có số liệu","— Trống")'
+        cell_status = ws.cell(row=row, column=4, value=status_formula)
+        cell_status.font = Font(name="Segoe UI", size=9, bold=True, color="2B6CB0")
+        cell_status.alignment = _CENTER
 
         # Formula cells for each year column
         for y_idx in range(len(years)):
@@ -1544,7 +1585,7 @@ def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
                 f'=IFERROR(INDEX(Data_BCTC!${dcol}$2:${dcol}${bctc_last_row},'
                 f'MATCH($B$2&"_"&$B{row},Data_BCTC!$A$2:$A${bctc_last_row},0)),"")'
             )
-            cell = ws.cell(row=row, column=4 + y_idx, value=formula)
+            cell = ws.cell(row=row, column=5 + y_idx, value=formula)
             cell.number_format = "#,##0"
             cell.font = _BODY_FONT
             cell.alignment = _RIGHT
@@ -1558,14 +1599,19 @@ def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
         item_count += 1
         row += 1
 
+    # Check last category
+    if cat_header_row is not None and cat_items_with_data == 0:
+        ws.row_dimensions[cat_header_row].hidden = True
+
     # Column widths
     ws.column_dimensions["A"].width = 22
-    ws.column_dimensions["B"].width = 28
-    ws.column_dimensions["C"].width = 52
+    ws.column_dimensions["B"].width = 26
+    ws.column_dimensions["C"].width = 50
+    ws.column_dimensions["D"].width = 15  # Trạng thái
     for y_idx in range(len(years)):
-        ws.column_dimensions[get_column_letter(4 + y_idx)].width = 20
+        ws.column_dimensions[get_column_letter(5 + y_idx)].width = 20
 
-    ws.freeze_panes = "D5"
+    ws.freeze_panes = "E5"
     ws.auto_filter.ref = f"A4:{get_column_letter(max_col)}{row - 1}"
 
     return row - 1  # last row
@@ -1575,10 +1621,10 @@ def _create_bctc_report_sheet(ws, df_master, tickers, years, bctc_last_row):
 # SHEET: Ty_So_Tai_Chinh (Report with INDEX/MATCH formulas)
 # =====================================================================
 
-def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
-    """Create visible Ty So report with dynamic INDEX/MATCH formulas."""
+def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row, pivot=None):
+    """Create visible Ty So report with dynamic INDEX/MATCH formulas and Smart Status Filter."""
     ws.sheet_properties.tabColor = _TEAL
-    max_col = 4 + len(years)
+    max_col = 5 + len(years)
 
     # Row 1: Title
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
@@ -1601,9 +1647,12 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
     dv.add(ws["B2"])
 
     ws.cell(row=2, column=3, value="← Chọn mã CK, dữ liệu bên dưới tự động cập nhật").font = _SMALL_FONT
+    ws.cell(row=2, column=4, value="Bộ lọc:").font = _LABEL_FONT
+    ws.cell(row=2, column=4).alignment = Alignment(horizontal="right", vertical="center")
+    ws.cell(row=2, column=5, value="Bấm lọc cột 'Trạng thái' → Bỏ tích '— Trống' để ẩn sạch dòng trống khi đổi mã").font = Font(name="Segoe UI", size=9, italic=True, color=_NAVY)
 
     # Row 4: Headers
-    headers = ["Phân nhóm tỷ số", "Mã chỉ số", "Tên chỉ số tài chính", "Công thức tính toán"] + [str(y) for y in years]
+    headers = ["Phân nhóm tỷ số", "Mã chỉ số", "Tên chỉ số tài chính", "Công thức tính toán", "Trạng thái"] + [str(y) for y in years]
     for col_idx, h in enumerate(headers, 1):
         cell = ws.cell(row=4, column=col_idx, value=h)
         cell.font = _HEADER_FONT
@@ -1615,6 +1664,15 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
     row = 5
     current_group = None
     item_count = 0
+    t0 = tickers[0]
+
+    first_y_col = get_column_letter(6)
+    last_y_col = get_column_letter(5 + len(years))
+
+    grp_header_row = None
+    grp_items_with_data = 0
+
+    t0_pivot = pivot[pivot["ticker"] == t0] if pivot is not None and not pivot.empty else pd.DataFrame()
 
     for rcode in active_ratios:
         meta = FINANCIAL_RATIOS.get(rcode, {"name": rcode, "group": "Chỉ số tài chính", "formula": "", "fmt": "0.00%"})
@@ -1622,7 +1680,13 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
 
         # Section header
         if group != current_group:
+            if grp_header_row is not None and grp_items_with_data == 0:
+                ws.row_dimensions[grp_header_row].hidden = True
+
             current_group = group
+            grp_header_row = row
+            grp_items_with_data = 0
+
             ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=max_col)
             sc = ws.cell(row=row, column=1, value=f"  {group}")
             sc.font = _SECTION_FONT
@@ -1630,6 +1694,19 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
             sc.alignment = _LEFT
             sc.border = Border(bottom=Side(style="medium", color=_TEAL))
             row += 1
+
+        # Check if t0 has actual non-null, non-zero data for this ratio
+        has_t0_ratio = False
+        if not t0_pivot.empty and rcode in t0_pivot.columns:
+            r_vals = t0_pivot[rcode].dropna()
+            if not r_vals.empty and (r_vals != 0).any():
+                has_t0_ratio = True
+
+        if has_t0_ratio:
+            grp_items_with_data += 1
+        else:
+            # Pre-hide ratio row for default ticker!
+            ws.row_dimensions[row].hidden = True
 
         # Data row
         ws.cell(row=row, column=1, value=group).font = _SMALL_FONT
@@ -1641,6 +1718,12 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
         ws.cell(row=row, column=4, value=meta["formula"]).font = _SMALL_FONT
         ws.cell(row=row, column=4).alignment = _LEFT
 
+        # Column 5: Smart Status indicator
+        status_formula = f'=IF(COUNTIF({first_y_col}{row}:{last_y_col}{row},">0")+COUNTIF({first_y_col}{row}:{last_y_col}{row},"<0")>0,"✓ Có số liệu","— Trống")'
+        cell_status = ws.cell(row=row, column=5, value=status_formula)
+        cell_status.font = Font(name="Segoe UI", size=9, bold=True, color="2B6CB0")
+        cell_status.alignment = _CENTER
+
         # Formula cells
         num_fmt = meta.get("fmt", "0.00%")
         for y_idx in range(len(years)):
@@ -1649,7 +1732,7 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
                 f'=IFERROR(INDEX(Data_TySo!${dcol}$2:${dcol}${tyso_last_row},'
                 f'MATCH($B$2&"_"&$B{row},Data_TySo!$A$2:$A${tyso_last_row},0)),"")'
             )
-            cell = ws.cell(row=row, column=5 + y_idx, value=formula)
+            cell = ws.cell(row=row, column=6 + y_idx, value=formula)
             cell.number_format = num_fmt
             cell.font = _BODY_FONT
             cell.alignment = _RIGHT
@@ -1663,14 +1746,18 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row):
         item_count += 1
         row += 1
 
-    ws.column_dimensions["A"].width = 28
-    ws.column_dimensions["B"].width = 28
-    ws.column_dimensions["C"].width = 52
-    ws.column_dimensions["D"].width = 44
-    for y_idx in range(len(years)):
-        ws.column_dimensions[get_column_letter(5 + y_idx)].width = 18
+    if grp_header_row is not None and grp_items_with_data == 0:
+        ws.row_dimensions[grp_header_row].hidden = True
 
-    ws.freeze_panes = "E5"
+    ws.column_dimensions["A"].width = 28
+    ws.column_dimensions["B"].width = 24
+    ws.column_dimensions["C"].width = 46
+    ws.column_dimensions["D"].width = 38
+    ws.column_dimensions["E"].width = 15  # Trạng thái
+    for y_idx in range(len(years)):
+        ws.column_dimensions[get_column_letter(6 + y_idx)].width = 18
+
+    ws.freeze_panes = "F5"
     ws.auto_filter.ref = f"A4:{get_column_letter(max_col)}{row - 1}"
 
     return row - 1
@@ -1781,10 +1868,10 @@ def _create_guide_sheet(ws):
             "Panel_Data_Goc: Bảng dữ liệu phẳng Panel Data (tất cả mã CK) để chạy hồi quy trên Stata/R/Python.",
             "Codebook: Từ điển định nghĩa chi tiết từng biến thực tế xuất hiện trong tập dữ liệu.",
         ]),
-        ("3. Sử dụng bộ lọc AutoFilter bổ sung:", [
-            "Tại dòng tiêu đề (dòng 4), mỗi cột đều có mũi tên lọc ▼.",
-            "Bấm vào mũi tên trên cột 'Phân nhóm báo cáo' để lọc theo nhóm kế toán cụ thể.",
-            "Ví dụ: chỉ hiện nhóm 'CĐKT. TÀI SẢN NGẮN HẠN' hoặc 'KQKD. DOANH THU, CHI PHÍ, LỢI NHUẬN'.",
+        ("3. Sử dụng bộ lọc AutoFilter & Ẩn dòng trống:", [
+            "Mã mặc định đầu tiên đã được hệ thống TỰ ĐỘNG ẨN SẴN 100% các dòng trống (chỉ hiện dòng có số liệu thật).",
+            "Khi đổi mã ở ô B2: Nhấp vào mũi tên lọc ▼ ở cột 'Trạng thái' → Bỏ tích '— Trống' (hoặc nhấn Ctrl + Alt + L) để Excel lập tức ẩn sạch toàn bộ dòng trống của mã mới.",
+            "Bấm vào mũi tên trên cột 'Phân nhóm báo cáo' để lọc theo nhóm kế toán cụ thể (ví dụ: chỉ xem TÀI SẢN NGẮN HẠN hoặc DOANH THU).",
         ]),
         ("4. Lưu ý quan trọng:", [
             "File này KHÔNG sử dụng Macro (VBA). Mọi tính năng đều hoạt động trên mọi phiên bản Excel.",
@@ -1867,12 +1954,12 @@ def populate_financial_sheets(
 
     # 3. BCTC report (with formulas)
     ws_bctc = wb.create_sheet("Bao_Cao_Tai_Chinh")
-    _create_bctc_report_sheet(ws_bctc, df_master, tickers, years, bctc_last_row)
+    _create_bctc_report_sheet(ws_bctc, df_master, tickers, years, bctc_last_row, data_lookup=data_lookup)
 
     # 4. TySo report (with formulas) - only if active_ratios
     if active_ratios:
         ws_tyso = wb.create_sheet("Ty_So_Tai_Chinh")
-        _create_tyso_report_sheet(ws_tyso, tickers, years, active_ratios, tyso_last_row)
+        _create_tyso_report_sheet(ws_tyso, tickers, years, active_ratios, tyso_last_row, pivot=pivot)
 
     # 5. Panel Data (actual values for Stata/R/Python)
     ws_panel = wb.create_sheet("Panel_Data_Goc")
