@@ -27,6 +27,7 @@ Xuat ca file .xlsx (chuan) va file .xlsm (tich hop Macro VBA va cac nut bam loc 
 from __future__ import annotations
 
 import math
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -1996,7 +1997,13 @@ def export_financial_workbook(
     if "Trang_Bia" in wb.sheetnames:
         wb.active = wb.sheetnames.index("Trang_Bia")
 
-    wb.save(export_xlsx)
+    try:
+        wb.save(export_xlsx)
+    except (PermissionError, OSError) as e:
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        export_xlsx = export_xlsx.parent / f"{export_xlsx.stem}_{timestamp}{export_xlsx.suffix}"
+        wb.save(export_xlsx)
+        logger.warning(f"File gốc đang mở trong Excel ([Errno 13]), đã tự động lưu sang file mới: {export_xlsx.name}")
     wb.close()
     logger.success(f"Đã xuất file Excel chuyên nghiệp: {export_xlsx.name}")
     return export_xlsx

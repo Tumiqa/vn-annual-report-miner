@@ -67,6 +67,21 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "arminer_downloads"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def _get_safe_export_path(directory: Path, base_name: str, ext: str) -> Path:
+    """Trả về đường dẫn an toàn để lưu file. Nếu file đang bị mở (khóa bởi Excel trên Windows),
+    tự động thêm timestamp để tránh PermissionError [Errno 13]."""
+    target = directory / f"{base_name}{ext}"
+    if not target.exists():
+        return target
+    try:
+        with open(target, "a+"):
+            pass
+        return target
+    except (PermissionError, OSError):
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        return directory / f"{base_name}_{timestamp}{ext}"
+
 zenodo_downloader = ZenodoDownloader()
 news_resolver = CompanyWebsiteResolver()
 news_aggregator = MultiSourceNewsAggregator(resolver=news_resolver)
@@ -1936,7 +1951,7 @@ async def financial_query(req: FinancialQueryRequest):
         pivot = pivot.sort_values(["ticker", "year"]).reset_index(drop=True)
 
         # Save to download dir
-        export_path = DOWNLOAD_DIR / "financial_data.csv"
+        export_path = _get_safe_export_path(DOWNLOAD_DIR, "financial_data", ".csv")
         pivot.to_csv(export_path, index=False, encoding="utf-8-sig")
 
         # Build column info for frontend (include item_name)
@@ -1972,10 +1987,10 @@ async def financial_query(req: FinancialQueryRequest):
             })
 
         # Save Excel with professional INDEX/MATCH dynamic formulas
-        export_xlsx = DOWNLOAD_DIR / "financial_data.xlsx"
+        export_xlsx = _get_safe_export_path(DOWNLOAD_DIR, "financial_data", ".xlsx")
         try:
             from arminer.export.financial_excel import export_financial_workbook
-            export_financial_workbook(
+            export_xlsx = export_financial_workbook(
                 all_data=all_data,
                 pivot=pivot,
                 ratio_cols=ratio_cols,
@@ -1985,10 +2000,18 @@ async def financial_query(req: FinancialQueryRequest):
             )
         except Exception as e:
             logger.warning(f"Lỗi xuất file Excel nâng cao: {e}, fallback sang cơ bản")
-            with pd.ExcelWriter(export_xlsx, engine="openpyxl") as writer:
-                pivot.to_excel(writer, sheet_name="Financial_Data", index=False)
-                if fin_codebook:
-                    pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
+            try:
+                with pd.ExcelWriter(export_xlsx, engine="openpyxl") as writer:
+                    pivot.to_excel(writer, sheet_name="Financial_Data", index=False)
+                    if fin_codebook:
+                        pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
+            except (PermissionError, OSError):
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                export_xlsx = DOWNLOAD_DIR / f"financial_data_{timestamp}.xlsx"
+                with pd.ExcelWriter(export_xlsx, engine="openpyxl") as writer:
+                    pivot.to_excel(writer, sheet_name="Financial_Data", index=False)
+                    if fin_codebook:
+                        pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
             try:
                 from arminer.export.excel_style import style_excel_file
                 style_excel_file(export_xlsx)
@@ -1996,7 +2019,7 @@ async def financial_query(req: FinancialQueryRequest):
                 pass
 
         # Save Stata .dta
-        export_dta = DOWNLOAD_DIR / "financial_data.dta"
+        export_dta = _get_safe_export_path(DOWNLOAD_DIR, "financial_data", ".dta")
         try:
             from arminer.core.smart_mode import sanitize_stata_dataframe
             stata_df, labels = sanitize_stata_dataframe(pivot)
@@ -2026,9 +2049,9 @@ async def financial_query(req: FinancialQueryRequest):
             "missing_tickers": missing_tickers,
             "columns": col_info,
             "preview": records,
-            "csv_download": "/api/download/financial_data.csv",
-            "xlsx_download": "/api/download/financial_data.xlsx",
-            "dta_download": "/api/download/financial_data.dta",
+            "csv_download": f"/api/download/{export_path.name}",
+            "xlsx_download": f"/api/download/{export_xlsx.name}",
+            "dta_download": f"/api/download/{export_dta.name}",
         }, ensure_ascii=False, default=str)}
 
     return EventSourceResponse(event_generator())
@@ -2068,20 +2091,26 @@ def financial_merge(req: FinancialMergeRequest):
     merged = pd.merge(df_mining, df_fin, on=["ticker", "year"], how="left", suffixes=("", "_fin"))
 
     # Save Excel with premium styling
-    out_path = DOWNLOAD_DIR / "merged_panel_data.xlsx"
-    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
-        merged.to_excel(writer, sheet_name="Merged_Panel", index=False)
+    out_path = _get_safe_export_path(DOWNLOAD_DIR, "merged_panel_data", ".xlsx")
+    try:
+        with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+            merged.to_excel(writer, sheet_name="Merged_Panel", index=False)
+    except (PermissionError, OSError):
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        out_path = DOWNLOAD_DIR / f"merged_panel_data_{timestamp}.xlsx"
+        with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+            merged.to_excel(writer, sheet_name="Merged_Panel", index=False)
     try:
         from arminer.export.excel_style import style_excel_file
         style_excel_file(out_path)
     except Exception:
         pass
 
-    out_csv = DOWNLOAD_DIR / "merged_panel_data.csv"
+    out_csv = _get_safe_export_path(DOWNLOAD_DIR, "merged_panel_data", ".csv")
     merged.to_csv(out_csv, index=False, encoding="utf-8-sig")
 
     # Save Stata .dta
-    out_dta = DOWNLOAD_DIR / "merged_panel_data.dta"
+    out_dta = _get_safe_export_path(DOWNLOAD_DIR, "merged_panel_data", ".dta")
     try:
         from arminer.core.smart_mode import sanitize_stata_dataframe
         stata_df, labels = sanitize_stata_dataframe(merged)
@@ -2103,9 +2132,9 @@ def financial_merge(req: FinancialMergeRequest):
         "financial_rows": len(df_fin),
         "coverage": coverage,
         "preview": merged.head(30).to_dict(orient="records"),
-        "xlsx_download": "/api/download/merged_panel_data.xlsx",
-        "csv_download": "/api/download/merged_panel_data.csv",
-        "dta_download": "/api/download/merged_panel_data.dta",
+        "xlsx_download": f"/api/download/{out_path.name}",
+        "csv_download": f"/api/download/{out_csv.name}",
+        "dta_download": f"/api/download/{out_dta.name}",
     }
 
 
