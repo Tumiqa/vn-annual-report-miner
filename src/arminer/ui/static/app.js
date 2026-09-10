@@ -2314,7 +2314,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const customUrlsContainer = document.getElementById('customUrlsContainer');
     const customUrlsInput = document.getElementById('customUrlsInput');
 
-    const newsCustomKeywords = document.getElementById('newsCustomKeywords');
     const newsTopicSelect = document.getElementById('newsTopicSelect');
 
     const btnExecuteNewsMining = document.getElementById('btnExecuteNewsMining');
@@ -2591,7 +2590,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const yearFrom = newsYearFrom ? parseInt(newsYearFrom.value) || 2020 : 2020;
         const yearTo = newsYearTo ? parseInt(newsYearTo.value) || 2026 : 2026;
-        const customKeywords = newsCustomKeywords ? newsCustomKeywords.value.trim() : '';
 
         btnOnlyScrapeNews.disabled = true;
         newsProgressCard.style.display = 'block';
@@ -2614,7 +2612,6 @@ document.addEventListener('DOMContentLoaded', () => {
               year_from: yearFrom,
               year_to: yearTo,
               custom_urls: customUrls,
-              keywords: customKeywords || null,
             }),
           });
 
@@ -2721,7 +2718,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const yearFrom = newsYearFrom ? parseInt(newsYearFrom.value) || 2020 : 2020;
       const yearTo = newsYearTo ? parseInt(newsYearTo.value) || 2026 : 2026;
       const topic = newsTopicSelect ? newsTopicSelect.value : 'blockchain';
-      const customKeywords = newsCustomKeywords ? newsCustomKeywords.value.trim() : '';
 
       if (btnExecuteNewsMining) btnExecuteNewsMining.disabled = true;
       if (btnMineFromPreview) btnMineFromPreview.disabled = true;
@@ -2745,7 +2741,6 @@ document.addEventListener('DOMContentLoaded', () => {
             year_to: yearTo,
             custom_urls: customUrls,
             topic: topic,
-            keywords: customKeywords || null,
             threshold: 85,
           }),
         });
