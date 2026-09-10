@@ -51,6 +51,28 @@ DEFAULT_HEADERS = {
     "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
 }
 
+try:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except Exception:
+    pass
+
+
+def safe_requests_get(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 8, **kwargs) -> requests.Response:
+    """
+    Thực hiện HTTP GET an toàn với cơ chế tự động bù trừ SSL (fallback verify=False).
+    Rất nhiều cổng thông tin và website doanh nghiệp tại Việt Nam (như bsr.com.vn, EVN,...)
+    sử dụng chứng chỉ SSL nội địa hoặc thiếu chứng chỉ trung gian (intermediate CA),
+    dẫn đến SSLCertVerificationError trong Python chuẩn.
+    """
+    hdrs = headers or DEFAULT_HEADERS
+    try:
+        return requests.get(url, headers=hdrs, timeout=timeout, **kwargs)
+    except requests.exceptions.SSLError:
+        kwargs["verify"] = False
+        return requests.get(url, headers=hdrs, timeout=timeout, **kwargs)
+
+
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 WEBSITES_DB_PATH = FIXTURES_DIR / "company_websites.json"
 
@@ -131,7 +153,7 @@ class CompanyWebsiteResolver:
         try:
             encoded = urllib.parse.quote(query)
             url = f"https://html.duckduckgo.com/html/?q={encoded}"
-            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=6)
+            resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=6)
             if resp.status_code == 200:
                 # Extract DuckDuckGo results
                 # Look for uddg redirect or direct hrefs
@@ -361,7 +383,7 @@ class CafeFScraper:
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
-                resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
+                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
                 if resp.status_code != 200:
                     break
 
@@ -402,7 +424,7 @@ class CafeBizScraper:
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
-                resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
+                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
                 if resp.status_code != 200:
                     break
 
@@ -442,7 +464,7 @@ class VnExpressScraper:
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
-                resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
+                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
                 if resp.status_code != 200:
                     break
 
@@ -481,7 +503,7 @@ class VietnamNetScraper:
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
-                resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
+                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
                 if resp.status_code != 200:
                     break
 
@@ -521,7 +543,7 @@ class TinNhanhCKScraper:
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
-                resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
+                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
                 if resp.status_code != 200:
                     break
 
@@ -557,7 +579,7 @@ class VnEconomyScraper:
         links: List[str] = []
         url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker))
         try:
-            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=8)
+            resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
             if resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 for a in soup.find_all("a", href=True):
@@ -606,7 +628,7 @@ class CompanyWebsiteScraper:
             if domain_failed or (max_links is not None and len(article_links) >= max_links):
                 break
             try:
-                resp = requests.get(target_url, headers=DEFAULT_HEADERS, timeout=4)
+                resp = safe_requests_get(target_url, headers=DEFAULT_HEADERS, timeout=5)
                 if resp.status_code != 200:
                     continue
 
@@ -787,7 +809,7 @@ class MultiSourceNewsAggregator:
     def fetch_article(self, url: str, source_name: str, ticker: str) -> Optional[Dict[str, Any]]:
         """Download and extract clean content from article URL."""
         try:
-            resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
+            resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=10)
             if resp.status_code != 200:
                 return None
 
