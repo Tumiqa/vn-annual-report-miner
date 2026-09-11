@@ -1022,7 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (file) {
       const sizeKB = (file.size / 1024).toFixed(1);
       dictFileSelectedInfo.style.display = 'block';
-      dictFileSelectedInfo.innerHTML = `📄 Đã chọn: <strong>${escapeHtml(file.name)}</strong> (${sizeKB} KB)`;
+      dictFileSelectedInfo.innerHTML = `Đã chọn: <strong>${escapeHtml(file.name)}</strong> (${sizeKB} KB)`;
       btnUploadDictFile.disabled = false;
       if (dictUploadNewName && !dictUploadNewName.value.trim()) {
         const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g, ' ');
@@ -1100,17 +1100,17 @@ document.addEventListener('DOMContentLoaded', () => {
         dictUploadAlert.style.display = 'block';
         dictUploadAlert.className = 'dict-alert-box ' + (data.warnings && data.warnings.length > 0 ? 'dict-alert-warning' : 'dict-alert-success');
 
-        let alertHtml = `<div style="font-weight: 600; margin-bottom: 4px;">✅ ${escapeHtml(data.message)}</div>`;
+        let alertHtml = `<div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(data.message)}</div>`;
         if (data.warnings && data.warnings.length > 0) {
           const warningCount = data.skipped_count || data.warnings.length;
           alertHtml += `
             <div style="margin-top: 6px; font-size: 11px;">
-              <strong>⚠️ Lưu ý về dung sai dữ liệu (${warningCount} mục):</strong>
+              <strong>Lưu ý về dung sai dữ liệu (${warningCount} mục):</strong>
               <div style="max-height: 120px; overflow-y: auto; margin-top: 4px; padding: 6px 8px; background: rgba(0,0,0,0.03); border-radius: 6px;">
                 ${data.warnings.map(w => `<div style="margin-bottom: 2px;">• ${escapeHtml(w)}</div>`).join('')}
               </div>
               <div style="margin-top: 6px; font-style: italic; color: var(--text-secondary);">
-                💡 Hệ thống đã tự động lược qua các dòng lỗi để nạp trọn vẹn tất cả từ khóa hợp lệ. Bạn có thể kiểm tra danh sách trên bảng và chỉnh sửa trực tiếp hoặc bổ sung bằng tay.
+                Hệ thống đã tự động lược qua các dòng lỗi để nạp trọn vẹn tất cả từ khóa hợp lệ. Bạn có thể kiểm tra danh sách trên bảng và chỉnh sửa trực tiếp hoặc bổ sung bằng tay.
               </div>
             </div>
           `;
@@ -1135,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dictUploadAlert.style.display = 'block';
         dictUploadAlert.className = 'dict-alert-box dict-alert-danger';
         dictUploadAlert.innerHTML = `
-          <strong>❌ Không thể tải lên file:</strong>
+          <strong>Không thể tải lên file:</strong>
           <div style="margin-top: 4px;">${escapeHtml(err.message)}</div>
           <div style="margin-top: 6px; font-size: 11px;">Vui lòng kiểm tra lại file hoặc tải file mẫu (.xlsx, .docx, .txt) ở trên để đối chiếu.</div>
         `;
@@ -2216,7 +2216,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isMissing) {
         pill.style.cssText = 'background: rgba(239, 68, 68, 0.1); color: #DC2626; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 600;';
         pill.title = 'Mã này không có trong vnfinancialdata (sẽ không có số liệu BCTC)';
-        pill.innerHTML = `⚠️ ${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}" style="color: #DC2626;">×</span>`;
+        pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}" style="color: #DC2626;">×</span>`;
       } else {
         pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}">×</span>`;
       }
@@ -2560,7 +2560,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let summaryText = `${data.total_rows} quan sát (${data.total_tickers} mã x ${data.year_range[0]}-${data.year_range[1]}) | ${data.columns.length} biến`;
     if (data.missing_tickers && data.missing_tickers.length > 0) {
-      summaryText += ` | ⚠️ Đã tự động bỏ qua ${data.missing_tickers.length} mã không có trong CSDL: ${data.missing_tickers.join(', ')}`;
+      summaryText += ` | Đã tự động bỏ qua ${data.missing_tickers.length} mã không có trong CSDL: ${data.missing_tickers.join(', ')}`;
     }
     summary.textContent = summaryText;
 
@@ -3098,7 +3098,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td><span style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(a.published_date || 'N/A')}</span></td>
           <td style="text-align: right;" class="tabular">${(a.word_count || 0).toLocaleString()}</td>
-          <td style="text-align: center;"><a href="${escapeHtml(a.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">↗ Xem</a></td>
+          <td style="text-align: center;"><a href="${escapeHtml(a.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">Xem</a></td>
         `;
         newsPreviewTableBody.appendChild(tr);
       });
@@ -3317,7 +3317,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><span style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(r.published_date || 'N/A')}</span></td>
           <td style="text-align: right;" class="tabular">${(r.word_count || 0).toLocaleString()}</td>
           <td style="text-align: right;" class="tabular" style="color: ${freq > 0 ? '#60a5fa' : 'inherit'}; font-weight: ${freq > 0 ? '600' : 'normal'};">${freq}</td>
-          <td style="text-align: center;"><a href="${escapeHtml(r.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">↗</a></td>
+          <td style="text-align: center;"><a href="${escapeHtml(r.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">Xem</a></td>
         `;
         newsPanelTbody.appendChild(tr);
       });
@@ -3355,7 +3355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.innerHTML = `
           <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; color: var(--text-muted);">
             <span><strong>${escapeHtml(s.ticker)}</strong> | ${escapeHtml(s.source || '')} | Từ khóa: <code style="color: var(--brand-primary);">${escapeHtml(s.keyword)}</code></span>
-            <a href="${escapeHtml(s.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">Xem bài viết ↗</a>
+            <a href="${escapeHtml(s.url || '#')}" target="_blank" style="color: var(--brand-primary); text-decoration: none;">Xem bài viết</a>
           </div>
           <div style="color: var(--text-secondary);">${ctxHtml}</div>
         `;
@@ -3486,7 +3486,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td style="text-align: center;"><span class="tabular" style="font-size: 11px; font-weight: 600; color: var(--text-muted);">${escapeHtml(c.icb_code || '—')}</span></td>
           <td>${c.website ? `<a href="${escapeHtml(c.website)}" target="_blank" style="color: var(--brand-primary); word-break: break-all;">${escapeHtml(c.website)}</a>` : '<span style="color: var(--text-muted); font-style: italic;">Auto-Discovery</span>'}</td>
-          <td style="text-align: center;">${c.ir_portal ? `<a href="${escapeHtml(c.ir_portal)}" target="_blank" style="color: var(--text-secondary);">Cổng IR ↗</a>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+          <td style="text-align: center;">${c.ir_portal ? `<a href="${escapeHtml(c.ir_portal)}" target="_blank" style="color: var(--text-secondary);">Cổng IR</a>` : '<span style="color: var(--text-muted);">-</span>'}</td>
           <td style="text-align: center;">
             <button class="btn btn-secondary btn-sm btn-edit-company-web" data-ticker="${escapeHtml(c.ticker)}" data-web="${escapeHtml(c.website || '')}">Sửa</button>
           </td>

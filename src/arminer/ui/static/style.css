@@ -1144,11 +1144,6 @@ body {
   border-color: var(--brand-primary);
   background: rgba(99, 102, 241, 0.08);
 }
-.dict-dropzone-icon {
-  font-size: 24px;
-  margin-bottom: 4px;
-  display: block;
-}
 .dict-dropzone-text {
   font-size: 12px;
   font-weight: 500;

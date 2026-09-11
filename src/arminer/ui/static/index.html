@@ -313,16 +313,16 @@
 
             <!-- Download Templates Area -->
             <div style="margin-bottom: 10px; background: rgba(99, 102, 241, 0.04); padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.15);">
-              <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">📥 Tải File Mẫu Chuẩn Cho Nhóm:</div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Tải File Mẫu Chuẩn Cho Nhóm:</div>
               <div class="dict-template-group">
                 <a href="/api/dictionaries/templates/xlsx" class="dict-template-btn" download title="Tải mẫu Excel gồm 4 cột: Từ khóa chính, Biến thể, Nhóm, Trọng số">
-                  <span>📊 Excel (.xlsx)</span>
+                  <span>Excel (.xlsx)</span>
                 </a>
                 <a href="/api/dictionaries/templates/docx" class="dict-template-btn" download title="Tải mẫu Word (.docx) chuẩn có bảng">
-                  <span>📝 Word (.docx)</span>
+                  <span>Word (.docx)</span>
                 </a>
                 <a href="/api/dictionaries/templates/txt" class="dict-template-btn" download title="Tải mẫu Text (.txt) đơn giản">
-                  <span>📄 Text (.txt)</span>
+                  <span>Text (.txt)</span>
                 </a>
               </div>
             </div>
@@ -330,7 +330,6 @@
             <!-- Upload Dropzone -->
             <input type="file" id="dictFileInput" accept=".xlsx,.xls,.docx,.txt,.csv" style="display: none;">
             <div id="dictDropzone" class="dict-dropzone">
-              <span class="dict-dropzone-icon">📁</span>
               <div class="dict-dropzone-text">Kéo thả file vào đây hoặc bấm chọn</div>
               <div class="dict-dropzone-hint">Excel (.xlsx), Word (.docx), Văn bản (.txt, .csv)</div>
             </div>
@@ -496,12 +495,12 @@
               <div id="finMissingTickersAlert" style="display: none; margin-top: 8px; padding: 10px 14px; border-radius: 8px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                   <div style="color: #B45309; line-height: 1.5;">
-                    <span style="font-weight: 700;">⚠️ Cảnh báo mã bị khuyết dữ liệu (<span id="finMissingCount">0</span> mã):</span>
+                    <span style="font-weight: 700;">Cảnh báo mã bị khuyết dữ liệu (<span id="finMissingCount">0</span> mã):</span>
                     Các mã sau không có trong cơ sở dữ liệu vnfinancialdata (do sàn UPCoM hoặc khuyết từ nguồn cào):
                     <span id="finMissingList" style="font-weight: 600; color: #DC2626;"></span>
                   </div>
                   <button type="button" id="btnRemoveMissingTickers" class="btn btn-sm" style="background: #F59E0B; color: #fff; border: none; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap;" title="Loại bỏ toàn bộ các mã bị khuyết này khỏi danh sách truy vấn">
-                    ✕ Bỏ các mã khuyết
+                    Bỏ các mã khuyết
                   </button>
                 </div>
               </div>
