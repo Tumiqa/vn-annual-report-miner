@@ -374,6 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSearchCatalog.addEventListener('click', loadCatalog);
   }
 
+  // Trigger catalog search on Enter key in ticker or year inputs
+  [catTickerInput, catYearFrom, catYearTo].forEach(inputEl => {
+    if (inputEl) {
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          loadCatalog();
+        }
+      });
+    }
+  });
+
   // Scan Selected Execution — SSE streaming with progress bar
   if (btnExecuteSelectedScan) {
     btnExecuteSelectedScan.addEventListener('click', async () => {

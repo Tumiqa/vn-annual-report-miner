@@ -173,6 +173,22 @@ class UnifiedCatalog:
 
         return tree
 
+    @staticmethod
+    def _parse_ticker_filter(ticker_str: Optional[str]) -> Tuple[List[str], bool]:
+        """Parse raw ticker input into a list of uppercase ticker tokens.
+
+        Splits by comma, semicolon, space, tab, or newline.
+        Returns:
+            (tokens, is_multi)
+            tokens: list of cleaned unique uppercase tokens
+            is_multi: True if multiple tokens were entered
+        """
+        if not ticker_str or not ticker_str.strip():
+            return [], False
+        raw_tokens = [t.strip().upper() for t in re.split(r"[,;\s\n\r]+", ticker_str.strip()) if t.strip()]
+        tokens = list(dict.fromkeys(raw_tokens))
+        return tokens, len(tokens) > 1
+
     def search(
         self,
         ticker: Optional[str] = None,
@@ -197,8 +213,15 @@ class UnifiedCatalog:
             df = self._zenodo_df
 
             if ticker and ticker.strip():
-                t_clean = ticker.strip().upper()
-                df = df[df["ticker_folder"].astype(str).str.upper().str.contains(t_clean, na=False)]
+                tokens, is_multi = self._parse_ticker_filter(ticker)
+                if tokens:
+                    if not is_multi:
+                        df = df[df["ticker_folder"].astype(str).str.upper().str.contains(tokens[0], na=False)]
+                    elif any(len(t) < 3 for t in tokens):
+                        pattern = "|".join(re.escape(t) for t in tokens)
+                        df = df[df["ticker_folder"].astype(str).str.upper().str.contains(pattern, na=False)]
+                    else:
+                        df = df[df["ticker_folder"].astype(str).str.upper().isin(set(tokens))]
             if year_from:
                 df = df[df["year_full"] >= year_from]
             if year_to:
@@ -251,9 +274,21 @@ class UnifiedCatalog:
         # Local-only search (for CLI / user-uploaded directory compat)
         if source_filter == "local_only":
             local_list = []
+            tokens, is_multi = self._parse_ticker_filter(ticker) if (ticker and ticker.strip()) else ([], False)
+            token_set = set(tokens)
+
             for rec in self._local_index.values():
-                if ticker and ticker.upper() not in rec["ticker"]:
-                    continue
+                rec_ticker = rec.get("ticker", "").upper()
+                if tokens:
+                    if not is_multi:
+                        if tokens[0] not in rec_ticker:
+                            continue
+                    elif any(len(t) < 3 for t in tokens):
+                        if not any(t in rec_ticker for t in tokens):
+                            continue
+                    else:
+                        if rec_ticker not in token_set:
+                            continue
                 if year_from and rec["year"] < year_from:
                     continue
                 if year_to and rec["year"] > year_to:
@@ -292,7 +327,15 @@ class UnifiedCatalog:
 
         df = self._zenodo_df
         if ticker and ticker.strip():
-            df = df[df["ticker_folder"].astype(str).str.upper().str.contains(ticker.strip().upper(), na=False)]
+            tokens, is_multi = self._parse_ticker_filter(ticker)
+            if tokens:
+                if not is_multi:
+                    df = df[df["ticker_folder"].astype(str).str.upper().str.contains(tokens[0], na=False)]
+                elif any(len(t) < 3 for t in tokens):
+                    pattern = "|".join(re.escape(t) for t in tokens)
+                    df = df[df["ticker_folder"].astype(str).str.upper().str.contains(pattern, na=False)]
+                else:
+                    df = df[df["ticker_folder"].astype(str).str.upper().isin(set(tokens))]
         if year_from:
             df = df[df["year_full"] >= year_from]
         if year_to:
