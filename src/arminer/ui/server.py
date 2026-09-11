@@ -42,9 +42,10 @@ if _env_file.exists() and "HF_TOKEN" not in os.environ:
 
 
 
+import io
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 import pandas as pd
@@ -56,12 +57,16 @@ from arminer.mining.matcher import GenericFuzzyMatcher
 from arminer.data.pdf_source import PDFSource
 from arminer.data.catalog import UnifiedCatalog
 from arminer.core.dictionary_manager import DictionaryManager
+from arminer.core.dictionary_importer import DictionaryFileImporter
 from arminer.data.zenodo_downloader import ZenodoDownloader
 from arminer.data.news_scraper import (
     CompanyWebsiteResolver,
     UniversalNewsExtractor,
     MultiSourceNewsAggregator,
 )
+
+SAMPLE_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "sample_templates"
+
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "arminer_downloads"
@@ -343,6 +348,130 @@ def delete_topic(topic_id: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/dictionaries/templates/{template_format}")
+def download_dictionary_template(template_format: str):
+    """Tải file từ điển mẫu: xlsx, docx, txt."""
+    fmt = template_format.lower().strip(".")
+    file_map = {
+        "xlsx": ("mau_tu_dien_arminer.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        "xls": ("mau_tu_dien_arminer.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        "docx": ("mau_tu_dien_arminer.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        "doc": ("mau_tu_dien_arminer.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        "txt": ("mau_tu_dien_arminer.txt", "text/plain; charset=utf-8"),
+        "csv": ("mau_tu_dien_arminer.txt", "text/plain; charset=utf-8"),
+    }
+    if fmt not in file_map:
+        raise HTTPException(status_code=400, detail=f"Định dạng '{template_format}' không hỗ trợ. Chỉ hỗ trợ xlsx, docx, txt.")
+
+    fname, media_type = file_map[fmt]
+    path = SAMPLE_TEMPLATES_DIR / fname
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"File mẫu '{fname}' không tồn tại trên máy chủ.")
+
+    return FileResponse(
+        path=path,
+        media_type=media_type,
+        filename=fname,
+    )
+
+
+@app.post("/api/dictionaries/upload")
+async def upload_dictionary_file(
+    file: UploadFile = File(...),
+    mode: str = Form("new"),
+    topic_id: Optional[str] = Form(None),
+    topic_name: Optional[str] = Form(None),
+):
+    """Tải lên file từ điển (.xlsx, .docx, .txt, .csv) với khả năng dung sai và cảnh báo chi tiết."""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="File tải lên rỗng.")
+
+    fname = file.filename or "dictionary_upload.txt"
+    parsed_res = DictionaryFileImporter.parse_file(
+        file_content=content,
+        filename=fname,
+        default_name=topic_name,
+    )
+
+    if not parsed_res.success or not parsed_res.entries:
+        err_msg = " | ".join(parsed_res.warnings) if parsed_res.warnings else "Không thể phân tích dữ liệu từ file này."
+        raise HTTPException(status_code=400, detail=err_msg)
+
+    final_name = (topic_name and topic_name.strip()) or parsed_res.name
+    if not topic_id or not topic_id.strip():
+        clean_tid = re.sub(r"[^a-z0-9_]", "_", final_name.lower().strip())
+        clean_tid = re.sub(r"_+", "_", clean_tid).strip("_") or f"custom_dict_{int(time.time())}"
+    else:
+        clean_tid = re.sub(r"[^a-z0-9_]", "_", topic_id.strip().lower())
+
+    saved_dict = dict_mgr.import_entries(
+        topic_id=clean_tid,
+        name=final_name,
+        entries=parsed_res.entries,
+        mode=mode,
+    )
+
+    return {
+        "success": True,
+        "mode": mode,
+        "topic_id": clean_tid,
+        "name": saved_dict.get("name", final_name),
+        "total_parsed": parsed_res.total_parsed,
+        "total_saved": len(saved_dict.get("keywords", [])),
+        "skipped_count": parsed_res.skipped_count,
+        "warnings": parsed_res.warnings,
+        "categories": saved_dict.get("categories", []),
+        "message": f"Đã nạp thành công {parsed_res.total_parsed} từ khóa vào bộ từ điển '{saved_dict.get('name', final_name)}'."
+    }
+
+
+@app.get("/api/dictionaries/{topic_id}/export/{export_format}")
+def export_dictionary(topic_id: str, export_format: str):
+    """Xuất bộ từ điển ra file Excel (.xlsx) hoặc Text (.txt)."""
+    try:
+        data = dict_mgr.get_dictionary(topic_id)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    fmt = export_format.lower().strip(".")
+    name = data.get("name", topic_id)
+    safe_name = re.sub(r"[^\w\s-]", "", name).strip().replace(" ", "_")
+
+    if fmt in ("xlsx", "xls"):
+        rows = []
+        for kw in data.get("keywords", []):
+            rows.append({
+                "Từ Khóa Chính": kw.get("keyword", ""),
+                "Từ Đồng Nghĩa / Biến Thể": kw.get("variants", ""),
+                "Nhóm Phân Loại": kw.get("category", "default"),
+                "Trọng Số": kw.get("weight", 1.0),
+            })
+        df = pd.DataFrame(rows)
+        out_stream = io.BytesIO()
+        with pd.ExcelWriter(out_stream, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Từ Điển")
+        out_stream.seek(0)
+        return StreamingResponse(
+            out_stream,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="tu_dien_{safe_name}.xlsx"'}
+        )
+    elif fmt in ("txt", "csv"):
+        lines = [f"# TỪ ĐIỂN: {name} (Tổng: {len(data.get('keywords', []))} từ khóa)"]
+        lines.append("# Từ khóa chính | Biến thể | Nhóm | Trọng số\n")
+        for kw in data.get("keywords", []):
+            lines.append(f"{kw.get('keyword', '')} | {kw.get('variants', '')} | {kw.get('category', 'default')} | {kw.get('weight', 1.0)}")
+        content = "\n".join(lines)
+        return StreamingResponse(
+            io.BytesIO(content.encode("utf-8")),
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="tu_dien_{safe_name}.txt"'}
+        )
+    else:
+        raise HTTPException(status_code=400, detail=f"Định dạng xuất '{export_format}' không hợp lệ.")
 
 
 

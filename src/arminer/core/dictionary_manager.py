@@ -247,3 +247,80 @@ class DictionaryManager:
         logger.info(f"Deleted dictionary topic: {clean_id}")
         return True
 
+    def import_entries(
+        self,
+        topic_id: str,
+        name: str,
+        entries: List[Dict[str, Any]],
+        mode: str = "new",
+    ) -> Dict[str, Any]:
+        """Import or merge keyword entries into a dictionary."""
+        clean_id = re.sub(r"[^a-z0-9_]", "_", topic_id.strip().lower())
+        if not clean_id:
+            clean_id = "custom_dictionary"
+
+        if mode == "append":
+            try:
+                existing = self.get_dictionary(clean_id)
+                current_kws = existing.get("keywords", [])
+                dict_name = existing.get("name", name)
+            except FileNotFoundError:
+                current_kws = []
+                dict_name = name
+        else:
+            current_kws = []
+            dict_name = name
+
+        # Map existing keywords by lowercase
+        kw_map: Dict[str, Dict[str, Any]] = {
+            item["keyword"].lower(): item for item in current_kws
+        }
+
+        for entry in entries:
+            kw_clean = str(entry.get("keyword", "")).strip().lower()
+            if not kw_clean:
+                continue
+
+            v_raw = entry.get("variants", [])
+            if isinstance(v_raw, list):
+                v_list = [str(x).strip() for x in v_raw if str(x).strip()]
+            elif isinstance(v_raw, str):
+                v_list = [x.strip() for x in re.split(r"[|,;]+", v_raw) if x.strip()]
+            else:
+                v_list = []
+
+            cat = str(entry.get("category", "Chung")).strip() or "Chung"
+            try:
+                weight = float(entry.get("weight", 1.0))
+            except (ValueError, TypeError):
+                weight = 1.0
+
+            if kw_clean in kw_map:
+                cur = kw_map[kw_clean]
+                cur_vars = cur.get("variants", [])
+                if isinstance(cur_vars, str):
+                    cur_vars = [x.strip() for x in cur_vars.split("|") if x.strip()]
+                for v in v_list:
+                    if v.lower() != kw_clean and v.lower() not in [x.lower() for x in cur_vars]:
+                        cur_vars.append(v)
+                cur["variants"] = " | ".join(cur_vars)
+                if weight > float(cur.get("weight", 1.0)):
+                    cur["weight"] = weight
+            else:
+                kw_map[kw_clean] = {
+                    "id": len(kw_map) + 1,
+                    "keyword": kw_clean,
+                    "variants": " | ".join([v for v in v_list if v.lower() != kw_clean]),
+                    "category": cat,
+                    "weight": weight,
+                    "language": "vi",
+                }
+
+        final_keywords = list(kw_map.values())
+        for idx, k in enumerate(final_keywords, 1):
+            k["id"] = idx
+
+        self.save_dictionary(clean_id, dict_name, final_keywords)
+        return self.get_dictionary(clean_id)
+
+

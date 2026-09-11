@@ -1000,6 +1000,173 @@ document.addEventListener('DOMContentLoaded', () => {
     btnDeleteTopic.addEventListener('click', handleDeleteTopic);
   }
 
+  // --------------------------------------------------------------------------
+  // Dictionary Upload & Export Logic
+  // --------------------------------------------------------------------------
+  const dictFileInput = document.getElementById('dictFileInput');
+  const dictDropzone = document.getElementById('dictDropzone');
+  const dictFileSelectedInfo = document.getElementById('dictFileSelectedInfo');
+  const dictUploadModeNew = document.getElementById('dictUploadModeNew');
+  const dictUploadModeAppend = document.getElementById('dictUploadModeAppend');
+  const dictUploadNewName = document.getElementById('dictUploadNewName');
+  const btnUploadDictFile = document.getElementById('btnUploadDictFile');
+  const btnUploadDictText = document.getElementById('btnUploadDictText');
+  const dictUploadAlert = document.getElementById('dictUploadAlert');
+  const btnExportDictExcel = document.getElementById('btnExportDictExcel');
+  const btnExportDictTxt = document.getElementById('btnExportDictTxt');
+
+  let selectedDictFile = null;
+
+  function updateDictFileSelection(file) {
+    selectedDictFile = file;
+    if (file) {
+      const sizeKB = (file.size / 1024).toFixed(1);
+      dictFileSelectedInfo.style.display = 'block';
+      dictFileSelectedInfo.innerHTML = `📄 Đã chọn: <strong>${escapeHtml(file.name)}</strong> (${sizeKB} KB)`;
+      btnUploadDictFile.disabled = false;
+      if (dictUploadNewName && !dictUploadNewName.value.trim()) {
+        const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g, ' ');
+        dictUploadNewName.placeholder = `Mặc định: ${baseName}`;
+      }
+    } else {
+      dictFileSelectedInfo.style.display = 'none';
+      dictFileSelectedInfo.textContent = '';
+      btnUploadDictFile.disabled = true;
+    }
+  }
+
+  if (dictDropzone && dictFileInput) {
+    dictDropzone.addEventListener('click', () => {
+      dictFileInput.click();
+    });
+
+    dictFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        updateDictFileSelection(e.target.files[0]);
+      }
+    });
+
+    dictDropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dictDropzone.classList.add('drag-over');
+    });
+
+    dictDropzone.addEventListener('dragleave', () => {
+      dictDropzone.classList.remove('drag-over');
+    });
+
+    dictDropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dictDropzone.classList.remove('drag-over');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        dictFileInput.files = e.dataTransfer.files;
+        updateDictFileSelection(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  if (btnUploadDictFile) {
+    btnUploadDictFile.addEventListener('click', async () => {
+      if (!selectedDictFile) return;
+
+      const isAppend = dictUploadModeAppend && dictUploadModeAppend.checked;
+      const mode = isAppend ? 'append' : 'new';
+      const topicId = isAppend ? (dictSelectTopic ? dictSelectTopic.value : '') : '';
+      const topicName = dictUploadNewName ? dictUploadNewName.value.trim() : '';
+
+      const formData = new FormData();
+      formData.append('file', selectedDictFile);
+      formData.append('mode', mode);
+      if (topicId) formData.append('topic_id', topicId);
+      if (topicName) formData.append('topic_name', topicName);
+
+      btnUploadDictFile.disabled = true;
+      const origText = btnUploadDictText.textContent;
+      btnUploadDictText.textContent = 'Đang phân tích & nạp...';
+      dictUploadAlert.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dictionaries/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || 'Lỗi khi nạp file từ điển');
+        }
+
+        // Render success & warnings banner
+        dictUploadAlert.style.display = 'block';
+        dictUploadAlert.className = 'dict-alert-box ' + (data.warnings && data.warnings.length > 0 ? 'dict-alert-warning' : 'dict-alert-success');
+
+        let alertHtml = `<div style="font-weight: 600; margin-bottom: 4px;">✅ ${escapeHtml(data.message)}</div>`;
+        if (data.warnings && data.warnings.length > 0) {
+          const warningCount = data.skipped_count || data.warnings.length;
+          alertHtml += `
+            <div style="margin-top: 6px; font-size: 11px;">
+              <strong>⚠️ Lưu ý về dung sai dữ liệu (${warningCount} mục):</strong>
+              <div style="max-height: 120px; overflow-y: auto; margin-top: 4px; padding: 6px 8px; background: rgba(0,0,0,0.03); border-radius: 6px;">
+                ${data.warnings.map(w => `<div style="margin-bottom: 2px;">• ${escapeHtml(w)}</div>`).join('')}
+              </div>
+              <div style="margin-top: 6px; font-style: italic; color: var(--text-secondary);">
+                💡 Hệ thống đã tự động lược qua các dòng lỗi để nạp trọn vẹn tất cả từ khóa hợp lệ. Bạn có thể kiểm tra danh sách trên bảng và chỉnh sửa trực tiếp hoặc bổ sung bằng tay.
+              </div>
+            </div>
+          `;
+        }
+
+        dictUploadAlert.innerHTML = alertHtml;
+
+        // Reset file input & selection
+        selectedDictFile = null;
+        dictFileInput.value = '';
+        dictFileSelectedInfo.style.display = 'none';
+        btnUploadDictFile.disabled = true;
+        if (dictUploadNewName) dictUploadNewName.value = '';
+
+        // Reload dictionaries list and select the uploaded topic
+        await loadDictionariesList();
+        if (data.topic_id && dictSelectTopic) {
+          dictSelectTopic.value = data.topic_id;
+          await loadDictionaryDetail(data.topic_id);
+        }
+      } catch (err) {
+        dictUploadAlert.style.display = 'block';
+        dictUploadAlert.className = 'dict-alert-box dict-alert-danger';
+        dictUploadAlert.innerHTML = `
+          <strong>❌ Không thể tải lên file:</strong>
+          <div style="margin-top: 4px;">${escapeHtml(err.message)}</div>
+          <div style="margin-top: 6px; font-size: 11px;">Vui lòng kiểm tra lại file hoặc tải file mẫu (.xlsx, .docx, .txt) ở trên để đối chiếu.</div>
+        `;
+      } finally {
+        btnUploadDictFile.disabled = selectedDictFile === null;
+        btnUploadDictText.textContent = origText;
+      }
+    });
+  }
+
+  // Export current dictionary
+  if (btnExportDictExcel) {
+    btnExportDictExcel.addEventListener('click', () => {
+      if (!currentDictData || !currentDictData.id) {
+        alert('Vui lòng chọn một bộ từ điển để xuất file.');
+        return;
+      }
+      window.location.href = `/api/dictionaries/${encodeURIComponent(currentDictData.id)}/export/xlsx`;
+    });
+  }
+
+  if (btnExportDictTxt) {
+    btnExportDictTxt.addEventListener('click', () => {
+      if (!currentDictData || !currentDictData.id) {
+        alert('Vui lòng chọn một bộ từ điển để xuất file.');
+        return;
+      }
+      window.location.href = `/api/dictionaries/${encodeURIComponent(currentDictData.id)}/export/txt`;
+    });
+  }
+
 
   // --------------------------------------------------------------------------
   // 4. Research Results Rendering

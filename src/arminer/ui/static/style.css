@@ -1127,3 +1127,83 @@ body {
   font-weight: 600;
 }
 
+/* ============================================================
+   Dictionary Studio Upload Dropzone & Template Buttons
+   ============================================================ */
+.dict-dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 16px 12px;
+  text-align: center;
+  background: rgba(99, 102, 241, 0.02);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.dict-dropzone:hover,
+.dict-dropzone.drag-over {
+  border-color: var(--brand-primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+.dict-dropzone-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+  display: block;
+}
+.dict-dropzone-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.dict-dropzone-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.dict-template-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dict-template-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+.dict-template-btn:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+.dict-alert-box {
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+.dict-alert-success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #065f46;
+}
+.dict-alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #92400e;
+}
+.dict-alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #991b1b;
+}
+
+

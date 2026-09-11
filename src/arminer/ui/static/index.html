@@ -306,6 +306,57 @@
             </div>
           </div>
 
+          <!-- Card: Upload File Từ Điển & Tải File Mẫu -->
+          <div class="card" style="border-left: 3px solid var(--brand-primary);">
+            <h3 class="card-title" style="margin-bottom: 6px;">Tải File Từ Điển &amp; Mẫu</h3>
+            <p class="card-desc" style="font-size: 11px; margin-bottom: 10px;">Hỗ trợ Excel, Word, Text. Tự động sửa lỗi gõ và bỏ qua dòng sai.</p>
+
+            <!-- Download Templates Area -->
+            <div style="margin-bottom: 10px; background: rgba(99, 102, 241, 0.04); padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.15);">
+              <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">📥 Tải File Mẫu Chuẩn Cho Nhóm:</div>
+              <div class="dict-template-group">
+                <a href="/api/dictionaries/templates/xlsx" class="dict-template-btn" download title="Tải mẫu Excel gồm 4 cột: Từ khóa chính, Biến thể, Nhóm, Trọng số">
+                  <span>📊 Excel (.xlsx)</span>
+                </a>
+                <a href="/api/dictionaries/templates/docx" class="dict-template-btn" download title="Tải mẫu Word (.docx) chuẩn có bảng">
+                  <span>📝 Word (.docx)</span>
+                </a>
+                <a href="/api/dictionaries/templates/txt" class="dict-template-btn" download title="Tải mẫu Text (.txt) đơn giản">
+                  <span>📄 Text (.txt)</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Upload Dropzone -->
+            <input type="file" id="dictFileInput" accept=".xlsx,.xls,.docx,.txt,.csv" style="display: none;">
+            <div id="dictDropzone" class="dict-dropzone">
+              <span class="dict-dropzone-icon">📁</span>
+              <div class="dict-dropzone-text">Kéo thả file vào đây hoặc bấm chọn</div>
+              <div class="dict-dropzone-hint">Excel (.xlsx), Word (.docx), Văn bản (.txt, .csv)</div>
+            </div>
+            <div id="dictFileSelectedInfo" style="display: none; font-size: 12px; font-weight: 600; color: var(--brand-primary); margin-top: 6px;"></div>
+
+            <!-- Upload Options -->
+            <div style="margin-top: 10px;">
+              <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-primary); margin-bottom: 6px;">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                  <input type="radio" name="dictUploadMode" id="dictUploadModeNew" value="new" checked> Tạo bộ mới
+                </label>
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                  <input type="radio" name="dictUploadMode" id="dictUploadModeAppend" value="append"> Nạp thêm vào bộ này
+                </label>
+              </div>
+              <input type="text" id="dictUploadNewName" class="form-input" placeholder="Tên bộ từ điển mới (để trống lấy tên file)..." style="font-size: 12px;">
+            </div>
+
+            <button id="btnUploadDictFile" class="btn btn-primary btn-sm" style="width: 100%; margin-top: 10px;" disabled>
+              <span id="btnUploadDictText">Tải Lên &amp; Nhập Vào Hệ Thống</span>
+            </button>
+
+            <!-- Alert & Fault-tolerance Notice Banner -->
+            <div id="dictUploadAlert" class="dict-alert-box" style="display: none;"></div>
+          </div>
+
           <div class="card">
             <h3 class="card-title" style="margin-bottom: 12px;">Thêm Từ Khóa Mới</h3>
             <div class="form-group" style="margin-bottom: 10px;">
@@ -336,8 +387,10 @@
               <h2 class="card-title" id="dictCurrentTitle">Từ Điển</h2>
               <p class="card-desc" id="dictCurrentSubtitle">Quản lý, thêm mới, chỉnh sửa và xóa từ khóa theo mục đích nghiên cứu</p>
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; align-items: center;">
               <input type="text" id="dictSearchKw" class="form-input" placeholder="Lọc từ khóa..." style="padding: 4px 8px; font-size: 12px;">
+              <button id="btnExportDictExcel" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 5px 8px; white-space: nowrap;" title="Xuất từ điển hiện tại ra file Excel">Xuất Excel</button>
+              <button id="btnExportDictTxt" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 5px 8px; white-space: nowrap;" title="Xuất từ điển hiện tại ra file Text">Xuất Text</button>
             </div>
           </div>
 
