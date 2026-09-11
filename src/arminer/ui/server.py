@@ -447,7 +447,6 @@ def export_dictionary(topic_id: str, export_format: str):
                 "Từ Khóa Chính": kw.get("keyword", ""),
                 "Từ Đồng Nghĩa / Biến Thể": kw.get("variants", ""),
                 "Nhóm Phân Loại": kw.get("category", "default"),
-                "Trọng Số": kw.get("weight", 1.0),
             })
         df = pd.DataFrame(rows)
         out_stream = io.BytesIO()
@@ -461,9 +460,9 @@ def export_dictionary(topic_id: str, export_format: str):
         )
     elif fmt in ("txt", "csv"):
         lines = [f"# TỪ ĐIỂN: {name} (Tổng: {len(data.get('keywords', []))} từ khóa)"]
-        lines.append("# Từ khóa chính | Biến thể | Nhóm | Trọng số\n")
+        lines.append("# Từ khóa chính | Biến thể | Nhóm\n")
         for kw in data.get("keywords", []):
-            lines.append(f"{kw.get('keyword', '')} | {kw.get('variants', '')} | {kw.get('category', 'default')} | {kw.get('weight', 1.0)}")
+            lines.append(f"{kw.get('keyword', '')} | {kw.get('variants', '')} | {kw.get('category', 'default')}")
         content = "\n".join(lines)
         return StreamingResponse(
             io.BytesIO(content.encode("utf-8")),

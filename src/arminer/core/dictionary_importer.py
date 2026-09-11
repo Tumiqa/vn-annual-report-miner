@@ -256,7 +256,11 @@ class DictionaryFileImporter:
                 col_cat = 2
             if df_raw.shape[1] > 3:
                 col_w = 3
-            warnings.append("Hệ thống không tìm thấy hàng tiêu đề rõ ràng, tự động ánh xạ: Cột 1 là Từ khóa, Cột 2 là Biến thể, Cột 3 là Nhóm, Cột 4 là Trọng số.")
+                warnings.append("Hệ thống không tìm thấy hàng tiêu đề rõ ràng, tự động ánh xạ: Cột 1 là Từ khóa, Cột 2 là Biến thể, Cột 3 là Nhóm, Cột 4 là Trọng số.")
+            elif df_raw.shape[1] == 3:
+                warnings.append("Hệ thống không tìm thấy hàng tiêu đề rõ ràng, tự động ánh xạ: Cột 1 là Từ khóa, Cột 2 là Biến thể, Cột 3 là Nhóm.")
+            else:
+                warnings.append("Hệ thống không tìm thấy hàng tiêu đề rõ ràng, tự động ánh xạ các cột dữ liệu theo thứ tự.")
 
         raw_entries = []
         skipped = 0

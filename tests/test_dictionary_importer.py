@@ -39,7 +39,7 @@ def test_excel_template_parsing():
     ai_entry = next((e for e in res.entries if "nhân tạo" in e["keyword"]), None)
     assert ai_entry is not None
     assert len(ai_entry["variants"]) >= 2
-    assert ai_entry["weight"] == 1.5
+    assert ai_entry["weight"] == 1.0
 
 
 def test_word_template_parsing():
@@ -167,13 +167,19 @@ def test_api_template_download():
 
 def test_api_upload_endpoint():
     """Kiểm tra API upload file từ điển."""
+    from arminer.ui.server import dict_mgr
     txt_content = b"blockchain | chuoi khoi | Tech | 1.0\nsmart contract | hop dong thong minh | Tech | 1.2\n"
     files = {"file": ("test_upload.txt", txt_content, "text/plain")}
     data = {"mode": "new", "topic_name": "Test Upload Topic"}
 
-    res = client.post("/api/dictionaries/upload", files=files, data=data)
-    assert res.status_code == 200
-    json_data = res.json()
-    assert json_data["success"] is True
-    assert "tech" in [c.lower() for c in json_data["categories"]]
+    try:
+        res = client.post("/api/dictionaries/upload", files=files, data=data)
+        assert res.status_code == 200
+        json_data = res.json()
+        assert json_data["success"] is True
+        assert "tech" in [c.lower() for c in json_data["categories"]]
+    finally:
+        dict_file = dict_mgr.custom_dir / "test_upload_topic.yaml"
+        if dict_file.exists():
+            dict_file.unlink()
 

@@ -39,6 +39,7 @@ output/
 *.xlsm
 !src/arminer/templates/vba_template.xlsm
 !danh_sach_doanh_nghiep_niem_yet.xlsx
+!src/arminer/templates/sample_templates/mau_tu_dien_arminer.xlsx
 
 # Logs
 *.log

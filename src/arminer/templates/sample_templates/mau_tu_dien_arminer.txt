@@ -5,23 +5,23 @@
 #
 # HƯỚNG DẪN ĐỊNH DẠNG (Bạn chọn 1 trong 2 cách sau):
 #
-# CÁCH 1 (Khuyên dùng - Đầy đủ thông tin, ngăn cách bằng dấu |):
-# Cấu trúc: Từ khóa chính | Từ đồng nghĩa (cách nhau bởi dấu ,) | Nhóm | Trọng số
+# CÁCH 1 (Khuyên dùng - Đầy đủ biến thể và nhóm, ngăn cách bằng dấu |):
+# Cấu trúc: Từ khóa chính | Từ đồng nghĩa (cách nhau bởi dấu ,) | Nhóm
 #
 # CÁCH 2 (Siêu đơn giản - Dành cho danh sách copy từ tài liệu):
-# Mỗi dòng chỉ ghi 1 từ khóa chính, hệ thống sẽ tự động gán nhóm 'Chung' và trọng số 1.0!
+# Mỗi dòng chỉ ghi 1 từ khóa chính, hệ thống sẽ tự động gán nhóm 'Chung'!
 #
 # ====================================================================
 
 # --- Ví dụ theo CÁCH 1: Có đầy đủ biến thể và nhóm ---
-chuyển đổi số | digital transformation, số hóa, nen tang so | CongNghe | 1.0
-trí tuệ nhân tạo | ai, artificial intelligence, machine learning | CongNghe | 1.5
-dữ liệu lớn | big data, du lieu lon, kho du lieu | CongNghe | 1.0
-điện toán đám mây | cloud computing, ha tang dam may | HaTang | 1.0
-bảo mật thông tin | an toan thong tin, cyber security, an ninh mang | BaoMat | 1.2
-thanh toán điện tử | e-payment, vi dien tu, ngan hang so | TaiChinh | 1.0
-phát triển bền vững | sustainable development, tang truong xanh | ESG | 1.0
-giảm phát thải | giam phat thai, net zero, carbon neutral | MoiTruong | 1.2
+chuyển đổi số | digital transformation, số hóa, nen tang so | CongNghe
+trí tuệ nhân tạo | ai, artificial intelligence, machine learning | CongNghe
+dữ liệu lớn | big data, du lieu lon, kho du lieu | CongNghe
+điện toán đám mây | cloud computing, ha tang dam may | HaTang
+bảo mật thông tin | an toan thong tin, cyber security, an ninh mang | BaoMat
+thanh toán điện tử | e-payment, vi dien tu, ngan hang so | TaiChinh
+phát triển bền vững | sustainable development, tang truong xanh | ESG
+giảm phát thải | giam phat thai, net zero, carbon neutral | MoiTruong
 
 # --- Ví dụ theo CÁCH 2: Chỉ cần từ khóa đơn giản ---
 kinh tế tuần hoàn
