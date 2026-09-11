@@ -160,6 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadCatalog() {
+    // Clear selections from previous searches so no past tickers leak into current session
+    selectedReports.clear();
+    if (chkSelectAll) {
+      chkSelectAll.checked = false;
+      chkSelectAll.indeterminate = false;
+    }
+    updateSelectionState();
+
     catalogTableBody.innerHTML = `
       <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
         <span class="spinner-sm" style="display: inline-block; vertical-align: middle; margin-right: 8px;"></span>
@@ -269,7 +277,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (count === 0) {
       selectedCountLabel.textContent = 'Đã chọn: 0 báo cáo';
     } else {
-      selectedCountLabel.innerHTML = `Đã chọn: <strong>${count.toLocaleString()}</strong> báo cáo Zenodo`;
+      const tickers = new Set();
+      selectedReports.forEach(r => {
+        if (r && r.ticker) tickers.add(r.ticker);
+      });
+      let tickerSummary = '';
+      if (tickers.size > 0) {
+        const tickerList = Array.from(tickers).sort();
+        const displayList = tickerList.slice(0, 5).join(', ');
+        const more = tickerList.length > 5 ? ` +${tickerList.length - 5} mã khác` : '';
+        tickerSummary = ` (${tickerList.length} mã: ${displayList}${more})`;
+      }
+      selectedCountLabel.innerHTML = `Đã chọn: <strong>${count.toLocaleString()}</strong> báo cáo Zenodo${tickerSummary}`;
     }
 
     btnExecuteSelectedScan.disabled = count === 0;
@@ -279,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentReports.length > 0 && currentReports.every(r => selectedReports.has(r.record_id))) {
       chkSelectAll.checked = true;
       chkSelectAll.indeterminate = false;
-    } else if (count > 0) {
+    } else if (count > 0 && currentReports.some(r => selectedReports.has(r.record_id))) {
       chkSelectAll.checked = false;
       chkSelectAll.indeterminate = true;
     } else {
@@ -291,10 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (chkSelectAll) {
     chkSelectAll.addEventListener('change', (e) => {
       const checked = e.target.checked;
-      currentReports.forEach(r => {
-        if (checked) selectedReports.set(r.record_id, r);
-        else selectedReports.delete(r.record_id);
-      });
+      selectedReports.clear();
+      if (checked) {
+        currentReports.forEach(r => selectedReports.set(r.record_id, r));
+      }
       renderCatalogTable();
     });
   }
@@ -312,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Quick action: Select all visible in table
   if (btnSelectAllVisible) {
     btnSelectAllVisible.addEventListener('click', () => {
+      selectedReports.clear();
       currentReports.forEach(r => selectedReports.set(r.record_id, r));
       renderCatalogTable();
     });
@@ -346,9 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         const ids = data.record_ids || [];
 
+        const currentReportsMap = new Map(currentReports.map(r => [r.record_id, r]));
         selectedReports.clear();
         ids.forEach(id => {
-          selectedReports.set(id, { record_id: id });
+          selectedReports.set(id, currentReportsMap.get(id) || { record_id: id, ticker: (ticker || 'Zenodo') });
         });
 
         renderCatalogTable(data.total_matched);
