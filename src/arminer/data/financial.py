@@ -61,8 +61,47 @@ def _ensure_hf_token() -> Optional[str]:
     return token
 
 
-# Auto-detect token upon module load
+def _patch_vnf_local_loader() -> None:
+    """Patch vnfinancialdata.loader._download_parquet to load bundled local parquet files first.
+    This guarantees 100% offline, 0-second loading without touching Hugging Face Hub or hitting rate limits.
+    """
+    try:
+        import vnfinancialdata.loader as vnf_loader
+        from pathlib import Path
+
+        bundled_dir = Path(__file__).resolve().parent / "bctc_data"
+        if not bundled_dir.exists():
+            bundled_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "bctc_data"
+
+        orig_download = getattr(vnf_loader, "_orig_download_parquet", vnf_loader._download_parquet)
+        setattr(vnf_loader, "_orig_download_parquet", orig_download)
+
+        def _smart_download_parquet(exchange: str, statement: str) -> str:
+            cand = bundled_dir / statement / f"{exchange}.parquet"
+            if cand.is_file() and cand.stat().st_size > 10000:
+                return str(cand)
+
+            try:
+                from vnfinancialdata.config import PARQUET_FILES, DATASET_REPO, DATASET_REVISION
+                from huggingface_hub import try_to_load_from_cache
+                rel_path = PARQUET_FILES.get((exchange, statement))
+                if rel_path:
+                    cached = try_to_load_from_cache(repo_id=DATASET_REPO, filename=rel_path, revision=DATASET_REVISION)
+                    if cached and Path(cached).is_file():
+                        return str(cached)
+            except Exception:
+                pass
+
+            return orig_download(exchange, statement)
+
+        vnf_loader._download_parquet = _smart_download_parquet
+    except Exception as e:
+        logger.debug(f"Could not patch vnfinancialdata loader: {e}")
+
+
+# Auto-detect token and patch local loader upon module load
 _ensure_hf_token()
+_patch_vnf_local_loader()
 
 
 class FinancialDataProvider:

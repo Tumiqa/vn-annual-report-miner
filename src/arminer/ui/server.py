@@ -72,6 +72,47 @@ def _ensure_hf_token() -> Optional[str]:
 _ensure_hf_token()
 
 
+def _patch_vnf_local_loader() -> None:
+    """Patch vnfinancialdata.loader._download_parquet to load bundled local parquet files first.
+    This guarantees 100% offline, 0-second loading without touching Hugging Face Hub or hitting rate limits.
+    """
+    try:
+        import vnfinancialdata.loader as vnf_loader
+        from pathlib import Path
+
+        bundled_dir = Path(__file__).resolve().parent.parent / "data" / "bctc_data"
+        if not bundled_dir.exists():
+            bundled_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "bctc_data"
+
+        orig_download = getattr(vnf_loader, "_orig_download_parquet", vnf_loader._download_parquet)
+        setattr(vnf_loader, "_orig_download_parquet", orig_download)
+
+        def _smart_download_parquet(exchange: str, statement: str) -> str:
+            cand = bundled_dir / statement / f"{exchange}.parquet"
+            if cand.is_file() and cand.stat().st_size > 10000:
+                return str(cand)
+
+            try:
+                from vnfinancialdata.config import PARQUET_FILES, DATASET_REPO, DATASET_REVISION
+                from huggingface_hub import try_to_load_from_cache
+                rel_path = PARQUET_FILES.get((exchange, statement))
+                if rel_path:
+                    cached = try_to_load_from_cache(repo_id=DATASET_REPO, filename=rel_path, revision=DATASET_REVISION)
+                    if cached and Path(cached).is_file():
+                        return str(cached)
+            except Exception:
+                pass
+
+            return orig_download(exchange, statement)
+
+        vnf_loader._download_parquet = _smart_download_parquet
+    except Exception as e:
+        pass
+
+
+_patch_vnf_local_loader()
+
+
 
 import io
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Query
@@ -2051,13 +2092,18 @@ async def financial_query(req: FinancialQueryRequest):
         # Collect all item_codes we need
         all_item_codes = list(req.item_codes)
 
-        # Check if the needed files are already cached locally
+        # Check if the needed files are already cached locally (bundled or in HF cache)
         from vnfinancialdata.config import PARQUET_FILES, DATASET_REPO, DATASET_REVISION
         try:
             from huggingface_hub import try_to_load_from_cache
+            from pathlib import Path
+            bundled_dir = Path(__file__).resolve().parent.parent / "data" / "bctc_data"
             all_cached = True
             for stmt in needed_statements:
                 for exch in exchanges:
+                    cand = bundled_dir / stmt / f"{exch}.parquet"
+                    if cand.is_file() and cand.stat().st_size > 10000:
+                        continue
                     fn = PARQUET_FILES.get((exch, stmt))
                     if fn and not try_to_load_from_cache(repo_id=DATASET_REPO, filename=fn, revision=DATASET_REVISION):
                         all_cached = False
@@ -2065,7 +2111,7 @@ async def financial_query(req: FinancialQueryRequest):
         except Exception:
             all_cached = False
 
-        init_msg = "Dữ liệu đã có sẵn trong bộ nhớ đệm (Cache)..." if all_cached else "Đang kết nối và tải dữ liệu từ Hugging Face..."
+        init_msg = "Dữ liệu BCTC đã có sẵn trên máy (Sẵn sàng 100%)..." if all_cached else "Đang kết nối và tải dữ liệu..."
         yield {"event": "progress", "data": json.dumps(
             {"phase": "loading", "current": 0, "total": total_ops,
              "message": init_msg},

@@ -79,6 +79,7 @@ where = ["src"]
 arminer = [
     "templates/*.yaml",
     "data/fixtures/*",
+    "data/bctc_data/*/*",
     "ui/static/*",
 ]
 
