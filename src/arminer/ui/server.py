@@ -2114,53 +2114,65 @@ async def financial_query(req: FinancialQueryRequest):
         except Exception:
             all_cached = False
 
-        init_msg = "Dữ liệu BCTC đã có sẵn trên máy (Sẵn sàng 100%)..." if all_cached else "Đang kết nối và tải dữ liệu..."
+        init_msg = "Dữ liệu BCTC đã có sẵn trên máy — đang xử lý..." if all_cached else "Đang kết nối và tải dữ liệu..."
         yield {"event": "progress", "data": json.dumps(
-            {"phase": "loading", "current": 0, "total": total_ops,
+            {"phase": "loading", "current": 0, "total": total_ops, "percent": 10,
              "message": init_msg},
             ensure_ascii=False)}
 
-        # Load raw data for each needed statement+exchange combo in non-blocking thread executor
+        # Load raw data for all needed statement+exchange combos IN PARALLEL
         raw_data = {}
         download_errors = []
         loop = asyncio.get_running_loop()
         stmt_vn = {"balance_sheet": "Cân đối kế toán", "income_statement": "Kết quả kinh doanh", "cash_flow": "Lưu chuyển tiền tệ"}
 
+        # Build list of all (exchange, statement) combos we need
+        load_tasks = []
         for stmt in needed_statements:
             for exch in exchanges:
-                try:
-                    s_label = stmt_vn.get(stmt, stmt)
-                    yield {"event": "progress", "data": json.dumps(
-                        {"phase": "loading", "current": len(raw_data), "total": len(needed_statements) * len(exchanges),
-                         "message": f"Đang nạp {exch} - {s_label}..."},
-                        ensure_ascii=False)}
+                item_code_arg = None if (is_all_items or has_ratios) else [c for c in all_item_codes if c.startswith({"balance_sheet": "bs_", "income_statement": "is_", "cash_flow": "cf_"}[stmt])]
+                if not item_code_arg:
+                    item_code_arg = None
+                load_tasks.append((exch, stmt, item_code_arg))
 
-                    item_code_arg = None if (is_all_items or has_ratios) else [c for c in all_item_codes if c.startswith({"balance_sheet": "bs_", "income_statement": "is_", "cash_flow": "cf_"}[stmt])]
-                    if not item_code_arg:
-                        item_code_arg = None
+        total_loads = len(load_tasks)
+        yield {"event": "progress", "data": json.dumps(
+            {"phase": "loading", "current": 0, "total": total_loads, "percent": 20,
+             "message": f"Đang nạp song song {total_loads} bộ dữ liệu BCTC..."},
+            ensure_ascii=False)}
 
-                    df = await loop.run_in_executor(
-                        None,
-                        lambda _e=exch, _s=stmt, _i=item_code_arg: vnf.load(
-                            exchange=_e,
-                            statement=_s,
-                            ticker=req.tickers,
-                            start_year=req.start_year,
-                            end_year=req.end_year,
-                            item_code=_i,
-                        )
-                    )
-                    key = f"{exch}_{stmt}"
-                    raw_data[key] = df
-                    yield {"event": "progress", "data": json.dumps(
-                        {"phase": "loading", "current": len(raw_data), "total": len(needed_statements) * len(exchanges),
-                         "message": f"Đã nạp {exch}/{s_label}: {len(df)} dòng"},
-                        ensure_ascii=False)}
-                except Exception as e:
-                    err_msg = str(e)
-                    logger.warning(f"Lỗi tải {exch}/{stmt}: {err_msg}")
-                    download_errors.append(f"{exch}/{stmt}: {err_msg}")
-                await asyncio.sleep(0)
+        # Fire all loads in parallel using asyncio.gather
+        async def _load_one(exch, stmt, item_code_arg):
+            return await loop.run_in_executor(
+                None,
+                lambda _e=exch, _s=stmt, _i=item_code_arg: vnf.load(
+                    exchange=_e, statement=_s,
+                    ticker=req.tickers,
+                    start_year=req.start_year,
+                    end_year=req.end_year,
+                    item_code=_i,
+                )
+            )
+
+        results = await asyncio.gather(
+            *[_load_one(exch, stmt, ic) for exch, stmt, ic in load_tasks],
+            return_exceptions=True,
+        )
+
+        for (exch, stmt, _), result in zip(load_tasks, results):
+            s_label = stmt_vn.get(stmt, stmt)
+            if isinstance(result, Exception):
+                err_msg = str(result)
+                logger.warning(f"Lỗi tải {exch}/{stmt}: {err_msg}")
+                download_errors.append(f"{exch}/{stmt}: {err_msg}")
+            else:
+                key = f"{exch}_{stmt}"
+                raw_data[key] = result
+
+        yield {"event": "progress", "data": json.dumps(
+            {"phase": "loading", "current": total_loads, "total": total_loads, "percent": 35,
+             "message": f"Đã nạp xong {len(raw_data)}/{total_loads} bộ dữ liệu ({sum(len(df) for df in raw_data.values())} dòng)"},
+            ensure_ascii=False)}
 
         # Combine all raw data
         if not raw_data:
@@ -2182,9 +2194,10 @@ async def financial_query(req: FinancialQueryRequest):
 
         # Pivot: each row = (ticker, year), columns = item_codes
         yield {"event": "progress", "data": json.dumps(
-            {"phase": "processing", "current": 0, "total": total_ops,
-             "message": "Dang xu ly pivot table..."},
+            {"phase": "processing", "current": 1, "total": total_ops, "percent": 50,
+             "message": f"Đang xây dựng bảng Panel Data ({len(all_data)} dòng)..."},
             ensure_ascii=False)}
+        await asyncio.sleep(0)
 
         if all_data.empty:
             yield {"event": "error", "data": json.dumps(
@@ -2202,17 +2215,24 @@ async def financial_query(req: FinancialQueryRequest):
                 "message": f"⚠️ Các mã {missing_tickers} không có trong cơ sở dữ liệu vnfinancialdata và đã được tự động loại bỏ khỏi kết quả.",
             }, ensure_ascii=False)}
 
-        pivot = all_data.pivot_table(
-            index=["ticker", "year"],
-            columns="item_code",
-            values="value",
-            aggfunc="first",
-        ).reset_index()
+        pivot = await loop.run_in_executor(
+            None,
+            lambda: all_data.pivot_table(
+                index=["ticker", "year"], columns="item_code",
+                values="value", aggfunc="first",
+            ).reset_index()
+        )
         pivot.columns.name = None
 
         # Compute academic financial ratios (116 ratios - 10 pillars)
+        yield {"event": "progress", "data": json.dumps(
+            {"phase": "ratios", "current": 2, "total": total_ops, "percent": 65,
+             "message": f"Đang tính 116 chỉ số tài chính ({pivot.shape[0]} quan sát)..."},
+            ensure_ascii=False)}
+        await asyncio.sleep(0)
+
         from arminer.export.financial_excel import compute_financial_ratios, FINANCIAL_RATIOS, classify_financial_item
-        pivot = compute_financial_ratios(pivot)
+        pivot = await loop.run_in_executor(None, lambda: compute_financial_ratios(pivot))
 
         # Lay toan bo danh muc goc 702 chi tieu tu vnfinancialdata
         df_master_items = vnf.list_items(active_only=False)
@@ -2325,16 +2345,25 @@ async def financial_query(req: FinancialQueryRequest):
             })
 
         # Save Excel with professional INDEX/MATCH dynamic formulas
+        yield {"event": "progress", "data": json.dumps(
+            {"phase": "exporting", "current": 3, "total": total_ops, "percent": 80,
+             "message": "Đang khởi tạo sổ bảng tính Excel chuyên nghiệp (7 sheet, công thức động)..."},
+            ensure_ascii=False)}
+        await asyncio.sleep(0)
+
         export_xlsx = _get_safe_export_path(DOWNLOAD_DIR, "financial_data", ".xlsx")
         try:
             from arminer.export.financial_excel import export_financial_workbook
-            export_xlsx = export_financial_workbook(
-                all_data=all_data,
-                pivot=pivot,
-                ratio_cols=ratio_cols,
-                fin_codebook=fin_codebook,
-                export_xlsx=export_xlsx,
-                missing_tickers=missing_tickers,
+            export_xlsx = await loop.run_in_executor(
+                None,
+                lambda: export_financial_workbook(
+                    all_data=all_data,
+                    pivot=pivot,
+                    ratio_cols=ratio_cols,
+                    fin_codebook=fin_codebook,
+                    export_xlsx=export_xlsx,
+                    missing_tickers=missing_tickers,
+                )
             )
         except Exception as e:
             logger.warning(f"Lỗi xuất file Excel nâng cao: {e}, fallback sang cơ bản")
@@ -2356,12 +2385,21 @@ async def financial_query(req: FinancialQueryRequest):
             except Exception:
                 pass
 
+        yield {"event": "progress", "data": json.dumps(
+            {"phase": "exporting", "current": 4, "total": total_ops, "percent": 92,
+             "message": "Đang lưu tệp Stata (.dta) & CSV hoàn chỉnh..."},
+            ensure_ascii=False)}
+        await asyncio.sleep(0)
+
         # Save Stata .dta
         export_dta = _get_safe_export_path(DOWNLOAD_DIR, "financial_data", ".dta")
         try:
             from arminer.core.smart_mode import sanitize_stata_dataframe
             stata_df, labels = sanitize_stata_dataframe(pivot)
-            stata_df.to_stata(export_dta, write_index=False, version=118, variable_labels=labels)
+            await loop.run_in_executor(
+                None,
+                lambda: stata_df.to_stata(export_dta, write_index=False, version=118, variable_labels=labels)
+            )
         except Exception as e:
             logger.warning(f"Financial Stata export failed: {e}")
 

@@ -1275,20 +1275,18 @@ def _get_master_items(all_data, fin_codebook):
 
 
 def _build_data_lookup(all_data):
-    """Build dict of (ticker, item_code, year) -> value."""
-    data_lookup = {}
-    if not all_data.empty:
-        for _, r in all_data.iterrows():
-            t_key = str(r["ticker"]).strip().upper()
-            icode_key = str(r["item_code"]).strip()
-            try:
-                y_key = int(r["year"])
-            except (ValueError, TypeError):
-                continue
-            v_val = r.get("value")
-            if pd.notna(v_val) and v_val is not None:
-                data_lookup[(t_key, icode_key, y_key)] = v_val
-    return data_lookup
+    """Build dict of (ticker, item_code, year) -> value with vectorized speed."""
+    if all_data.empty:
+        return {}
+    valid_data = all_data.dropna(subset=["value"])
+    return dict(zip(
+        zip(
+            valid_data["ticker"].astype(str).str.strip().str.upper(),
+            valid_data["item_code"].astype(str).str.strip(),
+            valid_data["year"].astype(int)
+        ),
+        valid_data["value"]
+    ))
 
 
 # =====================================================================
@@ -1399,32 +1397,29 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
 # =====================================================================
 
 def _create_hidden_bctc_sheet(ws, df_master, tickers, years, data_lookup):
-    """Create hidden data sheet for INDEX/MATCH lookup (BCTC)."""
+    """Create hidden data sheet for INDEX/MATCH lookup (BCTC) using high-performance ws.append."""
     ws.sheet_state = "hidden"
 
     headers = ["key", "ticker", "item_code", "item_name", "category"] + [str(y) for y in years]
-    for col_idx, h in enumerate(headers, 1):
-        ws.cell(row=1, column=col_idx, value=h)
+    ws.append(headers)
 
-    row = 2
+    master_tuples = [(str(r["item_code"]), str(r["item_name"]), str(r["category"])) for _, r in df_master.iterrows()]
+
     for t in tickers:
-        for _, mrow in df_master.iterrows():
-            icode = str(mrow["item_code"])
-            ws.cell(row=row, column=1, value=f"{t}_{icode}")
-            ws.cell(row=row, column=2, value=t)
-            ws.cell(row=row, column=3, value=icode)
-            ws.cell(row=row, column=4, value=str(mrow["item_name"]))
-            ws.cell(row=row, column=5, value=str(mrow["category"]))
-            for y_idx, y in enumerate(years):
+        for icode, iname, cat in master_tuples:
+            row_vals = [f"{t}_{icode}", t, icode, iname, cat]
+            for y in years:
                 val = data_lookup.get((t, icode, y))
                 if pd.notna(val) and val is not None:
                     try:
-                        ws.cell(row=row, column=6 + y_idx, value=float(val))
+                        row_vals.append(float(val))
                     except (ValueError, TypeError):
-                        ws.cell(row=row, column=6 + y_idx, value=str(val))
-            row += 1
+                        row_vals.append(str(val))
+                else:
+                    row_vals.append(None)
+            ws.append(row_vals)
 
-    return row - 1  # last data row
+    return ws.max_row
 
 
 # =====================================================================
@@ -1432,40 +1427,34 @@ def _create_hidden_bctc_sheet(ws, df_master, tickers, years, data_lookup):
 # =====================================================================
 
 def _create_hidden_tyso_sheet(ws, pivot, tickers, years, active_ratios):
-    """Create hidden data sheet for INDEX/MATCH lookup (ratios)."""
+    """Create hidden data sheet for INDEX/MATCH lookup (ratios) using high-performance dict cache and ws.append."""
     ws.sheet_state = "hidden"
 
     headers = ["key", "ticker", "ratio_code", "group", "name", "formula"] + [str(y) for y in years]
-    for col_idx, h in enumerate(headers, 1):
-        ws.cell(row=1, column=col_idx, value=h)
+    ws.append(headers)
 
-    row = 2
+    # Pre-index pivot by (ticker, year) for O(1) instantaneous lookups
+    pivot_records = pivot[["ticker", "year"] + [r for r in active_ratios if r in pivot.columns]].to_dict("records")
+    ratio_lookup = {(str(r["ticker"]).upper(), int(r["year"])): r for r in pivot_records}
+    ratio_metas = [(r, FINANCIAL_RATIOS.get(r, {"name": r, "group": "Chỉ số tài chính", "formula": "", "fmt": "0.00%"})) for r in active_ratios]
+
     for t in tickers:
-        df_t = pivot[pivot["ticker"] == t]
-        for rcode in active_ratios:
-            meta = FINANCIAL_RATIOS.get(rcode, {"name": rcode, "group": "Chỉ số tài chính", "formula": "", "fmt": "0.00%"})
-            ws.cell(row=row, column=1, value=f"{t}_{rcode}")
-            ws.cell(row=row, column=2, value=t)
-            ws.cell(row=row, column=3, value=rcode)
-            ws.cell(row=row, column=4, value=meta["group"])
-            ws.cell(row=row, column=5, value=meta["name"])
-            ws.cell(row=row, column=6, value=meta["formula"])
-            for y_idx, y in enumerate(years):
-                row_match = df_t[df_t["year"] == y]
-                val = None
-                if len(row_match) > 0 and rcode in row_match.columns:
-                    col_data = row_match[rcode]
-                    if isinstance(col_data, pd.DataFrame):
-                        col_data = col_data.iloc[:, 0]
-                    val = col_data.values[0] if len(col_data) > 0 else None
+        t_upper = str(t).upper()
+        for rcode, meta in ratio_metas:
+            row_vals = [f"{t}_{rcode}", t, rcode, meta["group"], meta["name"], meta.get("formula", "")]
+            for y in years:
+                rec = ratio_lookup.get((t_upper, y))
+                val = rec.get(rcode) if rec else None
                 if val is not None and pd.notna(val):
                     try:
-                        ws.cell(row=row, column=7 + y_idx, value=float(val))
+                        row_vals.append(float(val))
                     except (ValueError, TypeError):
-                        pass
-            row += 1
+                        row_vals.append(None)
+                else:
+                    row_vals.append(None)
+            ws.append(row_vals)
 
-    return row - 1  # last data row
+    return ws.max_row
 
 
 # =====================================================================
@@ -1769,37 +1758,35 @@ def _create_tyso_report_sheet(ws, tickers, years, active_ratios, tyso_last_row, 
 # =====================================================================
 
 def _create_panel_sheet(ws, pivot):
-    """Create Panel Data sheet with actual values for Stata/R/Python."""
+    """Create Panel Data sheet with actual values for Stata/R/Python using high-performance row appending."""
     ws.sheet_properties.tabColor = "38A169"
 
     pnl_cols = list(pivot.columns)
-    for c_idx, col_name in enumerate(pnl_cols, 1):
-        cell = ws.cell(row=1, column=c_idx, value=col_name)
-        cell.font = _HEADER_FONT
-        cell.fill = PatternFill(start_color="205375", end_color="205375", fill_type="solid")
-        cell.alignment = _CENTER
-        cell.border = _THIN_BORDER
+    ws.append(pnl_cols)
 
-    for r_idx, (_, r) in enumerate(pivot.iterrows(), 2):
-        for c_idx, col_name in enumerate(pnl_cols, 1):
-            val = r[col_name]
-            cell = ws.cell(row=r_idx, column=c_idx)
-            if pd.notna(val) and val is not None:
-                if isinstance(val, (int, float)):
-                    cell.value = float(val)
-                    if col_name == "year":
-                        cell.number_format = "0"
-                    elif col_name != "ticker":
-                        cell.number_format = "#,##0.00" if abs(float(val)) < 100 else "#,##0"
-                else:
-                    cell.value = str(val)
-            cell.font = _BODY_FONT
-            cell.border = _THIN_BORDER
+    header_font = _HEADER_FONT
+    header_fill = PatternFill(start_color="205375", end_color="205375", fill_type="solid")
+    header_align = _CENTER
+    thin_side = Side(style="thin", color="CBD5E0")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
 
-        # Zebra
-        fill = _ZEBRA_EVEN if (r_idx - 2) % 2 == 0 else _ZEBRA_ODD
-        for c_idx in range(1, len(pnl_cols) + 1):
-            ws.cell(row=r_idx, column=c_idx).fill = fill
+    for c_idx in range(1, len(pnl_cols) + 1):
+        cell = ws.cell(row=1, column=c_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    for r in pivot.itertuples(index=False):
+        row_vals = []
+        for val in r:
+            if pd.isna(val) or val is None:
+                row_vals.append(None)
+            elif isinstance(val, (int, float)):
+                row_vals.append(float(val))
+            else:
+                row_vals.append(str(val))
+        ws.append(row_vals)
 
     ws.auto_filter.ref = f"A1:{get_column_letter(len(pnl_cols))}{len(pivot) + 1}"
     ws.freeze_panes = "C2"
@@ -1814,32 +1801,32 @@ def _create_panel_sheet(ws, pivot):
 # =====================================================================
 
 def _create_codebook_sheet(ws, fin_codebook):
-    """Create Codebook sheet with variable definitions."""
+    """Create Codebook sheet with variable definitions using fast row appending."""
     ws.sheet_properties.tabColor = "805AD5"
 
     cb_headers = ["Biến", "Tên chỉ tiêu", "Phân loại / Nhóm", "Phân loại", "Công thức / Nguồn"]
-    for c_idx, h in enumerate(cb_headers, 1):
-        cell = ws.cell(row=1, column=c_idx, value=h)
-        cell.font = _HEADER_FONT
-        cell.fill = PatternFill(start_color="805AD5", end_color="805AD5", fill_type="solid")
-        cell.alignment = _CENTER
-        cell.border = _THIN_BORDER
+    ws.append(cb_headers)
 
-    # Codebook strictly mirrors exported variables in fin_codebook
+    header_font = _HEADER_FONT
+    header_fill = PatternFill(start_color="805AD5", end_color="805AD5", fill_type="solid")
+    header_align = _CENTER
+    thin_side = Side(style="thin", color="CBD5E0")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    for c_idx in range(1, len(cb_headers) + 1):
+        cell = ws.cell(row=1, column=c_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
     cb_full = list(fin_codebook)
+    for item in cb_full:
+        ws.append([item.get(h, "") for h in cb_headers])
 
-    for r_idx, item in enumerate(cb_full, 2):
-        for c_idx, h in enumerate(cb_headers, 1):
-            val = item.get(h, "")
-            cell = ws.cell(row=r_idx, column=c_idx, value=val)
-            cell.font = _BODY_FONT
-            cell.border = _THIN_BORDER
-            cell.alignment = _CENTER if c_idx in (1, 3, 4) else _LEFT
-
-        fill = _ZEBRA_EVEN if (r_idx - 2) % 2 == 0 else _ZEBRA_ODD
-        for c_idx in range(1, 6):
-            ws.cell(row=r_idx, column=c_idx).fill = fill
-
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 40
+    ws.column_dimensions["C"].width = 32
     ws.column_dimensions["D"].width = 26
     ws.column_dimensions["E"].width = 48
 

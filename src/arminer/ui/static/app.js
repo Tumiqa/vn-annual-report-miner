@@ -2507,10 +2507,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (ev.detail) {
                   throw new Error(ev.detail);
                 } else if (ev.phase) {
-                  const labels = { loading: 'Tải dữ liệu', processing: 'Xử lý định dạng Panel (Pivot)' };
+                  const labels = {
+                    loading: 'Đang nạp dữ liệu BCTC',
+                    processing: 'Xây dựng bảng Panel Data',
+                    ratios: 'Tính 116 chỉ số tài chính',
+                    exporting: 'Khởi tạo sổ bảng tính Excel & Stata',
+                  };
                   pphs.textContent = labels[ev.phase] || ev.phase;
                   pmsg.textContent = ev.message || '';
-                  pb.style.width = ev.phase === 'processing' ? '60%' : '30%';
+                  if (ev.percent !== undefined) {
+                    pb.style.width = `${ev.percent}%`;
+                    pp.textContent = `${ev.percent}%`;
+                  } else {
+                    pb.style.width = ev.phase === 'processing' ? '60%' : '30%';
+                  }
                 }
               } catch (pe) {
                 if (pe.message && !pe.message.includes('JSON')) throw pe;
