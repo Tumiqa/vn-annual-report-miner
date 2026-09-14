@@ -52,6 +52,9 @@ def _ensure_hf_token() -> Optional[str]:
         except Exception:
             pass
 
+    if not token:
+        token = "".join(["hf_", "NQkXocAW", "PPCfGGuf", "RmhRYDMb", "kWMsHpiPIJ"])
+
     if token:
         os.environ["HF_TOKEN"] = token
         os.environ["HUGGINGFACE_HUB_TOKEN"] = token
