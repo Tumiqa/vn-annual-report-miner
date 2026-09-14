@@ -137,8 +137,11 @@ from arminer.data.news_scraper import (
     MultiSourceNewsAggregator,
 )
 
-SAMPLE_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "sample_templates"
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
+if not FIXTURES_DIR.exists():
+    FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "fixtures"
 
+SAMPLE_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "sample_templates"
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "arminer_downloads"
@@ -2263,14 +2266,17 @@ async def financial_query(req: FinancialQueryRequest):
 
         # Map company_name from company_websites.json
         comp_name_map = {}
-        fixtures_file = FIXTURES_DIR / "company_websites.json"
-        if fixtures_file.exists():
-            try:
-                with open(fixtures_file, "r", encoding="utf-8") as f:
-                    web_db = json.load(f)
-                comp_name_map = {k: v.get("name") for k, v in web_db.items() if v.get("name")}
-            except Exception:
-                pass
+        if hasattr(news_resolver, "_db") and news_resolver._db:
+            comp_name_map = {k: v.get("name") for k, v in news_resolver._db.items() if v.get("name")}
+        else:
+            fixtures_file = FIXTURES_DIR / "company_websites.json"
+            if fixtures_file.exists():
+                try:
+                    with open(fixtures_file, "r", encoding="utf-8") as f:
+                        web_db = json.load(f)
+                    comp_name_map = {k: v.get("name") for k, v in web_db.items() if v.get("name")}
+                except Exception:
+                    pass
         pivot["company_name"] = pivot["ticker"].map(comp_name_map).fillna("")
 
         # Sap xep thu tu cot khoa hoc: ticker, company_name, year, toan bo chi tieu BCTC da chon, toan bo chi so tai chinh da chon
