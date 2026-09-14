@@ -18,6 +18,49 @@ from loguru import logger
 warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
 
 
+def _ensure_hf_token() -> Optional[str]:
+    """Auto-detect and configure Hugging Face token across Colab secrets, env vars, HF cache, or .env."""
+    import os
+    from pathlib import Path
+
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
+    if not token:
+        try:
+            from google.colab import userdata
+            token = userdata.get("HF_TOKEN")
+        except Exception:
+            pass
+
+    if not token:
+        try:
+            p = Path.home() / ".cache" / "huggingface" / "token"
+            if p.exists():
+                t = p.read_text(encoding="utf-8").strip()
+                if t:
+                    token = t
+        except Exception:
+            pass
+
+    if not token:
+        try:
+            env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+            if env_file.exists():
+                for line in env_file.read_text(encoding="utf-8").splitlines():
+                    if line.strip().startswith("HF_TOKEN="):
+                        token = line.split("=", 1)[1].strip()
+                        break
+        except Exception:
+            pass
+
+    if token:
+        os.environ["HF_TOKEN"] = token
+        os.environ["HUGGINGFACE_HUB_TOKEN"] = token
+    return token
+
+
+# Auto-detect token upon module load
+_ensure_hf_token()
+
 
 class FinancialDataProvider:
     """

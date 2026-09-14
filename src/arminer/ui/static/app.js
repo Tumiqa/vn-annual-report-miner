@@ -2466,7 +2466,7 @@ document.addEventListener('DOMContentLoaded', () => {
       pc.style.display = 'block';
       pb.style.width = '10%';
       pp.textContent = '';
-      pphs.textContent = 'Đang tải dữ liệu từ HuggingFace...';
+      pphs.textContent = 'Đang nạp dữ liệu BCTC...';
       pmsg.textContent = `${tickers.length} mã x ${endYear - startYear + 1} năm x ${itemCodes.length} chỉ tiêu`;
 
       try {

@@ -29,16 +29,44 @@ from pydantic import BaseModel
 # Suppress harmless Hugging Face Hub unauthenticated warning for public datasets
 warnings.filterwarnings("ignore", message=".*unauthenticated requests to the HF Hub.*")
 
-# Auto-load HF_TOKEN from .env if present
-_env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-if _env_file.exists() and "HF_TOKEN" not in os.environ:
-    try:
-        for _line in _env_file.read_text(encoding="utf-8").splitlines():
-            if _line.strip().startswith("HF_TOKEN="):
-                os.environ["HF_TOKEN"] = _line.split("=", 1)[1].strip()
-                break
-    except Exception:
-        pass
+# Auto-load HF_TOKEN from environment, Colab userdata, ~/.cache/huggingface/token, or .env
+def _ensure_hf_token() -> Optional[str]:
+    """Auto-detect and configure Hugging Face token across Colab secrets, env vars, HF cache, or .env."""
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
+    if not token:
+        try:
+            from google.colab import userdata
+            token = userdata.get("HF_TOKEN")
+        except Exception:
+            pass
+
+    if not token:
+        try:
+            p = Path.home() / ".cache" / "huggingface" / "token"
+            if p.exists():
+                t = p.read_text(encoding="utf-8").strip()
+                if t:
+                    token = t
+        except Exception:
+            pass
+
+    if not token:
+        try:
+            env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+            if env_file.exists():
+                for line in env_file.read_text(encoding="utf-8").splitlines():
+                    if line.strip().startswith("HF_TOKEN="):
+                        token = line.split("=", 1)[1].strip()
+                        break
+        except Exception:
+            pass
+
+    if token:
+        os.environ["HF_TOKEN"] = token
+        os.environ["HUGGINGFACE_HUB_TOKEN"] = token
+    return token
+
+_ensure_hf_token()
 
 
 
@@ -1668,8 +1696,27 @@ def financial_status():
             result["access"] = access
         except Exception:
             result["access"] = None
+
+        # Check Hugging Face token and local cache status
+        result["hf_token_configured"] = bool(os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN"))
+        try:
+            from huggingface_hub import try_to_load_from_cache
+            cached_count = 0
+            parquet_dict = getattr(vnf_cfg, "PARQUET_FILES", {})
+            for (exch, stmt), fn in parquet_dict.items():
+                if try_to_load_from_cache(repo_id=vnf_cfg.DATASET_REPO, filename=fn, revision=vnf_cfg.DATASET_REVISION):
+                    cached_count += 1
+            result["hf_cached_files"] = cached_count
+            result["hf_total_files"] = len(parquet_dict)
+            result["hf_fully_cached"] = (cached_count == len(parquet_dict) and len(parquet_dict) > 0)
+        except Exception:
+            result["hf_cached_files"] = 0
+            result["hf_total_files"] = 6
+            result["hf_fully_cached"] = False
     else:
         result["install_cmd"] = 'pip install vnfinancialdata'
+        result["hf_token_configured"] = bool(os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN"))
+        result["hf_fully_cached"] = False
     return result
 
 
@@ -2001,45 +2048,75 @@ async def financial_query(req: FinancialQueryRequest):
         # Collect all item_codes we need
         all_item_codes = list(req.item_codes)
 
+        # Check if the needed files are already cached locally
+        from vnfinancialdata.config import PARQUET_FILES, DATASET_REPO, DATASET_REVISION
+        try:
+            from huggingface_hub import try_to_load_from_cache
+            all_cached = True
+            for stmt in needed_statements:
+                for exch in exchanges:
+                    fn = PARQUET_FILES.get((exch, stmt))
+                    if fn and not try_to_load_from_cache(repo_id=DATASET_REPO, filename=fn, revision=DATASET_REVISION):
+                        all_cached = False
+                        break
+        except Exception:
+            all_cached = False
+
+        init_msg = "Dữ liệu đã có sẵn trong bộ nhớ đệm (Cache)..." if all_cached else "Đang kết nối và tải dữ liệu từ Hugging Face..."
         yield {"event": "progress", "data": json.dumps(
             {"phase": "loading", "current": 0, "total": total_ops,
-             "message": f"Dang tai du lieu tu HuggingFace..."},
+             "message": init_msg},
             ensure_ascii=False)}
 
-        # Load raw data for each needed statement+exchange combo
-        # NOTE: When ratios are requested, we do NOT restrict item_code in vnf.load
-        # because different sectors use different accounts (e.g. is_lai_lo_thuan_sau_thue vs is_loi_nhuan_sau_thue).
-        # Strict filtering to user-selected items is done when assembling the final pivot table.
+        # Load raw data for each needed statement+exchange combo in non-blocking thread executor
         raw_data = {}
+        download_errors = []
+        loop = asyncio.get_running_loop()
+        stmt_vn = {"balance_sheet": "Cân đối kế toán", "income_statement": "Kết quả kinh doanh", "cash_flow": "Lưu chuyển tiền tệ"}
+
         for stmt in needed_statements:
             for exch in exchanges:
                 try:
+                    s_label = stmt_vn.get(stmt, stmt)
+                    yield {"event": "progress", "data": json.dumps(
+                        {"phase": "loading", "current": len(raw_data), "total": len(needed_statements) * len(exchanges),
+                         "message": f"Đang nạp {exch} - {s_label}..."},
+                        ensure_ascii=False)}
+
                     item_code_arg = None if (is_all_items or has_ratios) else [c for c in all_item_codes if c.startswith({"balance_sheet": "bs_", "income_statement": "is_", "cash_flow": "cf_"}[stmt])]
                     if not item_code_arg:
                         item_code_arg = None
 
-                    df = vnf.load(
-                        exchange=exch,
-                        statement=stmt,
-                        ticker=req.tickers,
-                        start_year=req.start_year,
-                        end_year=req.end_year,
-                        item_code=item_code_arg,
+                    df = await loop.run_in_executor(
+                        None,
+                        lambda _e=exch, _s=stmt, _i=item_code_arg: vnf.load(
+                            exchange=_e,
+                            statement=_s,
+                            ticker=req.tickers,
+                            start_year=req.start_year,
+                            end_year=req.end_year,
+                            item_code=_i,
+                        )
                     )
                     key = f"{exch}_{stmt}"
                     raw_data[key] = df
                     yield {"event": "progress", "data": json.dumps(
-                        {"phase": "loading", "current": 0, "total": total_ops,
-                         "message": f"Da tai {exch}/{stmt}: {len(df)} dong"},
+                        {"phase": "loading", "current": len(raw_data), "total": len(needed_statements) * len(exchanges),
+                         "message": f"Đã nạp {exch}/{s_label}: {len(df)} dòng"},
                         ensure_ascii=False)}
                 except Exception as e:
-                    logger.warning(f"Loi tai {exch}/{stmt}: {e}")
+                    err_msg = str(e)
+                    logger.warning(f"Lỗi tải {exch}/{stmt}: {err_msg}")
+                    download_errors.append(f"{exch}/{stmt}: {err_msg}")
                 await asyncio.sleep(0)
 
         # Combine all raw data
         if not raw_data:
+            has_token = bool(os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN"))
+            token_hint = "" if has_token else " (Gợi ý: Cấu hình biến môi trường HF_TOKEN hoặc đăng nhập Hugging Face để tránh bị giới hạn IP trên Google Colab)."
+            err_detail = " | ".join(download_errors[:2]) if download_errors else "Không tải được dữ liệu."
             yield {"event": "error", "data": json.dumps(
-                {"detail": "Khong tai duoc du lieu. Kiem tra tickers va nam."},
+                {"detail": f"Không thể tải dữ liệu BCTC từ Hugging Face: {err_detail}.{token_hint}"},
                 ensure_ascii=False)}
             return
 
