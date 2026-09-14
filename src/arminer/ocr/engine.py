@@ -83,41 +83,55 @@ class OCREngine:
         return full_text
 
     def _ocr_pages(self, pdf_path: Path, page_indices: List[int]) -> List[str]:
-        """OCR các trang scanned bằng Tesseract."""
+        """OCR các trang scanned bằng Tesseract (sử dụng PyMuPDF 300 DPI rendering trực tiếp)."""
         results = []
 
         try:
             import pytesseract
-            from pdf2image import convert_from_path
+            from PIL import Image
+            import fitz
         except ImportError:
             logger.warning(
                 "OCR dependencies missing. "
-                "Install: pip install vn-annual-report-miner[ocr]"
+                "Install: pip install pytesseract pillow PyMuPDF"
             )
             return [""] * len(page_indices)
 
-        for page_idx in page_indices:
-            try:
-                images = convert_from_path(
-                    str(pdf_path),
-                    first_page=page_idx + 1,
-                    last_page=page_idx + 1,
-                    dpi=300,
-                )
+        # Auto-configure tesseract binary path on Windows if standard install exists
+        import sys
+        import os
+        import shutil
+        if sys.platform.startswith("win") and not shutil.which("tesseract"):
+            win_candidates = [
+                Path("C:/Program Files/Tesseract-OCR/tesseract.exe"),
+                Path("C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"),
+                Path(os.environ.get("LOCALAPPDATA", "")) / "Programs/Tesseract-OCR/tesseract.exe",
+            ]
+            for cand in win_candidates:
+                if cand.exists():
+                    pytesseract.pytesseract.tesseract_cmd = str(cand)
+                    break
 
-                if images:
+        try:
+            doc = fitz.open(str(pdf_path))
+            for page_idx in page_indices:
+                try:
+                    page = doc[page_idx]
+                    pix = page.get_pixmap(dpi=300)
+                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                     text = pytesseract.image_to_string(
-                        images[0],
+                        img,
                         lang=self.tesseract_lang,
                         config=self.tesseract_config,
                     )
                     results.append(text.strip())
-                else:
+                except Exception as e:
+                    logger.warning(f"OCR failed for page {page_idx}: {e}")
                     results.append("")
-
-            except Exception as e:
-                logger.warning(f"OCR failed for page {page_idx}: {e}")
-                results.append("")
+            doc.close()
+        except Exception as e:
+            logger.warning(f"Failed to open/render PDF for OCR {pdf_path}: {e}")
+            return [""] * len(page_indices)
 
         return results
 

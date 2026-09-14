@@ -615,6 +615,17 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
             text = "\n".join(page.get_text() for page in doc)
             n_pages = len(doc)
             doc.close()
+
+            # If PDF has pages but virtually 0 embedded text (pure scanned image PDF), fallback to OCR
+            if len(text.strip()) < 50 and n_pages > 0:
+                try:
+                    from arminer.ocr.engine import OCREngine
+                    ocr_engine = OCREngine()
+                    ocr_res = ocr_engine.extract_text(file_path)
+                    if ocr_res and len(ocr_res.strip()) > len(text.strip()):
+                        text = ocr_res
+                except Exception as ocr_err:
+                    logger.debug(f"OCR fallback skipped for {file_path}: {ocr_err}")
         except Exception as e:
             logger.debug(f"Failed to extract PDF {file_path}: {e}")
     else:
