@@ -58,19 +58,39 @@ except Exception:
     pass
 
 
+_SHARED_SESSION: Optional[requests.Session] = None
+
+
+def get_shared_session() -> requests.Session:
+    """Get or create shared HTTP session with connection pooling and keep-alive."""
+    global _SHARED_SESSION
+    if _SHARED_SESSION is None:
+        s = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=50,
+            pool_maxsize=100,
+            max_retries=requests.adapters.Retry(total=2, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
+        )
+        s.mount("https://", adapter)
+        s.mount("http://", adapter)
+        _SHARED_SESSION = s
+    return _SHARED_SESSION
+
+
 def safe_requests_get(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 8, **kwargs) -> requests.Response:
     """
-    Thực hiện HTTP GET an toàn với cơ chế tự động bù trừ SSL (fallback verify=False).
+    Thực hiện HTTP GET an toàn với connection pooling và cơ chế tự động bù trừ SSL (fallback verify=False).
     Rất nhiều cổng thông tin và website doanh nghiệp tại Việt Nam (như bsr.com.vn, EVN,...)
     sử dụng chứng chỉ SSL nội địa hoặc thiếu chứng chỉ trung gian (intermediate CA),
     dẫn đến SSLCertVerificationError trong Python chuẩn.
     """
+    s = get_shared_session()
     hdrs = headers or DEFAULT_HEADERS
     try:
-        return requests.get(url, headers=hdrs, timeout=timeout, **kwargs)
+        return s.get(url, headers=hdrs, timeout=timeout, **kwargs)
     except requests.exceptions.SSLError:
         kwargs["verify"] = False
-        return requests.get(url, headers=hdrs, timeout=timeout, **kwargs)
+        return s.get(url, headers=hdrs, timeout=timeout, **kwargs)
 
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -867,7 +887,7 @@ class MultiSourceNewsAggregator:
             seen_titles.append(t_clean)
             return False
 
-        # Phase 1: Collect article links per source
+        # Phase 1: Collect article links per source IN PARALLEL
         links_by_source: Dict[str, List[str]] = {}
         target_per_source = None
         if target_articles is not None and target_articles > 0:
@@ -875,7 +895,7 @@ class MultiSourceNewsAggregator:
             target_per_source = max(5, ((target_articles * multiplier) // max(1, len(sources))) + 4)
 
         if progress_cb:
-            progress_cb(f"Đang tìm kiếm link bài viết cho {t} ({company_name or 'DN niêm yết'})...", 0, target_articles or 0)
+            progress_cb(f"Đang quét đồng thời {len(sources)} nguồn tin tức cho {t} ({company_name or 'DN niêm yết'})...", 0, target_articles or 0)
 
         def collect_portal_links(scraper_cls, portal_name: str) -> List[str]:
             """Collect links by ticker first, then expand with clean company name for exhaustive recall."""
@@ -888,52 +908,43 @@ class MultiSourceNewsAggregator:
                         links.append(u)
             return links
 
-        # 1. Custom URLs
-        if "custom" in sources and custom_urls:
-            links_by_source["custom"] = custom_urls if target_articles is None else custom_urls[:target_articles * 2]
+        def _fetch_source_links(src_name: str) -> Tuple[str, List[str]]:
+            try:
+                if src_name == "custom" and custom_urls:
+                    return "custom", (custom_urls if target_articles is None else custom_urls[:target_articles * 2])
+                elif src_name == "company_website":
+                    return "company_website", self.company_scraper.get_article_links(t, max_links=target_per_source)
+                elif src_name == "cafef":
+                    return "cafef", collect_portal_links(CafeFScraper, "CafeF")
+                elif src_name == "tinnhanhchungkhoan":
+                    return "tinnhanhchungkhoan", collect_portal_links(TinNhanhCKScraper, "TinNhanhCK")
+                elif src_name == "vneconomy":
+                    return "vneconomy", collect_portal_links(VnEconomyScraper, "VnEconomy")
+                elif src_name == "vnexpress":
+                    return "vnexpress", collect_portal_links(VnExpressScraper, "VnExpress")
+                elif src_name == "cafebiz":
+                    return "cafebiz", collect_portal_links(CafeBizScraper, "CafeBiz")
+                elif src_name == "vietnamnet":
+                    return "vietnamnet", collect_portal_links(VietnamNetScraper, "VietnamNet")
+            except Exception as exc:
+                logger.warning(f"Lỗi tìm kiếm nguồn {src_name} cho {t}: {exc}")
+            return src_name, []
 
-        # 2. Company Website
-        if "company_website" in sources:
-            if progress_cb:
-                progress_cb(f"Đang quét trang tin tức trên website {t}...", len(collected_articles), target_articles or 0)
-            comp_links = self.company_scraper.get_article_links(t, max_links=target_per_source)
-            links_by_source["company_website"] = comp_links
-
-        # 3. CafeF
-        if "cafef" in sources:
-            if progress_cb:
-                progress_cb(f"Đang tìm tin tức {t} trên CafeF...", len(collected_articles), target_articles or 0)
-            links_by_source["cafef"] = collect_portal_links(CafeFScraper, "CafeF")
-
-        # 4. Tin Nhanh Chung Khoan
-        if "tinnhanhchungkhoan" in sources:
-            if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên Tin Nhanh Chứng Khoán...", len(collected_articles), target_articles or 0)
-            links_by_source["tinnhanhchungkhoan"] = collect_portal_links(TinNhanhCKScraper, "TinNhanhCK")
-
-        # 5. VnEconomy
-        if "vneconomy" in sources:
-            if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên VnEconomy...", len(collected_articles), target_articles or 0)
-            links_by_source["vneconomy"] = collect_portal_links(VnEconomyScraper, "VnEconomy")
-
-        # 6. VnExpress Kinh Doanh
-        if "vnexpress" in sources:
-            if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên VnExpress Kinh Doanh...", len(collected_articles), target_articles or 0)
-            links_by_source["vnexpress"] = collect_portal_links(VnExpressScraper, "VnExpress")
-
-        # 7. CafeBiz
-        if "cafebiz" in sources:
-            if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên CafeBiz...", len(collected_articles), target_articles or 0)
-            links_by_source["cafebiz"] = collect_portal_links(CafeBizScraper, "CafeBiz")
-
-        # 8. VietnamNet Kinh Doanh
-        if "vietnamnet" in sources:
-            if progress_cb:
-                progress_cb(f"Đang tìm tin {t} trên VietnamNet...", len(collected_articles), target_articles or 0)
-            links_by_source["vietnamnet"] = collect_portal_links(VietnamNetScraper, "VietnamNet")
+        # Execute link collection in parallel across all requested sources
+        req_sources = [s for s in sources if s in [
+            "custom", "company_website", "cafef", "tinnhanhchungkhoan",
+            "vneconomy", "vnexpress", "cafebiz", "vietnamnet"
+        ]]
+        if req_sources:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(req_sources))) as executor:
+                future_to_src = {executor.submit(_fetch_source_links, s): s for s in req_sources}
+                for fut in concurrent.futures.as_completed(future_to_src):
+                    try:
+                        s_key, s_links = fut.result()
+                        if s_links:
+                            links_by_source[s_key] = s_links
+                    except Exception as e:
+                        logger.warning(f"Lỗi hoàn tất thu thập link từ {future_to_src[fut]}: {e}")
 
         # Interleave links from sources to achieve a balanced and diverse aggregation
         all_candidate_links: List[Tuple[str, str]] = []  # (url, source_name)
@@ -969,13 +980,13 @@ class MultiSourceNewsAggregator:
                 if len(all_candidate_links) >= (target_articles * 2):
                     break
 
-        # Phase 2: Fetch articles content concurrently
+        # Phase 2: Fetch articles content concurrently with connection pooling
         total_links = len(all_candidate_links)
         logger.info(f"Starting content extraction for {t}: {total_links} links queued")
         if progress_cb:
             progress_cb(f"Đang phân tích & trích xuất nội dung {total_links} link cho {t}...", 0, target_articles or total_links)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
             future_to_meta = {
                 executor.submit(self.fetch_article, url, src, t): (url, src)
                 for url, src in all_candidate_links

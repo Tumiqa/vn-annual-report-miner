@@ -38,6 +38,11 @@ COMMON_GENERAL_WORDS = {
 }
 
 
+# Fast punctuation sets for O(1) checks
+PUNCT_BREAKS = {",", ";", ":", ".", "!", "?", "\n", "—", "–", ")", "]", "}", "\"", "”"}
+STRIP_CHARS = ".,;:!?()[]{}\"'“”—–/\\"
+
+
 class GenericFuzzyMatcher:
     """
     Khớp nối mờ từ khóa trong văn bản OCR.
@@ -94,6 +99,15 @@ class GenericFuzzyMatcher:
             wc = len(kw.split())
             cl = len(kw)
             self._kw_by_wc_len.setdefault(wc, {}).setdefault(cl, []).append(kw)
+
+        # Pre-index character sets and max allowed edits for mathematical early rejection
+        self._kw_charsets: Dict[str, Set[str]] = {
+            kw: set(kw) for kw in self.keywords if kw not in self.exclusions
+        }
+        self._kw_max_edits: Dict[str, int] = {
+            kw: int(len(kw) * (1.0 - threshold / 100.0) + 0.5) + 1
+            for kw in self.keywords if kw not in self.exclusions
+        }
 
         logger.info(
             f"GenericFuzzyMatcher: {len(self.keywords)} keywords, "
@@ -184,30 +198,36 @@ class GenericFuzzyMatcher:
             idx = text_lower.find(raw_tok, pos)
             pos = idx + len(raw_tok)
 
-            ends_with_break = any(
-                raw_tok.endswith(p)
-                for p in [",", ";", ":", ".", "!", "?", "\n", "—", "–", ")", "]", "}", "\"", "”"]
-            )
-            clean_tok = raw_tok.strip(".,;:!?()[]{}\"'“”—–/\\")
+            ends_with_break = bool(raw_tok and raw_tok[-1] in PUNCT_BREAKS)
+            clean_tok = raw_tok.strip(STRIP_CHARS)
             if clean_tok:
                 tokens.append(clean_tok)
                 token_positions.append(idx)
                 has_break_after.append(ends_with_break)
 
         # Gom n-gram duy nhất: {n_words: {ngram_str: [indices]}}
+        n_tokens = len(tokens)
         ngram_occurrences: Dict[int, Dict[str, List[int]]] = {}
         for n_words in self._kw_by_wc_len:
-            if n_words > len(tokens):
+            if n_words > n_tokens:
                 continue
-            ngram_occurrences[n_words] = {}
-            for i in range(len(tokens) - n_words + 1):
-                # Không nối n-gram vượt qua ranh giới dấu phẩy/chấm ngắt vế câu
-                # Ví dụ: "dòng tiền," và "bảo đảm" không được nối thành cụm "tiền bảo"
-                if n_words > 1 and any(has_break_after[j] for j in range(i, i + n_words - 1)):
-                    continue
-
-                window = " ".join(tokens[i:i + n_words])
-                ngram_occurrences[n_words].setdefault(window, []).append(i)
+            occ: Dict[str, List[int]] = {}
+            if n_words == 1:
+                for i, tok in enumerate(tokens):
+                    occ.setdefault(tok, []).append(i)
+            else:
+                for i in range(n_tokens - n_words + 1):
+                    # Không nối n-gram vượt qua ranh giới dấu phẩy/chấm ngắt vế câu
+                    has_break = False
+                    for j in range(i, i + n_words - 1):
+                        if has_break_after[j]:
+                            has_break = True
+                            break
+                    if has_break:
+                        continue
+                    window = " ".join(tokens[i:i + n_words])
+                    occ.setdefault(window, []).append(i)
+            ngram_occurrences[n_words] = occ
 
         # Fuzzy match trên n-gram duy nhất
         for n_words, length_map in self._kw_by_wc_len.items():
@@ -218,6 +238,7 @@ class GenericFuzzyMatcher:
                 len_w = len(window)
                 min_len_k = int(0.73 * len_w)
                 max_len_k = int(1.37 * len_w) + 1
+                w_chars = set(window)
 
                 for len_k in range(min_len_k, max_len_k + 1):
                     if len_k not in length_map:
@@ -229,7 +250,6 @@ class GenericFuzzyMatcher:
                             continue
 
                         # Guard 1: Từ vựng thông dụng tiếng Anh/tiếng Việt không thể là fuzzy match
-                        # của từ khóa chuyên sâu (ví dụ: together vs tether, finance vs binance)
                         if window in COMMON_GENERAL_WORDS and window != keyword:
                             continue
 
@@ -237,7 +257,12 @@ class GenericFuzzyMatcher:
                         if window in self.exclusions:
                             continue
 
-                        # Guard 3: Ràng buộc khoảng cách Levenshtein và độ lệch độ dài cho từ đơn (n_words == 1)
+                        # Guard 3: Lọc toán học theo tập ký tự (loại bỏ 95% phép tính Levenshtein dư thừa)
+                        k_chars = self._kw_charsets.get(keyword)
+                        if k_chars is not None and len(k_chars - w_chars) > self._kw_max_edits.get(keyword, 2):
+                            continue
+
+                        # Guard 4: Ràng buộc khoảng cách Levenshtein và độ lệch độ dài cho từ đơn (n_words == 1)
                         if n_words == 1:
                             len_diff = abs(len_w - len_k)
                             if len_k <= 8 and len_diff > 1:

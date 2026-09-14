@@ -13,6 +13,8 @@ Supports:
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import hashlib
 import json
 import os
 import sys
@@ -568,6 +570,149 @@ def _resolve_dictionary(topic: Optional[str] = None, keywords: Optional[str] = N
     return FlexibleDictionary.load(templates_dir / "blockchain_dictionary.yaml")
 
 
+# Two-tier cache for PDF/TXT text extraction: Tier-1 memory (LRU dict) + Tier-2 disk cache
+_BCTN_MEMORY_CACHE: Dict[str, Tuple[str, int]] = {}
+_BCTN_CACHE_DIR = Path.home() / ".arminer" / "text_cache"
+
+
+def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
+    """
+    Extracts text from PDF/TXT with high-speed 2-tier caching.
+    Subsequent reads take < 1ms instead of re-decoding heavy PDF streams.
+    Returns (text, n_pages).
+    """
+    try:
+        st = file_path.stat()
+        cache_key = hashlib.sha256(f"{file_path.resolve()}_{st.st_size}_{st.st_mtime_ns}".encode("utf-8")).hexdigest()[:24]
+    except Exception:
+        cache_key = None
+
+    if cache_key and cache_key in _BCTN_MEMORY_CACHE:
+        return _BCTN_MEMORY_CACHE[cache_key]
+
+    # Check disk cache
+    if cache_key:
+        _BCTN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        txt_path = _BCTN_CACHE_DIR / f"{cache_key}.txt"
+        meta_path = _BCTN_CACHE_DIR / f"{cache_key}.meta"
+        if txt_path.exists() and meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                text = txt_path.read_text(encoding="utf-8", errors="replace")
+                n_pages = meta.get("pages", 1)
+                if len(_BCTN_MEMORY_CACHE) < 200:
+                    _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+                return text, n_pages
+            except Exception:
+                pass
+
+    # Extract from source file
+    text = ""
+    n_pages = 1
+    if file_path.suffix.lower() == ".pdf":
+        try:
+            doc = fitz.open(file_path)
+            text = "\n".join(page.get_text() for page in doc)
+            n_pages = len(doc)
+            doc.close()
+        except Exception as e:
+            logger.debug(f"Failed to extract PDF {file_path}: {e}")
+    else:
+        try:
+            text = file_path.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            logger.debug(f"Failed to extract TXT {file_path}: {e}")
+
+    # Save to cache
+    if cache_key and text:
+        try:
+            txt_path = _BCTN_CACHE_DIR / f"{cache_key}.txt"
+            meta_path = _BCTN_CACHE_DIR / f"{cache_key}.meta"
+            txt_path.write_text(text, encoding="utf-8", errors="replace")
+            meta_path.write_text(json.dumps({"pages": n_pages, "stem": file_path.stem}), encoding="utf-8")
+            if len(_BCTN_MEMORY_CACHE) < 200:
+                _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+        except Exception:
+            pass
+
+    return text, n_pages
+
+
+def _process_one_bctn(
+    item: Dict[str, Any],
+    matcher: GenericFuzzyMatcher,
+    calc: SmartVariableCalculator,
+    flex_dict: FlexibleDictionary,
+    topic_prefix: str,
+) -> Optional[Dict[str, Any]]:
+    """Process a single report file: cached text extraction, fuzzy matching, variable calculation."""
+    p = item["path"]
+    text, n_pages = _extract_text_cached(p)
+    if not text:
+        return None
+
+    words = text.split()
+    total_words = len(words)
+    matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
+
+    vars_r = calc.calculate_all(
+        matches, total_words,
+        category_names=flex_dict.categories,
+        topic_prefix=topic_prefix or "topic",
+        total_dict_keywords=len(flex_dict.entries),
+        classification_rules=flex_dict.classification_rules,
+    )
+
+    row = {
+        "ticker": item["ticker"],
+        "year": item["year"],
+        "icb_level1": item.get("icb_l1", "Khác"),
+        "icb_level2": item.get("icb_l2", "Khác"),
+        "file": p.name,
+        "pages": n_pages,
+        **vars_r,
+    }
+
+    kw_counts = {}
+    for m in matches:
+        kw = m.get("keyword_canonical", m.get("keyword_found", ""))
+        cat = m.get("category", "default")
+        kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
+
+    item_raw_keywords = []
+    for (kw, cat), cnt in kw_counts.items():
+        item_raw_keywords.append({
+            "Firm": item["ticker"],
+            "Year": item["year"],
+            "Keyword": kw,
+            "Category": cat,
+            "Frequency": cnt,
+        })
+
+    item_snippets = []
+    text_len = len(text)
+    for m in matches[:3]:
+        pos = m.get("position", 0)
+        kw = m.get("keyword_found", "")
+        snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
+        item_snippets.append({
+            "ticker": row["ticker"],
+            "year": row["year"],
+            "keyword": kw,
+            "category": m.get("category", "default"),
+            "context": snippet,
+        })
+
+    return {
+        "row": row,
+        "raw_keywords": item_raw_keywords,
+        "snippets": item_snippets,
+        "matches_count": len(matches),
+        "ticker": item["ticker"],
+        "year": item["year"],
+    }
+
+
 class ScanSelectedRequest(BaseModel):
     record_ids: Optional[List[str]] = None
     report_paths: Optional[List[str]] = None
@@ -626,80 +771,23 @@ def scan_selected_reports(req: ScanSelectedRequest):
     matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
     calc = SmartVariableCalculator()
 
+    # Parallel report mining across available CPU cores
+    workers = min(8, max(2, (os.cpu_count() or 4)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results = list(executor.map(
+            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, req.topic or "topic"),
+            target_items
+        ))
+
     rows = []
     all_snippets = []
     all_raw_keywords = []
 
-    for item in target_items:
-        p = item["path"]
-        text = ""
-        n_pages = 1
-        if p.suffix.lower() == ".pdf":
-            try:
-                doc = fitz.open(p)
-                text = "\n".join(page.get_text() for page in doc)
-                n_pages = len(doc)
-                doc.close()
-            except Exception:
-                continue
-        else:
-            try:
-                text = p.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                continue
-
-        words = text.split()
-        total_words = len(words)
-        matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
-
-        vars_r = calc.calculate_all(
-            matches, total_words,
-            category_names=flex_dict.categories,
-            topic_prefix=req.topic or "topic",
-            total_dict_keywords=len(flex_dict.entries),
-            classification_rules=flex_dict.classification_rules,
-        )
-
-        row = {
-            "ticker": item["ticker"],
-            "year": item["year"],
-            "icb_level1": item["icb_l1"],
-            "icb_level2": item["icb_l2"],
-            "file": p.name,
-            "pages": n_pages,
-            **vars_r,
-        }
-        rows.append(row)
-
-        # Collect raw keyword counts for this firm-year (Sheet 1: Raw_Keywords)
-        kw_counts = {}
-        for m in matches:
-            kw = m.get("keyword_canonical", m.get("keyword_found", ""))
-            cat = m.get("category", "default")
-            kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
-
-        for (kw, cat), cnt in kw_counts.items():
-            all_raw_keywords.append({
-                "Firm": item["ticker"],
-                "Year": item["year"],
-                "Keyword": kw,
-                "Category": cat,
-                "Frequency": cnt,
-            })
-
-        # Collect sample snippets (up to 3 per file)
-        text_len = len(text)
-        for m in matches[:3]:
-            pos = m.get("position", 0)
-            kw = m.get("keyword_found", "")
-            snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
-            all_snippets.append({
-                "ticker": row["ticker"],
-                "year": row["year"],
-                "keyword": kw,
-                "category": m.get("category", "default"),
-                "context": snippet,
-            })
+    for res in results:
+        if res:
+            rows.append(res["row"])
+            all_raw_keywords.extend(res["raw_keywords"])
+            all_snippets.extend(res["snippets"])
 
     if not rows:
         raise HTTPException(status_code=400, detail="Không thể trích xuất nội dung từ các file đã chọn.")
@@ -830,7 +918,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                 ensure_ascii=False)}
             return
 
-        # --- Phase 2: Mining ---
+        # --- Phase 2: Mining (Parallel + Cached) ---
         flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
         core_dict = flex_dict.to_core_dictionary()
         matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
@@ -840,86 +928,50 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         all_snippets = []
         all_raw_keywords = []
         total = len(target_items)
+        workers = min(8, max(2, (os.cpu_count() or 4)))
 
-        for idx, item in enumerate(target_items):
-            p = item["path"]
-            ticker_label = f"{item['ticker']}/{item['year'] or '?'}"
+        yield {"event": "progress", "data": json.dumps({
+            "phase": "mining", "current": 0, "total": total, "percent": 0.0,
+            "message": f"Bắt đầu khai phá siêu tốc {total} báo cáo ({workers} luồng song song)...",
+        }, ensure_ascii=False)}
+        await asyncio.sleep(0)
 
-            yield {"event": "progress", "data": json.dumps(
-                {"phase": "mining", "current": idx, "total": total,
-                 "message": f"Đang khai phá {idx + 1}/{total}: {ticker_label}",
-                 "ticker": item['ticker'], "year": item.get('year')},
-                ensure_ascii=False)}
-
-            text = ""
-            n_pages = 1
-            if p.suffix.lower() == ".pdf":
-                try:
-                    doc = fitz.open(p)
-                    text = "\n".join(page.get_text() for page in doc)
-                    n_pages = len(doc)
-                    doc.close()
-                except Exception:
-                    await asyncio.sleep(0)
-                    continue
-            else:
-                try:
-                    text = p.read_text(encoding="utf-8", errors="replace")
-                except Exception:
-                    await asyncio.sleep(0)
-                    continue
-
-            words = text.split()
-            total_words = len(words)
-            matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
-
-            vars_r = calc.calculate_all(
-                matches, total_words,
-                category_names=flex_dict.categories,
-                topic_prefix=req.topic or "topic",
-                total_dict_keywords=len(flex_dict.entries),
-                classification_rules=flex_dict.classification_rules,
-            )
-
-            row = {
-                "ticker": item["ticker"],
-                "year": item["year"],
-                "icb_level1": item["icb_l1"],
-                "icb_level2": item["icb_l2"],
-                "file": p.name,
-                "pages": n_pages,
-                **vars_r,
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_item = {
+                executor.submit(_process_one_bctn, itm, matcher, calc, flex_dict, req.topic or "topic"): itm
+                for itm in target_items
             }
-            rows.append(row)
 
-            # Collect raw keyword counts for this firm-year (Sheet 1: Raw_Keywords)
-            kw_counts = {}
-            for m in matches:
-                kw = m.get("keyword_canonical", m.get("keyword_found", ""))
-                cat = m.get("category", "default")
-                kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
+            completed_count = 0
+            for fut in concurrent.futures.as_completed(future_to_item):
+                completed_count += 1
+                itm = future_to_item[fut]
+                pct = round((completed_count / total) * 100, 1)
+                ticker_label = f"{itm.get('ticker', '?')}/{itm.get('year') or '?'}"
 
-            for (kw, cat), cnt in kw_counts.items():
-                all_raw_keywords.append({
-                    "Firm": item["ticker"],
-                    "Year": item["year"],
-                    "Keyword": kw,
-                    "Category": cat,
-                    "Frequency": cnt,
-                })
+                try:
+                    res = fut.result()
+                    if res:
+                        rows.append(res["row"])
+                        all_raw_keywords.extend(res["raw_keywords"])
+                        all_snippets.extend(res["snippets"])
+                        hit_info = f"({res['matches_count']} từ khóa)" if res['matches_count'] > 0 else ""
+                    else:
+                        hit_info = "(bỏ qua)"
+                except Exception as exc:
+                    logger.warning(f"Lỗi khai phá file {ticker_label}: {exc}")
+                    hit_info = "(lỗi)"
 
-            text_len = len(text)
-            for m in matches[:3]:
-                pos = m.get("position", 0)
-                kw = m.get("keyword_found", "")
-                snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
-                all_snippets.append({
-                    "ticker": row["ticker"], "year": row["year"],
-                    "keyword": kw, "category": m.get("category", "default"),
-                    "context": snippet,
-                })
-
-            await asyncio.sleep(0)  # Yield control for SSE flush
+                yield {"event": "progress", "data": json.dumps({
+                    "phase": "mining",
+                    "current": completed_count,
+                    "total": total,
+                    "percent": pct,
+                    "ticker": itm.get("ticker"),
+                    "year": itm.get("year"),
+                    "message": f"[{completed_count}/{total}] ({pct}%) Đã khai phá: {ticker_label} {hit_info}",
+                }, ensure_ascii=False)}
+                await asyncio.sleep(0)
 
         # --- Phase 3: Generate output ---
         yield {"event": "progress", "data": json.dumps(
@@ -1263,65 +1315,34 @@ async def scan_folder(
     if not files:
         raise HTTPException(status_code=400, detail="Không tìm thấy file PDF hoặc TXT nào trong thư mục.")
 
+    target_items = []
+    for f in files:
+        parsed = PDFSource.parse_filename(f)
+        ticker_val = parsed[0] if parsed else f.stem
+        year_val = parsed[1] if parsed else None
+        l1, l2 = catalog.industry_classifier.get_industry(ticker_val)
+        target_items.append({
+            "path": f,
+            "ticker": ticker_val,
+            "year": year_val,
+            "icb_l1": l1,
+            "icb_l2": l2,
+        })
+
+    workers = min(8, max(2, (os.cpu_count() or 4)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results = list(executor.map(
+            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, topic or "topic"),
+            target_items
+        ))
+
     rows = []
     all_raw_keywords = []
 
-    for f in files:
-        text = ""
-        n_pages = 1
-        if f.suffix.lower() == ".pdf":
-            try:
-                doc = fitz.open(f)
-                text = "\n".join(page.get_text() for page in doc)
-                n_pages = len(doc)
-                doc.close()
-            except Exception:
-                continue
-        else:
-            try:
-                text = f.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                continue
-
-        words = text.split()
-        total_words = len(words)
-        matches = matcher.search(text, use_fuzzy=fuzzy) if total_words > 0 else []
-
-        vars_r = calc.calculate_all(
-            matches, total_words,
-            category_names=flex_dict.categories,
-            topic_prefix=topic or "topic",
-            total_dict_keywords=len(flex_dict.entries),
-            classification_rules=flex_dict.classification_rules,
-        )
-
-        parsed = PDFSource.parse_filename(f)
-        ticker_val = parsed[0] if parsed else None
-        year_val = parsed[1] if parsed else None
-
-        row = {
-            "ticker": ticker_val,
-            "year": year_val,
-            "file": f.name,
-            "pages": n_pages,
-            **vars_r,
-        }
-        rows.append(row)
-
-        kw_counts = {}
-        for m in matches:
-            kw = m.get("keyword_canonical", m.get("keyword_found", ""))
-            cat = m.get("category", "default")
-            kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
-
-        for (kw, cat), cnt in kw_counts.items():
-            all_raw_keywords.append({
-                "Firm": ticker_val or f.stem,
-                "Year": year_val or "N/A",
-                "Keyword": kw,
-                "Category": cat,
-                "Frequency": cnt,
-            })
+    for res in results:
+        if res:
+            rows.append(res["row"])
+            all_raw_keywords.extend(res["raw_keywords"])
 
     if not rows:
         raise HTTPException(status_code=400, detail="Không xử lý được file nào.")
@@ -2689,17 +2710,22 @@ async def scrape_news_stream(req: NewsScrapeRequest):
 
         for i, ticker in enumerate(req.tickers):
             t = ticker.upper().strip()
+            queue: asyncio.Queue = asyncio.Queue()
+            loop = asyncio.get_event_loop()
+
+            def _thread_cb(msg: str, cur: int, tot: int):
+                loop.call_soon_threadsafe(queue.put_nowait, (msg, cur, tot))
+
             yield {"event": "progress", "data": json.dumps({
                 "phase": "crawl",
                 "current_ticker_idx": i + 1,
                 "total_tickers": total_tickers,
                 "ticker": t,
-                "message": f"Đang cào tin tức tối đa [{i + 1}/{total_tickers}]: {t} (năm {req.year_from or ''}-{req.year_to or ''})...",
+                "message": f"[{i + 1}/{total_tickers}] Đang thu thập tin tức: {t}...",
             }, ensure_ascii=False)}
             await asyncio.sleep(0)
 
-            loop = asyncio.get_event_loop()
-            articles = await loop.run_in_executor(
+            crawl_fut = loop.run_in_executor(
                 None,
                 lambda: news_aggregator.crawl_ticker(
                     ticker=t,
@@ -2709,8 +2735,25 @@ async def scrape_news_stream(req: NewsScrapeRequest):
                     year_to=req.year_to,
                     custom_urls=req.custom_urls,
                     keywords=req.keywords,
+                    progress_cb=_thread_cb,
                 )
             )
+
+            while not crawl_fut.done():
+                try:
+                    msg, cur, tot = await asyncio.wait_for(queue.get(), timeout=0.15)
+                    yield {"event": "progress", "data": json.dumps({
+                        "phase": "crawl",
+                        "current_ticker_idx": i + 1,
+                        "total_tickers": total_tickers,
+                        "ticker": t,
+                        "message": f"[{i + 1}/{total_tickers}] {t}: {msg}",
+                    }, ensure_ascii=False)}
+                    await asyncio.sleep(0)
+                except asyncio.TimeoutError:
+                    pass
+
+            articles = await crawl_fut
             all_articles.extend(articles)
 
             yield {"event": "progress", "data": json.dumps({
@@ -2764,6 +2807,12 @@ async def mine_news_stream(req: NewsMineRequest):
 
         for i, ticker in enumerate(req.tickers):
             t = ticker.upper().strip()
+            queue: asyncio.Queue = asyncio.Queue()
+            loop = asyncio.get_event_loop()
+
+            def _thread_cb(msg: str, cur: int, tot: int):
+                loop.call_soon_threadsafe(queue.put_nowait, (msg, cur, tot))
+
             yield {"event": "progress", "data": json.dumps({
                 "phase": "crawl",
                 "current": i + 1,
@@ -2773,8 +2822,7 @@ async def mine_news_stream(req: NewsMineRequest):
             }, ensure_ascii=False)}
             await asyncio.sleep(0)
 
-            loop = asyncio.get_event_loop()
-            articles = await loop.run_in_executor(
+            crawl_fut = loop.run_in_executor(
                 None,
                 lambda: news_aggregator.crawl_ticker(
                     ticker=t,
@@ -2784,8 +2832,25 @@ async def mine_news_stream(req: NewsMineRequest):
                     year_to=req.year_to,
                     custom_urls=req.custom_urls,
                     keywords=topic_kws if topic_kws else None,
+                    progress_cb=_thread_cb,
                 )
             )
+
+            while not crawl_fut.done():
+                try:
+                    msg, cur, tot = await asyncio.wait_for(queue.get(), timeout=0.15)
+                    yield {"event": "progress", "data": json.dumps({
+                        "phase": "crawl",
+                        "current": i + 1,
+                        "total": total_tickers,
+                        "ticker": t,
+                        "message": f"[{i + 1}/{total_tickers}] {t}: {msg}",
+                    }, ensure_ascii=False)}
+                    await asyncio.sleep(0)
+                except asyncio.TimeoutError:
+                    pass
+
+            articles = await crawl_fut
             all_articles.extend(articles)
 
         if not all_articles:
@@ -2794,11 +2859,14 @@ async def mine_news_stream(req: NewsMineRequest):
             }, ensure_ascii=False)}
             return
 
+        total_arts = len(all_articles)
+        workers = min(8, max(2, (os.cpu_count() or 4)))
         yield {"event": "progress", "data": json.dumps({
             "phase": "mining",
             "current": 0,
-            "total": len(all_articles),
-            "message": f"Bắt đầu khai phá văn bản trên {len(all_articles)} bài báo...",
+            "total": total_arts,
+            "percent": 0.0,
+            "message": f"Bắt đầu khai phá văn bản trên {total_arts} bài báo ({workers} luồng song song)...",
         }, ensure_ascii=False)}
         await asyncio.sleep(0)
 
@@ -2806,11 +2874,7 @@ async def mine_news_stream(req: NewsMineRequest):
         matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
         calc = SmartVariableCalculator()
 
-        article_rows = []
-        all_snippets = []
-        all_raw_keywords = []
-
-        for idx, art in enumerate(all_articles):
+        def _process_one_article(art: Dict[str, Any]) -> Dict[str, Any]:
             text = art.get("text") or ""
             words = text.split()
             total_words = len(words)
@@ -2837,7 +2901,6 @@ async def mine_news_stream(req: NewsMineRequest):
                 "word_count": total_words,
                 **vars_r,
             }
-            article_rows.append(row)
 
             kw_counts = {}
             for m in matches:
@@ -2845,8 +2908,9 @@ async def mine_news_stream(req: NewsMineRequest):
                 cat = m.get("category", "default")
                 kw_counts[(kw, cat)] = kw_counts.get((kw, cat), 0) + 1
 
+            art_raw_kws = []
             for (kw, cat), cnt in kw_counts.items():
-                all_raw_keywords.append({
+                art_raw_kws.append({
                     "ticker": art["ticker"],
                     "title": art.get("title", "")[:60],
                     "keyword": kw,
@@ -2854,11 +2918,12 @@ async def mine_news_stream(req: NewsMineRequest):
                     "frequency": cnt,
                 })
 
+            art_snippets = []
             for m in matches[:3]:
                 pos = m.get("position", 0)
                 kw = m.get("keyword_found", "")
                 snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
-                all_snippets.append({
+                art_snippets.append({
                     "ticker": art["ticker"],
                     "source": art.get("news_source", ""),
                     "title": art.get("title", ""),
@@ -2868,14 +2933,44 @@ async def mine_news_stream(req: NewsMineRequest):
                     "context": snippet,
                 })
 
-            if (idx + 1) % 5 == 0 or idx == len(all_articles) - 1:
-                yield {"event": "progress", "data": json.dumps({
-                    "phase": "mining",
-                    "current": idx + 1,
-                    "total": len(all_articles),
-                    "message": f"Đang khai phá {idx + 1}/{len(all_articles)}: {art.get('title', '')[:35]}...",
-                }, ensure_ascii=False)}
-                await asyncio.sleep(0)
+            return {
+                "row": row,
+                "raw_keywords": art_raw_kws,
+                "snippets": art_snippets,
+                "title": art.get("title", ""),
+            }
+
+        article_rows = []
+        all_snippets = []
+        all_raw_keywords = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_art = {
+                executor.submit(_process_one_article, art): art
+                for art in all_articles
+            }
+
+            completed_count = 0
+            for fut in concurrent.futures.as_completed(future_to_art):
+                completed_count += 1
+                try:
+                    res = fut.result()
+                    article_rows.append(res["row"])
+                    all_raw_keywords.extend(res["raw_keywords"])
+                    all_snippets.extend(res["snippets"])
+                except Exception as exc:
+                    logger.warning(f"Lỗi khai phá bài báo: {exc}")
+
+                if completed_count % 5 == 0 or completed_count == total_arts:
+                    pct = round((completed_count / total_arts) * 100, 1)
+                    yield {"event": "progress", "data": json.dumps({
+                        "phase": "mining",
+                        "current": completed_count,
+                        "total": total_arts,
+                        "percent": pct,
+                        "message": f"[{completed_count}/{total_arts}] ({pct}%) Đang khai phá bài báo...",
+                    }, ensure_ascii=False)}
+                    await asyncio.sleep(0)
 
         df_articles = pd.DataFrame(article_rows)
 

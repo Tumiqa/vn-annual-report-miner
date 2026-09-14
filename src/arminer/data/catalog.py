@@ -249,7 +249,8 @@ class UnifiedCatalog:
             df = df.sort_values(by=["ticker_folder", "year_full"], ascending=[True, False])
 
             df_slice = df.head(limit) if (limit is not None and limit > 0) else df
-            for _, row in df_slice.iterrows():
+            records_slice = df_slice.to_dict("records")
+            for row in records_slice:
                 t = str(row["ticker_folder"]).upper()
                 y = int(row["year_full"]) if pd.notna(row["year_full"]) else 0
                 c_info = self.industry_classifier.get_industry_full(t)
