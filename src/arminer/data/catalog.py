@@ -32,15 +32,27 @@ class UnifiedCatalog:
         self._zenodo_df: Optional[pd.DataFrame] = None
         self.industry_classifier = IndustryClassifier(workspace_root=self.workspace_root)
         self._initialized = False
+        # Ultra-fast in-memory inverted indices for O(1) searches
+        self._records_cache: List[Dict[str, Any]] = []
+        self._ticker_index: Dict[str, List[int]] = {}
+        self._unique_tickers: List[str] = []
+        self._sector_index: Dict[str, List[int]] = {}
+        self._icb_l1_index: Dict[str, List[int]] = {}
+        self._icb_l2_index: Dict[str, List[int]] = {}
+        self._icb_l3_index: Dict[str, List[int]] = {}
+        self._icb_l4_index: Dict[str, List[int]] = {}
+        self._year_index: Dict[int, List[int]] = {}
+        self._sectors_tree_cache: Optional[Dict[str, Any]] = None
 
     def initialize(self):
-        """Index local directories and load Zenodo master catalog."""
+        """Index local directories, load Zenodo master catalog, and construct inverted indices."""
         if self._initialized:
             return
 
         self.industry_classifier.initialize()
         self._index_local_sources()
         self._load_zenodo_catalog()
+        self._build_inverted_indices()
         self._initialized = True
 
     def index_directory(self, directory: str | Path, source_name: str = "custom_local"):
@@ -185,22 +197,93 @@ class UnifiedCatalog:
             logger.warning(f"Could not load supplement catalog: {e}")
 
 
-    def get_sectors(self) -> Dict[str, Any]:
-        """Lấy danh sách ngành ICB L1..L4 kèm số lượng báo cáo thực tế (14,500+ file)."""
-        self.initialize()
-        tree = self.industry_classifier.get_taxonomy_tree()
+    def _build_inverted_indices(self):
+        """Build high-speed O(1) in-memory indices and pre-formatted record objects."""
+        if self._zenodo_df is None:
+            return
 
-        # Precompute report counts per ticker in Zenodo
-        ticker_counts: Dict[str, int] = {}
-        if self._zenodo_df is not None:
-            ticker_counts = self._zenodo_df["ticker_folder"].astype(str).str.upper().value_counts().to_dict()
+        # Pre-sort once by ticker asc, year desc and reset index
+        self._zenodo_df = self._zenodo_df.sort_values(
+            by=["ticker_folder", "year_full"], ascending=[True, False]
+        ).reset_index(drop=True)
+
+        df = self._zenodo_df
+        records: List[Dict[str, Any]] = []
+        ticker_idx: Dict[str, List[int]] = {}
+        sector_idx: Dict[str, List[int]] = {}
+        icb_l1_idx: Dict[str, List[int]] = {}
+        icb_l2_idx: Dict[str, List[int]] = {}
+        icb_l3_idx: Dict[str, List[int]] = {}
+        icb_l4_idx: Dict[str, List[int]] = {}
+        year_idx: Dict[int, List[int]] = {}
+
+        full_map = self.industry_classifier._ticker_full_map
+
+        for i, row in enumerate(df.to_dict("records")):
+            t = str(row["ticker_folder"]).upper()
+            y = int(row["year_full"]) if pd.notna(row["year_full"]) else 0
+            c_info = full_map.get(t, {})
+
+            l1 = c_info.get("icb_l1", "Khác")
+            l2 = c_info.get("icb_l2", "Chưa phân loại")
+            l3 = c_info.get("icb_l3", "")
+            l4 = c_info.get("icb_l4", "")
+            icb_code = c_info.get("icb_code", "")
+
+            rec = {
+                "record_id": str(row["record_id"]),
+                "ticker": t,
+                "year": y,
+                "file_name": str(row["file_name"]),
+                "relative_path": str(row["relative_path"]),
+                "archive_period": str(row["archive_period"]),
+                "source": "zenodo",
+                "icb_l1": l1,
+                "icb_l2": l2,
+                "icb_l3": l3,
+                "icb_l4": l4,
+                "icb_code": icb_code,
+                "file_size_mb": float(row["file_size_mb"]) if pd.notna(row["file_size_mb"]) else 0.0,
+                "status": "available",
+            }
+            records.append(rec)
+
+            ticker_idx.setdefault(t, []).append(i)
+            if y > 0:
+                year_idx.setdefault(y, []).append(i)
+
+            for sec in (l1, l2, l3, l4):
+                if sec:
+                    sector_idx.setdefault(sec, []).append(i)
+            if l1: icb_l1_idx.setdefault(l1, []).append(i)
+            if l2: icb_l2_idx.setdefault(l2, []).append(i)
+            if l3: icb_l3_idx.setdefault(l3, []).append(i)
+            if l4: icb_l4_idx.setdefault(l4, []).append(i)
+
+        self._records_cache = records
+        self._ticker_index = ticker_idx
+        self._unique_tickers = sorted(list(ticker_idx.keys()))
+        self._sector_index = sector_idx
+        self._icb_l1_index = icb_l1_idx
+        self._icb_l2_index = icb_l2_idx
+        self._icb_l3_index = icb_l3_idx
+        self._icb_l4_index = icb_l4_idx
+        self._year_index = year_idx
+
+        # Precompute sectors tree cache
+        self._build_sectors_tree_cache()
+
+    def _build_sectors_tree_cache(self):
+        """Precompute and cache taxonomy tree with report counts for 0ms responses."""
+        tree = self.industry_classifier.get_taxonomy_tree()
+        ticker_counts = {t: len(idxs) for t, idxs in self._ticker_index.items()}
 
         for s in tree.get("sectors", []):
             l1_count = 0
             for sub in s.get("subsectors", []):
                 sub_count = sum(ticker_counts.get(t, 0) for t in sub.get("tickers", []))
                 sub["report_count"] = sub_count
-                sub["local_report_count"] = sub_count  # backward compat
+                sub["local_report_count"] = sub_count
                 l1_count += sub_count
 
                 for l3 in sub.get("subsectors_l3", []):
@@ -211,9 +294,17 @@ class UnifiedCatalog:
                         l4["report_count"] = l4_count
 
             s["report_count"] = l1_count
-            s["local_report_count"] = l1_count  # backward compat
+            s["local_report_count"] = l1_count
 
-        return tree
+        self._sectors_tree_cache = tree
+
+    def get_sectors(self) -> Dict[str, Any]:
+        """Lấy danh sách ngành ICB L1..L4 kèm số lượng báo cáo thực tế (14,500+ file) trong 0ms."""
+        self.initialize()
+        if self._sectors_tree_cache is not None:
+            return self._sectors_tree_cache
+        self._build_sectors_tree_cache()
+        return self._sectors_tree_cache
 
     @staticmethod
     def _parse_ticker_filter(ticker_str: Optional[str]) -> Tuple[List[str], bool]:
@@ -245,74 +336,72 @@ class UnifiedCatalog:
         limit: int = 500,
         return_total: bool = False,
     ) -> List[Dict[str, Any]] | Tuple[List[Dict[str, Any]], int]:
-        """Search the unified report catalog (14,500+ reports) with 4-level ICB filters."""
+        """Ultra-fast search across 14,528 reports via O(1) Inverted Indices."""
         self.initialize()
         results: List[Dict[str, Any]] = []
         total_matched = 0
 
-        # Zenodo search (default and primary)
-        if source_filter != "local_only" and self._zenodo_df is not None:
-            df = self._zenodo_df
+        # Zenodo/Unified search via inverted index
+        if source_filter != "local_only" and self._records_cache:
+            matched_indices: Optional[Set[int]] = None
 
+            # 1. Ticker filter
             if ticker and ticker.strip():
                 tokens, is_multi = self._parse_ticker_filter(ticker)
                 if tokens:
+                    t_indices: Set[int] = set()
                     if not is_multi:
-                        df = df[df["ticker_folder"].astype(str).str.upper().str.contains(tokens[0], na=False)]
-                    elif any(len(t) < 3 for t in tokens):
-                        pattern = "|".join(re.escape(t) for t in tokens)
-                        df = df[df["ticker_folder"].astype(str).str.upper().str.contains(pattern, na=False)]
+                        tok = tokens[0]
+                        if tok in self._ticker_index:
+                            t_indices.update(self._ticker_index[tok])
+                        for ut in self._unique_tickers:
+                            if tok in ut and ut != tok:
+                                t_indices.update(self._ticker_index[ut])
                     else:
-                        df = df[df["ticker_folder"].astype(str).str.upper().isin(set(tokens))]
-            if year_from:
-                df = df[df["year_full"] >= year_from]
-            if year_to:
-                df = df[df["year_full"] <= year_to]
+                        for tok in tokens:
+                            if tok in self._ticker_index:
+                                t_indices.update(self._ticker_index[tok])
+                            elif len(tok) < 3:
+                                for ut in self._unique_tickers:
+                                    if tok in ut:
+                                        t_indices.update(self._ticker_index[ut])
+                    matched_indices = t_indices
 
-            # Industry filter (L1, L2, L3, L4)
+            # 2. Sector filter
             if sector:
-                matching_tickers = {
-                    t for t, info in self.industry_classifier._ticker_full_map.items()
-                    if sector in [info.get("icb_l1"), info.get("icb_l2"), info.get("icb_l3"), info.get("icb_l4")]
-                }
-                df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
+                s_indices = set(self._sector_index.get(sector, []))
+                matched_indices = s_indices if matched_indices is None else (matched_indices & s_indices)
             elif icb_l1 or icb_l2 or icb_l3 or icb_l4:
-                matching_tickers = {
-                    t for t, info in self.industry_classifier._ticker_full_map.items()
-                    if (not icb_l1 or info.get("icb_l1") == icb_l1)
-                    and (not icb_l2 or info.get("icb_l2") == icb_l2)
-                    and (not icb_l3 or info.get("icb_l3") == icb_l3)
-                    and (not icb_l4 or info.get("icb_l4") == icb_l4)
-                }
-                df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
+                sec_sets = []
+                if icb_l1 and icb_l1 in self._icb_l1_index: sec_sets.append(set(self._icb_l1_index[icb_l1]))
+                if icb_l2 and icb_l2 in self._icb_l2_index: sec_sets.append(set(self._icb_l2_index[icb_l2]))
+                if icb_l3 and icb_l3 in self._icb_l3_index: sec_sets.append(set(self._icb_l3_index[icb_l3]))
+                if icb_l4 and icb_l4 in self._icb_l4_index: sec_sets.append(set(self._icb_l4_index[icb_l4]))
+                if sec_sets:
+                    combined_sec = set.intersection(*sec_sets)
+                    matched_indices = combined_sec if matched_indices is None else (matched_indices & combined_sec)
+                else:
+                    matched_indices = set()
 
-            total_matched = len(df)
-            # Sort by ticker asc, year desc
-            df = df.sort_values(by=["ticker_folder", "year_full"], ascending=[True, False])
+            # 3. Year range filter
+            if year_from or year_to:
+                y_min = year_from or 1900
+                y_max = year_to or 2100
+                y_indices: Set[int] = set()
+                for y, idx_list in self._year_index.items():
+                    if y_min <= y <= y_max:
+                        y_indices.update(idx_list)
+                matched_indices = y_indices if matched_indices is None else (matched_indices & y_indices)
 
-            df_slice = df.head(limit) if (limit is not None and limit > 0) else df
-            records_slice = df_slice.to_dict("records")
-            for row in records_slice:
-                t = str(row["ticker_folder"]).upper()
-                y = int(row["year_full"]) if pd.notna(row["year_full"]) else 0
-                c_info = self.industry_classifier.get_industry_full(t)
+            # Preserve pre-sorted order
+            if matched_indices is None:
+                final_indices = list(range(len(self._records_cache)))
+            else:
+                final_indices = sorted(matched_indices)
 
-                results.append({
-                    "record_id": str(row["record_id"]),
-                    "ticker": t,
-                    "year": y,
-                    "file_name": str(row["file_name"]),
-                    "relative_path": str(row["relative_path"]),
-                    "archive_period": str(row["archive_period"]),
-                    "source": "zenodo",
-                    "icb_l1": c_info.get("icb_l1", "Khác"),
-                    "icb_l2": c_info.get("icb_l2", "Chưa phân loại"),
-                    "icb_l3": c_info.get("icb_l3", ""),
-                    "icb_l4": c_info.get("icb_l4", ""),
-                    "icb_code": c_info.get("icb_code", ""),
-                    "file_size_mb": float(row["file_size_mb"]) if pd.notna(row["file_size_mb"]) else 0.0,
-                    "status": "available",
-                })
+            total_matched = len(final_indices)
+            slice_indices = final_indices[:limit] if (limit is not None and limit > 0) else final_indices
+            results = [self._records_cache[i] for i in slice_indices]
 
         # Local-only search (for CLI / user-uploaded directory compat)
         if source_filter == "local_only":

@@ -570,8 +570,10 @@ def _resolve_dictionary(topic: Optional[str] = None, keywords: Optional[str] = N
     return FlexibleDictionary.load(templates_dir / "blockchain_dictionary.yaml")
 
 
-# Two-tier cache for PDF/TXT text extraction: Tier-1 memory (LRU dict) + Tier-2 disk cache
-_BCTN_MEMORY_CACHE: Dict[str, Tuple[str, int]] = {}
+# Two-tier cache for PDF/TXT text extraction: Tier-1 memory (LRU OrderedDict, up to 500 reports) + Tier-2 disk cache
+from collections import OrderedDict
+_BCTN_MEMORY_CACHE: OrderedDict[str, Tuple[str, int]] = OrderedDict()
+_BCTN_MEMORY_CACHE_MAX = 500
 _BCTN_CACHE_DIR = Path.home() / ".arminer" / "text_cache"
 
 
@@ -588,6 +590,7 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
         cache_key = None
 
     if cache_key and cache_key in _BCTN_MEMORY_CACHE:
+        _BCTN_MEMORY_CACHE.move_to_end(cache_key)
         return _BCTN_MEMORY_CACHE[cache_key]
 
     # Check disk cache
@@ -600,20 +603,25 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
                 text = txt_path.read_text(encoding="utf-8", errors="replace")
                 n_pages = meta.get("pages", 1)
-                if len(_BCTN_MEMORY_CACHE) < 200:
-                    _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+                _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+                if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
+                    _BCTN_MEMORY_CACHE.popitem(last=False)
                 return text, n_pages
             except Exception:
                 pass
 
-    # Extract from source file
+    # Extract from source file with C-level flags
     text = ""
     n_pages = 1
     if file_path.suffix.lower() == ".pdf":
         try:
             doc = fitz.open(file_path)
-            text = "\n".join(page.get_text() for page in doc)
             n_pages = len(doc)
+            # Use PyMuPDF C-level flags: TEXT_DEHYPHENATE automatically removes line-break hyphens,
+            # TEXT_PRESERVE_WHITESPACE preserves tabular alignments
+            extract_flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_PRESERVE_WHITESPACE
+            page_texts = [page.get_text(flags=extract_flags) for page in doc]
+            text = "\n".join(page_texts)
             doc.close()
 
             # If PDF has pages but virtually 0 embedded text (pure scanned image PDF), fallback to OCR
@@ -641,8 +649,9 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
             meta_path = _BCTN_CACHE_DIR / f"{cache_key}.meta"
             txt_path.write_text(text, encoding="utf-8", errors="replace")
             meta_path.write_text(json.dumps({"pages": n_pages, "stem": file_path.stem}), encoding="utf-8")
-            if len(_BCTN_MEMORY_CACHE) < 200:
-                _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+            _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+            if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
+                _BCTN_MEMORY_CACHE.popitem(last=False)
         except Exception:
             pass
 

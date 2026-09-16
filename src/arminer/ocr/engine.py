@@ -116,7 +116,7 @@ class OCREngine:
         easyocr_langs: Optional[List[str]] = None,
         min_text_per_page: int = 100,
         dpi: int = 300,
-        use_gpu: bool = False,
+        use_gpu: Optional[bool] = None,
         preprocess: bool = True,
     ):
         """
@@ -128,7 +128,7 @@ class OCREngine:
             easyocr_langs: ngôn ngữ cho EasyOCR (mặc định ["vi", "en"])
             min_text_per_page: ngưỡng ký tự tối thiểu để coi là native text
             dpi: độ phân giải render cho OCR (300 = chính xác, 200 = nhanh)
-            use_gpu: dùng GPU cho EasyOCR (nếu có CUDA)
+            use_gpu: dùng GPU cho EasyOCR (None = tự động phát hiện CUDA)
             preprocess: áp dụng image preprocessing trước OCR (khuyến nghị True)
         """
         self.ocr_backend = ocr_backend
@@ -137,7 +137,19 @@ class OCREngine:
         self.easyocr_langs = easyocr_langs or ["vi", "en"]
         self.min_text_per_page = min_text_per_page
         self.dpi = dpi
-        self.use_gpu = use_gpu
+
+        # Auto-detect CUDA GPU for hardware acceleration (e.g. Google Colab / GPU servers)
+        if use_gpu is None:
+            try:
+                import torch
+                self.use_gpu = bool(torch.cuda.is_available())
+                if self.use_gpu:
+                    logger.info(f"OCREngine: CUDA GPU hardware acceleration enabled ({torch.cuda.get_device_name(0)})")
+            except Exception:
+                self.use_gpu = False
+        else:
+            self.use_gpu = use_gpu
+
         self.preprocess = preprocess
 
         # Lazy-initialized (tốn RAM, chỉ init khi cần)

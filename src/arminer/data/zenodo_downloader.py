@@ -552,35 +552,59 @@ class ZenodoDownloader:
             else:
                 to_download.append((idx, r))
 
-        # Stage 2: Attempt remote download for remaining files
-        for idx, r in to_download:
-            rel_path = r.get("relative_path", "")
-            period = r.get("archive_period", "")
-            ticker = r.get("ticker", "")
-            year = r.get("year", 0)
+        # Stage 2: Attempt remote download for remaining files in parallel
+        if to_download:
+            import concurrent.futures
+            import threading
+            lock = threading.Lock()
+            completed_remote = 0
+            base_done = total - len(to_download)
 
-            if not self.circuit_breaker.can_attempt():
-                r["local_path"] = None
-                r["download_status"] = "circuit_open"
-                if progress_callback:
-                    progress_callback(idx, total, f"Zenodo quá tải, tạm bỏ qua: {ticker} ({year})")
-                continue
+            def _download_single(item: Tuple[int, Dict[str, Any]]) -> Dict[str, Any]:
+                nonlocal completed_remote
+                idx, r = item
+                rel_path = r.get("relative_path", "")
+                period = r.get("archive_period", "")
+                ticker = r.get("ticker", "")
+                year = r.get("year", 0)
 
-            if progress_callback:
-                progress_callback(idx, total, f"Đang tải từ Zenodo: {ticker} ({year}) [{idx}/{total}]...")
+                if not self.circuit_breaker.can_attempt():
+                    r["local_path"] = None
+                    r["download_status"] = "circuit_open"
+                    with lock:
+                        completed_remote += 1
+                        if progress_callback:
+                            progress_callback(base_done + completed_remote, total, f"Zenodo quá tải: {ticker} ({year})")
+                    return r
 
-            p = self.get_pdf_path(
-                ticker=ticker,
-                year=year,
-                archive_period=period,
-                relative_path=rel_path,
-            )
-            if p and p.exists():
-                r["local_path"] = str(p.resolve())
-                r["download_status"] = "downloaded"
-            else:
-                r["local_path"] = None
-                r["download_status"] = "failed"
+                with lock:
+                    if progress_callback:
+                        progress_callback(base_done + completed_remote, total, f"Đang tải: {ticker} ({year})...")
+
+                p = self.get_pdf_path(
+                    ticker=ticker,
+                    year=year,
+                    archive_period=period,
+                    relative_path=rel_path,
+                )
+                if p and p.exists():
+                    r["local_path"] = str(p.resolve())
+                    r["download_status"] = "downloaded"
+                else:
+                    r["local_path"] = None
+                    r["download_status"] = "failed"
+
+                with lock:
+                    completed_remote += 1
+                    if progress_callback:
+                        status_label = "Tải thành công" if r["local_path"] else "Thất bại"
+                        progress_callback(base_done + completed_remote, total, f"[{status_label}] {ticker} ({year})")
+
+                return r
+
+            max_dl_workers = min(4, len(to_download))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_dl_workers) as pool:
+                list(pool.map(_download_single, to_download))
 
         return reports
 

@@ -1106,9 +1106,63 @@ def catalog_search(ticker, year_from, year_to, sector, limit):
             r.get("file_name", ""),
         )
 
-    console.print(table)
+@main.command("clean")
+@click.option("--all", "clean_all", is_flag=True, help="Also clean downloaded Zenodo cache blocks and text memory cache.")
+def clean_cmd(clean_all: bool):
+    """Clean system junk, bytecode __pycache__, test caches, and temporary files."""
+    import shutil
+    from rich.panel import Panel
+
+    root = Path.cwd()
+    pycache_count = 0
+    bytes_freed = 0
+
+    # 1. Bytecode and test caches
+    for target_dir in list(root.rglob("__pycache__")) + list(root.rglob(".pytest_cache")):
+        if target_dir.exists() and target_dir.is_dir():
+            for f in target_dir.rglob("*"):
+                if f.is_file():
+                    bytes_freed += f.stat().st_size
+            shutil.rmtree(target_dir, ignore_errors=True)
+            pycache_count += 1
+
+    # 2. Temporary scratch upload progress
+    prog_file = root / "data" / "hf_upload_progress.txt"
+    if prog_file.exists():
+        bytes_freed += prog_file.stat().st_size
+        prog_file.unlink(missing_ok=True)
+
+    # 3. Clean temporary range blocks and 0-byte files in zenodo_cache
+    z_cache = root / "data" / "zenodo_cache"
+    temp_files_count = 0
+    if z_cache.exists():
+        for f in z_cache.rglob("*"):
+            if f.is_file() and (f.stat().st_size == 0 or (f.name.startswith("block_") and f.name.endswith(".bin"))):
+                bytes_freed += f.stat().st_size
+                f.unlink(missing_ok=True)
+                temp_files_count += 1
+
+    # 4. Optional: text cache
+    if clean_all:
+        txt_cache = Path.home() / ".arminer" / "text_cache"
+        if txt_cache.exists():
+            for f in txt_cache.rglob("*"):
+                if f.is_file():
+                    bytes_freed += f.stat().st_size
+            shutil.rmtree(txt_cache, ignore_errors=True)
+
+    mb_freed = bytes_freed / (1024 * 1024)
+    console.print(Panel(
+        f"[bold green]✓ Hệ thống đã được dọn sạch rác hoàn toàn![/bold green]\n\n"
+        f"• Đã xóa: [cyan]{pycache_count}[/cyan] thư mục bytecode (__pycache__ / .pytest_cache)\n"
+        f"• Đã dọn: [cyan]{temp_files_count}[/cyan] file tạm / cache block rác\n"
+        f"• Dung lượng giải phóng: [yellow]{mb_freed:.2f} MB[/yellow]",
+        title="[bold blue]ARMINER SYSTEM CLEANUP[/bold blue]",
+        border_style="green",
+    ))
 
 
 if __name__ == "__main__":
     main()
+
 

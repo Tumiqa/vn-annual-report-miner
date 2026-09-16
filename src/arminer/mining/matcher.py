@@ -249,6 +249,11 @@ class GenericFuzzyMatcher:
                         if len_k < 6:
                             continue
 
+                        # Guard 0: Ràng buộc toán học hiệu độ dài (lev_distance >= |len_w - len_k|)
+                        max_edits = self._kw_max_edits.get(keyword, 2)
+                        if abs(len_w - len_k) > max_edits:
+                            continue
+
                         # Guard 1: Từ vựng thông dụng tiếng Anh/tiếng Việt không thể là fuzzy match
                         if window in COMMON_GENERAL_WORDS and window != keyword:
                             continue
