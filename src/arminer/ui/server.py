@@ -4,7 +4,7 @@ arminer.ui.server
 ==================
 FastAPI Web Server for arminer interactive UI.
 Supports:
-- Unified Report Catalog (Local 2,645+ PDFs + Zenodo 13,982 records)
+- Unified Report Catalog (Local 2,645+ PDFs + Zenodo 13,982 + Supplement 546 records)
 - Complete Dictionary Studio (Add, Edit, Delete, Create, Export)
 - Single PDF Upload & Batch Folder Scan
 - Research Panel Export (Excel Multi-Sheets, Stata .dta, CSV)

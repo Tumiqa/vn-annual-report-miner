@@ -247,7 +247,7 @@ def add_cover_sheet(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -
         ("🏛️ Đơn vị phát triển:", "Trương Minh Quân - Đại học Kinh tế Đà Nẵng"),
         ("⚙️ Công cụ trích xuất:", "arminer Studio v2.5 (Corporate Text Mining & Econometric Automation)"),
         ("📅 Thời điểm xuất file:", datetime.now().strftime("%d/%m/%Y %H:%M:%S")),
-        ("📊 Nguồn dữ liệu:", "BCTN Zenodo (13,982 file) | BCTC 702 chỉ tiêu chuẩn hóa | Báo chí kinh tế & Website DN"),
+        ("📊 Nguồn dữ liệu:", "BCTN (14,528 file: Zenodo 13,982 + Supplement 546) | BCTC 702 chỉ tiêu chuẩn hóa | Báo chí kinh tế & Website DN"),
         ("📈 Cấu trúc dữ liệu:", "Chuẩn Dữ Liệu Bảng (Firm - Year Panel Data: Mã CK 'ticker', Năm 'year')"),
         ("🎓 Ứng dụng mô hình:", "Sẵn sàng hồi quy OLS, Fixed Effects, Random Effects, GMM (Stata, Python, R)"),
         ("🛡️ Mã xác thực dữ liệu:", "ARMINER-VERIFIED-PANEL-DATASET (Trương Minh Quân)"),

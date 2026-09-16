@@ -53,15 +53,16 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "trafilatura>=1.6.0",
     "python-docx>=1.1.0",
+    "huggingface_hub>=0.20.0",
 ]
 
 [project.optional-dependencies]
 financial = ["vnfinancialdata>=0.1"]
-ocr = ["pytesseract>=0.3.10", "opencv-python>=4.8", "Pillow>=10.0", "pdf2image>=1.16"]
-gpu = ["easyocr>=1.7"]
+ocr = ["easyocr>=1.7", "Pillow>=10.0"]
+ocr-tesseract = ["pytesseract>=0.3.10", "Pillow>=10.0"]
 nlp = ["underthesea>=6.8", "scikit-learn>=1.3", "regex>=2023.0"]
 stata = ["pyreadstat>=1.2"]
-full = ["vn-annual-report-miner[financial,ocr,gpu,nlp,stata]"]
+full = ["vn-annual-report-miner[financial,ocr,nlp,stata]"]
 dev = ["pytest>=7.4", "pytest-cov>=4.0"]
 
 [project.scripts]

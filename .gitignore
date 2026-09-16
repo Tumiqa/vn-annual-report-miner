@@ -31,6 +31,8 @@ data/zenodo_sample/
 data/downloads/
 data/ocr_output/
 data/reports/
+data/bctn_new_extracted/
+data/hf_upload_progress.txt
 output/
 *.pdf
 *.zip

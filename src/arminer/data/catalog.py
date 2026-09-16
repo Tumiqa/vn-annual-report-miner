@@ -96,8 +96,10 @@ class UnifiedCatalog:
             Path.cwd() / "data" / "raw_pdfs",
             Path.cwd() / "data" / "zenodo_sample" / "full_data",
             Path.cwd() / "data" / "zenodo_sample",
+            Path.cwd() / "data" / "bctn_new_extracted",
             self.workspace_root / "data" / "reports",
             self.workspace_root / "data" / "raw_pdfs",
+            self.workspace_root / "data" / "bctn_new_extracted",
             Path.home() / ".arminer" / "reports",
         ]
         for s_dir in standard_dirs:
@@ -114,37 +116,77 @@ class UnifiedCatalog:
             try:
                 self._zenodo_df = pd.read_parquet(fixture_parquet)
                 logger.info(f"UnifiedCatalog: Loaded bundled Zenodo catalog ({len(self._zenodo_df)} records)")
-                return
             except Exception as e:
                 logger.warning(f"Could not load bundled parquet: {e}")
 
-        # 2. Check local CSV cache
-        csv_path = self.workspace_root / "data" / "zenodo_catalog" / "file_index_full.csv"
-        if csv_path.exists():
-            try:
-                self._zenodo_df = pd.read_csv(csv_path)
-                logger.info(f"UnifiedCatalog: Loaded Zenodo CSV catalog ({len(self._zenodo_df)} records)")
-                return
-            except Exception as e:
-                logger.warning(f"UnifiedCatalog: Could not load Zenodo CSV: {e}")
+        # 2. Check local CSV cache (fallback if no parquet)
+        if self._zenodo_df is None:
+            csv_path = self.workspace_root / "data" / "zenodo_catalog" / "file_index_full.csv"
+            if csv_path.exists():
+                try:
+                    self._zenodo_df = pd.read_csv(csv_path)
+                    logger.info(f"UnifiedCatalog: Loaded Zenodo CSV catalog ({len(self._zenodo_df)} records)")
+                except Exception as e:
+                    logger.warning(f"UnifiedCatalog: Could not load Zenodo CSV: {e}")
 
         # 3. Fallback to online download if not present
+        if self._zenodo_df is None:
+            try:
+                import requests
+                csv_path = self.workspace_root / "data" / "zenodo_catalog" / "file_index_full.csv"
+                url = "https://zenodo.org/api/records/20949551/files/file_index_full.csv/content"
+                logger.info("Downloading Zenodo master catalog from online API...")
+                r = requests.get(url, timeout=30)
+                if r.status_code == 200:
+                    csv_path.parent.mkdir(parents=True, exist_ok=True)
+                    csv_path.write_bytes(r.content)
+                    self._zenodo_df = pd.read_csv(csv_path)
+                    logger.info(f"Downloaded and loaded Zenodo catalog ({len(self._zenodo_df)} records)")
+            except Exception as e:
+                logger.warning(f"Could not auto-download Zenodo catalog: {e}")
+
+        # 4. Merge supplement catalog (546 records from thầy gửi)
+        self._load_supplement_catalog()
+
+    def _load_supplement_catalog(self):
+        """Load and merge supplement index — mở rộng Zenodo với dữ liệu bổ sung.
+
+        Supplement records có cùng schema với Zenodo master index,
+        được merge trong suốt — search() tự động trả cả 2 nguồn.
+        """
+        supplement_parquet = Path(__file__).resolve().parent / "fixtures" / "bctn_supplement_index.parquet"
+        if not supplement_parquet.exists():
+            return
+
         try:
-            import requests
-            url = "https://zenodo.org/api/records/20949551/files/file_index_full.csv/content"
-            logger.info("Downloading Zenodo master catalog from online API...")
-            r = requests.get(url, timeout=30)
-            if r.status_code == 200:
-                csv_path.parent.mkdir(parents=True, exist_ok=True)
-                csv_path.write_bytes(r.content)
-                self._zenodo_df = pd.read_csv(csv_path)
-                logger.info(f"Downloaded and loaded Zenodo catalog ({len(self._zenodo_df)} records)")
+            sup_df = pd.read_parquet(supplement_parquet)
+            if self._zenodo_df is not None:
+                # Avoid duplicates: only add records not already in Zenodo
+                existing_keys = set(
+                    zip(self._zenodo_df["ticker_folder"].str.upper(),
+                        self._zenodo_df["year_full"])
+                )
+                sup_new = sup_df[
+                    ~sup_df.apply(
+                        lambda r: (str(r["ticker_folder"]).upper(), r["year_full"]) in existing_keys,
+                        axis=1
+                    )
+                ]
+                if len(sup_new) > 0:
+                    self._zenodo_df = pd.concat([self._zenodo_df, sup_new], ignore_index=True)
+                    logger.info(
+                        f"UnifiedCatalog: Merged {len(sup_new)} supplement records "
+                        f"→ total {len(self._zenodo_df)} records"
+                    )
+            else:
+                self._zenodo_df = sup_df
+                logger.info(f"UnifiedCatalog: Loaded {len(sup_df)} supplement records (no Zenodo base)")
         except Exception as e:
-            logger.warning(f"Could not auto-download Zenodo catalog: {e}")
+            logger.warning(f"Could not load supplement catalog: {e}")
 
 
     def get_sectors(self) -> Dict[str, Any]:
-        """Lấy danh sách ngành ICB L1..L4 kèm số lượng báo cáo thực tế trong Zenodo (13,982 file)."""
+        """Lấy danh sách ngành ICB L1..L4 kèm số lượng báo cáo thực tế (14,500+ file)."""
         self.initialize()
         tree = self.industry_classifier.get_taxonomy_tree()
 
@@ -203,7 +245,7 @@ class UnifiedCatalog:
         limit: int = 500,
         return_total: bool = False,
     ) -> List[Dict[str, Any]] | Tuple[List[Dict[str, Any]], int]:
-        """Search the Zenodo master catalog (13,982 reports) with 4-level ICB filters."""
+        """Search the unified report catalog (14,500+ reports) with 4-level ICB filters."""
         self.initialize()
         results: List[Dict[str, Any]] = []
         total_matched = 0

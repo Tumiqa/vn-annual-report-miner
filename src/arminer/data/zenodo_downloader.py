@@ -300,6 +300,7 @@ class ZenodoDownloader:
                 root / "data" / "raw_pdfs",
                 root / "data" / "zenodo_sample" / "full_data",
                 root / "data" / "zenodo_sample",
+                root / "data" / "bctn_new_extracted",
             ])
 
         # 3. Environment directory
@@ -428,6 +429,12 @@ class ZenodoDownloader:
         if local_found:
             return local_found
 
+        # --- STAGE 1.5: HUGGING FACE SUPPLEMENT ---
+        # For supplement records, try downloading from HF dataset
+        hf_result = self._try_hf_download(ticker, year, relative_path)
+        if hf_result:
+            return hf_result
+
         # Destination in cache
         period_dir = self.cache_root / archive_period
         cached_pdf = period_dir / relative_path
@@ -480,6 +487,41 @@ class ZenodoDownloader:
                 except Exception:
                     pass
             return None
+
+    def _try_hf_download(
+        self,
+        ticker: str,
+        year: int,
+        relative_path: str,
+    ) -> Optional[Path]:
+        """Try downloading a PDF from the Hugging Face supplement dataset.
+
+        This is a silent fallback — if HF is not available or the file
+        is not in the supplement dataset, returns None without errors.
+        """
+        try:
+            from huggingface_hub import hf_hub_download
+        except ImportError:
+            return None
+
+        # Construct HF path: pdfs/{TICKER}/{TICKER}_{YEAR}_BCTN.pdf
+        hf_filename = f"pdfs/{relative_path.replace(chr(92), '/')}"
+        hf_repo = os.environ.get("HF_SUPPLEMENT_REPO", "Tumiqa103/vn-bctn-supplement")
+
+        try:
+            local_path = hf_hub_download(
+                repo_id=hf_repo,
+                filename=hf_filename,
+                repo_type="dataset",
+                cache_dir=str(self.cache_root / "hf_cache"),
+            )
+            if local_path and Path(local_path).exists():
+                logger.info(f"Downloaded from HF: {hf_filename}")
+                return Path(local_path)
+        except Exception:
+            # Silent fallback — HF not available or file not in repo
+            pass
+        return None
 
     def download_reports(
         self,
