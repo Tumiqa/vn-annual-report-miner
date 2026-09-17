@@ -53,6 +53,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSelectAllVisible = document.getElementById('btnSelectAllVisible');
   const btnSelectAllMatched = document.getElementById('btnSelectAllMatched');
   const btnClearSelection = document.getElementById('btnClearSelection');
+  const catExHSX = document.getElementById('catExHSX');
+  const catExHNX = document.getElementById('catExHNX');
+  const catExUPCOM = document.getElementById('catExUPCOM');
+
+  function getSelectedCatalogExchanges() {
+    const list = [];
+    if (catExHSX && catExHSX.checked) list.push('HSX');
+    if (catExHNX && catExHNX.checked) list.push('HNX');
+    if (catExUPCOM && catExUPCOM.checked) list.push('UPCOM');
+    // If all 3 or 0 are selected, default to all 3 (no exchange filter)
+    if (list.length === 0 || list.length === 3) {
+      return '';
+    }
+    return list.join(',');
+  }
 
   async function loadSectors() {
     try {
@@ -159,6 +174,10 @@ document.addEventListener('DOMContentLoaded', () => {
     catLimitSelect.addEventListener('change', loadCatalog);
   }
 
+  [catExHSX, catExHNX, catExUPCOM].forEach(chk => {
+    if (chk) chk.addEventListener('change', loadCatalog);
+  });
+
   async function loadCatalog() {
     // Clear selections from previous searches so no past tickers leak into current session
     selectedReports.clear();
@@ -192,6 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (l4) params.append('icb_l4', l4);
     if (yFrom) params.append('year_from', yFrom);
     if (yTo) params.append('year_to', yTo);
+    const exch = getSelectedCatalogExchanges();
+    if (exch) params.append('exchange', exch);
     params.append('limit', limit);
 
     try {
@@ -201,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCatalogTable(data.total_matched);
     } catch (err) {
       catalogTableBody.innerHTML = `
-        <tr><td colspan="7" style="text-align: center; color: var(--color-danger); padding: 20px;">
+        <tr><td colspan="8" style="text-align: center; color: var(--color-danger); padding: 20px;">
           Lỗi tải dữ liệu: ${err.message}
         </td></tr>
       `;
@@ -211,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderCatalogTable(totalMatched) {
     if (currentReports.length === 0) {
       catalogTableBody.innerHTML = `
-        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
+        <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">
           Không tìm thấy báo cáo nào khớp với tiêu chí tìm kiếm.
         </td></tr>
       `;
@@ -225,11 +246,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const tr = document.createElement('tr');
       const isChecked = selectedReports.has(r.record_id);
 
+      let exchBadge = '';
+      const ex = (r.exchange || 'HSX').toUpperCase();
+      if (ex === 'HSX' || ex === 'HOSE') {
+        exchBadge = '<span class="badge" style="background: rgba(37,99,235,0.12); color: #2563eb; font-weight: 600; font-size: 11px;">HSX</span>';
+      } else if (ex === 'HNX') {
+        exchBadge = '<span class="badge" style="background: rgba(16,185,129,0.12); color: #059669; font-weight: 600; font-size: 11px;">HNX</span>';
+      } else if (ex === 'UPCOM') {
+        exchBadge = '<span class="badge" style="background: rgba(245,158,11,0.15); color: #d97706; font-weight: 600; font-size: 11px;">UPCoM</span>';
+      } else {
+        exchBadge = `<span class="badge" style="background: rgba(100,116,139,0.12); color: #64748b; font-size: 11px;">${escapeHtml(ex)}</span>`;
+      }
+
       tr.innerHTML = `
         <td style="text-align: center;">
           <input type="checkbox" class="custom-chk row-chk" data-id="${r.record_id}" ${isChecked ? 'checked' : ''}>
         </td>
         <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${r.ticker}</strong></td>
+        <td style="text-align: center;">${exchBadge}</td>
         <td class="tabular">${r.year}</td>
         <td>
           <span class="badge badge-cat" style="margin-bottom: 2px;">${escapeHtml(r.icb_l1 || 'Chưa phân loại')}</span>
@@ -360,6 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (l4) params.append('icb_l4', l4);
       if (yFrom) params.append('year_from', yFrom);
       if (yTo) params.append('year_to', yTo);
+      const exch = getSelectedCatalogExchanges();
+      if (exch) params.append('exchange', exch);
 
       try {
         const res = await fetch(`/api/catalog/matched-ids?${params.toString()}`);

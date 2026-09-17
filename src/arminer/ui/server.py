@@ -208,10 +208,11 @@ def search_catalog(
     icb_l2: Optional[str] = Query(None),
     icb_l3: Optional[str] = Query(None),
     icb_l4: Optional[str] = Query(None),
+    exchange: Optional[str] = Query(None),
     source_filter: str = Query("all"),
     limit: int = Query(500),
 ):
-    """Tìm kiếm báo cáo trong kho dữ liệu với lọc theo 4 cấp ngành ICB FiinPro."""
+    """Tìm kiếm báo cáo trong kho dữ liệu với lọc theo 4 cấp ngành ICB FiinPro và sàn HSX, HNX, UPCOM."""
     results, total_matched = catalog.search(
         ticker=ticker,
         year_from=year_from,
@@ -220,6 +221,7 @@ def search_catalog(
         icb_l2=icb_l2,
         icb_l3=icb_l3,
         icb_l4=icb_l4,
+        exchange=exchange,
         source_filter=source_filter,
         limit=limit,
         return_total=True,
@@ -240,6 +242,7 @@ def get_matched_catalog_ids(
     icb_l2: Optional[str] = Query(None),
     icb_l3: Optional[str] = Query(None),
     icb_l4: Optional[str] = Query(None),
+    exchange: Optional[str] = Query(None),
 ):
     """Lấy danh sách toàn bộ record_id khớp bộ lọc từ Zenodo mà không bị giới hạn hiển thị."""
     matched_ids = catalog.get_matched_record_ids(
@@ -250,6 +253,7 @@ def get_matched_catalog_ids(
         icb_l2=icb_l2,
         icb_l3=icb_l3,
         icb_l4=icb_l4,
+        exchange=exchange,
     )
     return {
         "total_matched": len(matched_ids),
@@ -861,6 +865,7 @@ class ScanSectorRequest(BaseModel):
     icb_l2: Optional[str] = None
     year_from: Optional[int] = None
     year_to: Optional[int] = None
+    exchange: Optional[str] = None
     topic: Optional[str] = "blockchain"
     keywords: Optional[str] = None
     threshold: int = 85
@@ -875,6 +880,7 @@ def scan_sector_reports(req: ScanSectorRequest):
         icb_l2=req.icb_l2,
         year_from=req.year_from,
         year_to=req.year_to,
+        exchange=req.exchange,
         limit=req.max_reports or 50,
     )
     if isinstance(reports, tuple):

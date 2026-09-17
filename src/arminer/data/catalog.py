@@ -42,6 +42,7 @@ class UnifiedCatalog:
         self._icb_l3_index: Dict[str, List[int]] = {}
         self._icb_l4_index: Dict[str, List[int]] = {}
         self._year_index: Dict[int, List[int]] = {}
+        self._exchange_index: Dict[str, List[int]] = {}
         self._sectors_tree_cache: Optional[Dict[str, Any]] = None
 
     def initialize(self):
@@ -79,10 +80,14 @@ class UnifiedCatalog:
                 rec_id = f"LOCAL_{ticker}_{year}"
                 if rec_id not in self._local_index:
                     l1, l2 = self.industry_classifier.get_industry(ticker)
+                    c_info = self.industry_classifier.get_company_info(ticker) or {}
+                    raw_ex = str(c_info.get("exchange", "HSX")).upper().strip()
+                    norm_ex = "HSX" if raw_ex in ("HOSE", "HSX") else ("HNX" if raw_ex == "HNX" else ("UPCOM" if "UPCOM" in raw_ex else raw_ex))
                     self._local_index[rec_id] = {
                         "record_id": rec_id,
                         "ticker": ticker,
                         "year": year,
+                        "exchange": norm_ex,
                         "file_name": p.name,
                         "local_path": str(p.resolve()),
                         "source": source_name,
@@ -216,6 +221,7 @@ class UnifiedCatalog:
         icb_l3_idx: Dict[str, List[int]] = {}
         icb_l4_idx: Dict[str, List[int]] = {}
         year_idx: Dict[int, List[int]] = {}
+        exchange_idx: Dict[str, List[int]] = {}
 
         full_map = self.industry_classifier._ticker_full_map
 
@@ -229,11 +235,14 @@ class UnifiedCatalog:
             l3 = c_info.get("icb_l3", "")
             l4 = c_info.get("icb_l4", "")
             icb_code = c_info.get("icb_code", "")
+            raw_ex = str(c_info.get("exchange", "Khác")).upper().strip()
+            norm_ex = "HSX" if raw_ex in ("HOSE", "HSX") else ("HNX" if raw_ex == "HNX" else ("UPCOM" if "UPCOM" in raw_ex else "Khác"))
 
             rec = {
                 "record_id": str(row["record_id"]),
                 "ticker": t,
                 "year": y,
+                "exchange": norm_ex,
                 "file_name": str(row["file_name"]),
                 "relative_path": str(row["relative_path"]),
                 "archive_period": str(row["archive_period"]),
@@ -252,6 +261,13 @@ class UnifiedCatalog:
             if y > 0:
                 year_idx.setdefault(y, []).append(i)
 
+            # Exchange index (supports both HSX and HOSE alias)
+            exchange_idx.setdefault(norm_ex, []).append(i)
+            if norm_ex == "HSX":
+                exchange_idx.setdefault("HOSE", []).append(i)
+            elif norm_ex == "HOSE":
+                exchange_idx.setdefault("HSX", []).append(i)
+
             for sec in (l1, l2, l3, l4):
                 if sec:
                     sector_idx.setdefault(sec, []).append(i)
@@ -269,13 +285,14 @@ class UnifiedCatalog:
         self._icb_l3_index = icb_l3_idx
         self._icb_l4_index = icb_l4_idx
         self._year_index = year_idx
+        self._exchange_index = exchange_idx
 
-        # Precompute sectors tree cache
+        # Precompute sectors tree cache (include UPCOM for full coverage across all 3 exchanges)
         self._build_sectors_tree_cache()
 
     def _build_sectors_tree_cache(self):
         """Precompute and cache taxonomy tree with report counts for 0ms responses."""
-        tree = self.industry_classifier.get_taxonomy_tree()
+        tree = self.industry_classifier.get_taxonomy_tree(include_upcom=True)
         ticker_counts = {t: len(idxs) for t, idxs in self._ticker_index.items()}
 
         for s in tree.get("sectors", []):
@@ -322,6 +339,39 @@ class UnifiedCatalog:
         tokens = list(dict.fromkeys(raw_tokens))
         return tokens, len(tokens) > 1
 
+    @staticmethod
+    def _normalize_exchanges(exchange: Optional[str | List[str]]) -> Set[str]:
+        """Normalize exchange filter into a canonical uppercase set."""
+        if not exchange:
+            return set()
+        if isinstance(exchange, str):
+            raw_tokens = [t.strip().upper() for t in re.split(r"[,;\s]+", exchange) if t.strip()]
+        else:
+            raw_tokens = [str(t).strip().upper() for t in exchange if str(t).strip()]
+
+        result = set()
+        for tok in raw_tokens:
+            if tok in ("HSX", "HOSE"):
+                result.add("HSX")
+                result.add("HOSE")
+            elif tok == "HNX":
+                result.add("HNX")
+            elif "UPCOM" in tok:
+                result.add("UPCOM")
+            else:
+                result.add(tok)
+        return result
+
+    @staticmethod
+    def _is_all_exchanges(exchanges_set: Set[str]) -> bool:
+        """Return True if the set represents all 3 main exchanges (no filtering needed)."""
+        if not exchanges_set:
+            return True
+        has_hsx = bool({"HSX", "HOSE"} & exchanges_set)
+        has_hnx = "HNX" in exchanges_set
+        has_upcom = "UPCOM" in exchanges_set
+        return has_hsx and has_hnx and has_upcom
+
     def search(
         self,
         ticker: Optional[str] = None,
@@ -332,6 +382,7 @@ class UnifiedCatalog:
         icb_l3: Optional[str] = None,
         icb_l4: Optional[str] = None,
         sector: Optional[str] = None,
+        exchange: Optional[str | List[str]] = None,
         source_filter: str = "all",
         limit: int = 500,
         return_total: bool = False,
@@ -393,6 +444,14 @@ class UnifiedCatalog:
                         y_indices.update(idx_list)
                 matched_indices = y_indices if matched_indices is None else (matched_indices & y_indices)
 
+            # 4. Exchange filter (HSX, HNX, UPCOM)
+            target_exchanges = self._normalize_exchanges(exchange)
+            if target_exchanges and not self._is_all_exchanges(target_exchanges):
+                ex_indices: Set[int] = set()
+                for ex in target_exchanges:
+                    ex_indices.update(self._exchange_index.get(ex, []))
+                matched_indices = ex_indices if matched_indices is None else (matched_indices & ex_indices)
+
             # Preserve pre-sorted order
             if matched_indices is None:
                 final_indices = list(range(len(self._records_cache)))
@@ -408,9 +467,14 @@ class UnifiedCatalog:
             local_list = []
             tokens, is_multi = self._parse_ticker_filter(ticker) if (ticker and ticker.strip()) else ([], False)
             token_set = set(tokens)
+            target_exchanges = self._normalize_exchanges(exchange)
 
             for rec in self._local_index.values():
                 rec_ticker = rec.get("ticker", "").upper()
+                rec_ex = rec.get("exchange", "HSX")
+                if target_exchanges and not self._is_all_exchanges(target_exchanges):
+                    if rec_ex not in target_exchanges:
+                        continue
                 if tokens:
                     if not is_multi:
                         if tokens[0] not in rec_ticker:
@@ -451,45 +515,23 @@ class UnifiedCatalog:
         icb_l3: Optional[str] = None,
         icb_l4: Optional[str] = None,
         sector: Optional[str] = None,
+        exchange: Optional[str | List[str]] = None,
     ) -> List[str]:
         """Lấy toàn bộ record_id khớp bộ lọc từ Zenodo mà không bị giới hạn số lượng."""
         self.initialize()
-        if self._zenodo_df is None:
-            return []
-
-        df = self._zenodo_df
-        if ticker and ticker.strip():
-            tokens, is_multi = self._parse_ticker_filter(ticker)
-            if tokens:
-                if not is_multi:
-                    df = df[df["ticker_folder"].astype(str).str.upper().str.contains(tokens[0], na=False)]
-                elif any(len(t) < 3 for t in tokens):
-                    pattern = "|".join(re.escape(t) for t in tokens)
-                    df = df[df["ticker_folder"].astype(str).str.upper().str.contains(pattern, na=False)]
-                else:
-                    df = df[df["ticker_folder"].astype(str).str.upper().isin(set(tokens))]
-        if year_from:
-            df = df[df["year_full"] >= year_from]
-        if year_to:
-            df = df[df["year_full"] <= year_to]
-
-        if sector:
-            matching_tickers = {
-                t for t, info in self.industry_classifier._ticker_full_map.items()
-                if sector in [info.get("icb_l1"), info.get("icb_l2"), info.get("icb_l3"), info.get("icb_l4")]
-            }
-            df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
-        elif icb_l1 or icb_l2 or icb_l3 or icb_l4:
-            matching_tickers = {
-                t for t, info in self.industry_classifier._ticker_full_map.items()
-                if (not icb_l1 or info.get("icb_l1") == icb_l1)
-                and (not icb_l2 or info.get("icb_l2") == icb_l2)
-                and (not icb_l3 or info.get("icb_l3") == icb_l3)
-                and (not icb_l4 or info.get("icb_l4") == icb_l4)
-            }
-            df = df[df["ticker_folder"].astype(str).str.upper().isin(matching_tickers)]
-
-        return df["record_id"].astype(str).tolist()
+        records = self.search(
+            ticker=ticker,
+            year_from=year_from,
+            year_to=year_to,
+            icb_l1=icb_l1,
+            icb_l2=icb_l2,
+            icb_l3=icb_l3,
+            icb_l4=icb_l4,
+            sector=sector,
+            exchange=exchange,
+            limit=0,
+        )
+        return [r["record_id"] for r in records if r.get("record_id")]
 
     def lookup_records(self, record_ids: List[str]) -> List[Dict[str, Any]]:
         """Look up specific records by their record_id (Zenodo or Local).

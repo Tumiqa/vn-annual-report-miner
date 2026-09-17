@@ -116,6 +116,24 @@
             </select>
           </div>
 
+          <div class="form-group" style="min-width: 175px;">
+            <label class="form-label">Sàn Giao Dịch:</label>
+            <div class="exchange-pills-wrap" style="display: flex; gap: 5px; align-items: center; min-height: 38px;">
+              <label class="exchange-pill-chk" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); cursor: pointer; font-size: 12px; font-weight: 600; user-select: none;" title="Sở GDCK TP.HCM (HSX/HOSE)">
+                <input type="checkbox" id="catExHSX" value="HSX" checked style="accent-color: var(--brand-primary); cursor: pointer; margin: 0;">
+                <span>HSX</span>
+              </label>
+              <label class="exchange-pill-chk" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); cursor: pointer; font-size: 12px; font-weight: 600; user-select: none;" title="Sở GDCK Hà Nội (HNX)">
+                <input type="checkbox" id="catExHNX" value="HNX" checked style="accent-color: var(--brand-primary); cursor: pointer; margin: 0;">
+                <span>HNX</span>
+              </label>
+              <label class="exchange-pill-chk" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #fff); cursor: pointer; font-size: 12px; font-weight: 600; user-select: none;" title="Thị trường Đăng ký Giao dịch (UPCoM)">
+                <input type="checkbox" id="catExUPCOM" value="UPCOM" checked style="accent-color: var(--brand-primary); cursor: pointer; margin: 0;">
+                <span>UPCoM</span>
+              </label>
+            </div>
+          </div>
+
           <div class="form-group" style="align-self: flex-end;">
             <button id="btnSearchCatalog" class="btn btn-primary" style="width: 100%;">
               <span>Tìm Kiếm</span>
@@ -202,6 +220,7 @@
               <tr>
                 <th style="width: 40px; text-align: center;"></th>
                 <th style="width: 85px;">Mã CK</th>
+                <th style="width: 75px; text-align: center;">Sàn</th>
                 <th style="width: 65px;">Năm</th>
                 <th style="width: 240px;">Ngành ICB</th>
                 <th>Tên File Báo Cáo</th>
@@ -211,7 +230,7 @@
             </thead>
             <tbody id="catalogTableBody">
               <tr>
-                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">
                   Đang tải danh mục báo cáo từ kho Zenodo...
                 </td>
               </tr>
