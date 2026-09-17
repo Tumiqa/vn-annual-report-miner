@@ -486,8 +486,12 @@ def style_worksheet(
     # --- Freeze panes ---
     if freeze_at:
         ws.freeze_panes = freeze_at
+    elif ws.title == "Context":
+        ws.freeze_panes = "D2"  # Freeze STT, Firm, Year
+    elif ws.title in ("Descriptive_Stats", "Correlation"):
+        ws.freeze_panes = "B2"  # Freeze Variable column
     elif max_col >= 3:
-        ws.freeze_panes = "C2"
+        ws.freeze_panes = "C2"  # Freeze Ticker, Year
     else:
         ws.freeze_panes = "A2"
 
@@ -512,14 +516,14 @@ def style_worksheet(
             for col_idx, cname in enumerate(col_names, 1):
                 if cname.lower() in ("sentence_context",):
                     col_letter = get_column_letter(col_idx)
-                    ws.column_dimensions[col_letter].width = 85
+                    ws.column_dimensions[col_letter].width = 80
                     # Apply wrap_text to all data cells in this column
                     for row_idx in range(2, max_row + 1):
                         cell = ws.cell(row=row_idx, column=col_idx)
                         cell.alignment = Alignment(
-                            horizontal="left", vertical="top", wrap_text=True
+                            horizontal="left", vertical="center", wrap_text=True
                         )
-                        ws.row_dimensions[row_idx].height = 60
+                        ws.row_dimensions[row_idx].height = 36
         else:
             _auto_col_width(ws)
 
@@ -529,9 +533,9 @@ def style_workbook(wb: openpyxl.Workbook, custom_title: Optional[str] = None) ->
     # 1. Add / Ensure Cover Sheet exists at index 0
     add_cover_sheet(wb, custom_title=custom_title)
 
-    # 2. Style all data worksheets
+    # 2. Style all data worksheets (even with 1 row header)
     for ws in wb.worksheets:
-        if ws.title not in ("Trang_Bia", "Cover_Sheet", "Cover") and ws.max_row and ws.max_row > 1:
+        if ws.title not in ("Trang_Bia", "Cover_Sheet", "Cover") and ws.max_row and ws.max_row >= 1:
             style_worksheet(ws)
 
     # 3. Set Document Core Properties (Brand Attribution)

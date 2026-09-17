@@ -767,7 +767,7 @@ class ResearchOutputGenerator:
             context_snippets_df.to_csv(ctx_csv, index=False, encoding="utf-8-sig")
             outputs["context_snippets_csv"] = ctx_csv
 
-        # Panel data (Excel with Context sheet, CSV, Parquet, Stata)
+        # Panel data (Excel with all research sheets, CSV, Parquet, Stata)
         for fmt in ("excel", "csv", "parquet", "stata"):
             try:
                 outputs[f"panel_{fmt}"] = self._export(
@@ -775,6 +775,12 @@ class ResearchOutputGenerator:
                 )
             except Exception as e:
                 logger.warning(f"Failed exporting format {fmt}: {e}")
+
+        # Descriptive statistics CSV
+        outputs["desc_stats"] = self._descriptive(panel_df)
+
+        # Correlation matrix CSV
+        outputs["correlation"] = self._correlation(panel_df)
 
         # Variable codebook CSV
         outputs["codebook"] = self._codebook(variable_info)
@@ -795,17 +801,11 @@ class ResearchOutputGenerator:
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
             with pd.ExcelWriter(p, engine="openpyxl") as writer:
-                # Sheet 1: Raw_Keywords (Reproducibility & transparency)
-                if raw_keywords_df is not None and not raw_keywords_df.empty:
-                    raw_keywords_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
-                else:
-                    pd.DataFrame(columns=["Firm", "Year", "Keyword", "Category", "Frequency"]).to_excel(
-                        writer, sheet_name="Raw_Keywords", index=False
-                    )
+                # Sheet 1: Panel_Data (Main econometric panel regression variables)
+                df.to_excel(writer, sheet_name="Panel_Data", index=False)
 
-                # Sheet 2: Context (Sentence-boundary context for every keyword match)
+                # Sheet 2: Context (Sentence-boundary context for each keyword occurrence)
                 if context_snippets_df is not None and not context_snippets_df.empty:
-                    # Ensure column order for readability
                     ctx_cols = ["STT", "Firm", "Year", "Keyword", "Canonical",
                                 "Category", "Match_Type", "Similarity", "Sentence_Context"]
                     existing_cols = [c for c in ctx_cols if c in context_snippets_df.columns]
@@ -819,19 +819,43 @@ class ResearchOutputGenerator:
                         "Category", "Match_Type", "Similarity", "Sentence_Context"
                     ]).to_excel(writer, sheet_name="Context", index=False)
 
-                # Sheet 3: Panel_Data (Main regression variables)
-                df.to_excel(writer, sheet_name="Panel_Data", index=False)
+                # Sheet 3: Raw_Keywords (Detailed frequency breakdown of raw keyword matches)
+                if raw_keywords_df is not None and not raw_keywords_df.empty:
+                    raw_keywords_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
+                else:
+                    pd.DataFrame(columns=["Firm", "Year", "Keyword", "Category", "Frequency"]).to_excel(
+                        writer, sheet_name="Raw_Keywords", index=False
+                    )
 
-                # Sheet 4: Codebook (Variable explanations & citations)
+                # Sheet 4: Descriptive_Stats (Academic descriptive statistics)
+                num = df.select_dtypes(include=["number"])
+                if not num.empty:
+                    desc = num.describe().T
+                    desc["N"] = num.count()
+                    desc["missing"] = num.isna().sum()
+                    desc.index.name = "Variable"
+                    cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
+                    desc_df = desc[cols_desc].round(4).reset_index()
+                    desc_df.to_excel(writer, sheet_name="Descriptive_Stats", index=False)
+
+                    # Sheet 5: Correlation (Pearson correlation matrix)
+                    skip_corr = {"year", "pages", "stt"}
+                    cols = [c for c in num.columns if c.lower() not in skip_corr and not c.lower().startswith(("year_", "ind_")) and (num[c].std() > 0 or len(num) <= 1)]
+                    if cols:
+                        corr_df = num[cols].corr().round(4).reset_index()
+                        corr_df.rename(columns={"index": "Variable"}, inplace=True)
+                        corr_df.to_excel(writer, sheet_name="Correlation", index=False)
+
+                # Sheet 6: Codebook (Variable explanations & citations)
                 if variable_info:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 
-            # Apply premium styling
+            # Apply premium styling & Cover Sheet (Trang_Bia)
             try:
                 from arminer.export.excel_style import style_excel_file
                 style_excel_file(p)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed applying excel style to {p}: {e}")
 
         elif fmt == "csv":
             p = self.output_dir / "panel_data.csv"
@@ -849,6 +873,33 @@ class ResearchOutputGenerator:
             except Exception as e:
                 logger.warning(f"Stata export with labels failed ({e}), retrying without labels")
                 sdf.to_stata(p, write_index=False, version=118)
+        return p
+
+    def _descriptive(self, df: pd.DataFrame) -> Path:
+        p = self.output_dir / "descriptive_statistics.csv"
+        num = df.select_dtypes(include=["number"])
+        if num.empty:
+            pd.DataFrame().to_csv(p, encoding="utf-8-sig")
+            return p
+        desc = num.describe().T
+        desc["N"] = num.count()
+        desc["missing"] = num.isna().sum()
+        desc.index.name = "Variable"
+        cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
+        desc[cols_desc].round(4).to_csv(p, encoding="utf-8-sig")
+        return p
+
+    def _correlation(self, df: pd.DataFrame) -> Path:
+        p = self.output_dir / "correlation_matrix.csv"
+        num = df.select_dtypes(include=["number"])
+        skip_corr = {"year", "pages", "stt"}
+        cols = [c for c in num.columns if c.lower() not in skip_corr and not c.lower().startswith(("year_", "ind_")) and num[c].std() > 0]
+        if len(cols) > 1:
+            corr = num[cols].corr().round(4)
+            corr.index.name = "Variable"
+            corr.to_csv(p, encoding="utf-8-sig")
+        else:
+            pd.DataFrame().to_csv(p, encoding="utf-8-sig")
         return p
 
     def _codebook(self, info: List[Dict]) -> Path:

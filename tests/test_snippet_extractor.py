@@ -161,9 +161,17 @@ def test_research_output_generator_with_context_sheet():
         # Check sheets in generated Excel file
         wb = openpyxl.load_workbook(excel_path)
         sheet_names = wb.sheetnames
+        assert "Trang_Bia" in sheet_names
+        assert "Panel_Data" in sheet_names
         assert "Context" in sheet_names
         assert "Raw_Keywords" in sheet_names
-        assert "Panel_Data" in sheet_names
+        assert "Descriptive_Stats" in sheet_names
+        assert "Correlation" in sheet_names
+        assert "Codebook" in sheet_names
+
+        # Verify Panel_Data is the first data sheet and Context is the second data sheet
+        assert sheet_names.index("Panel_Data") < sheet_names.index("Context")
+        assert sheet_names.index("Context") < sheet_names.index("Raw_Keywords")
 
         # Verify Context sheet content
         ws_ctx = wb["Context"]
