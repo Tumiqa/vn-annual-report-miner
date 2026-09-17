@@ -57,6 +57,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const catExHNX = document.getElementById('catExHNX');
   const catExUPCOM = document.getElementById('catExUPCOM');
 
+  let tickerExchangesMap = {};
+  async function loadTickerExchangesMap() {
+    try {
+      const res = await fetch('/api/catalog/ticker-exchanges');
+      const data = await res.json();
+      tickerExchangesMap = data.exchanges || {};
+      window.tickerExchangesMap = tickerExchangesMap;
+    } catch (e) {
+      console.warn('Could not load ticker exchanges map:', e);
+    }
+  }
+  loadTickerExchangesMap();
+
+  function setupExchangePillHandlers() {
+    document.querySelectorAll('.exchange-pill-chk').forEach(pill => {
+      const chk = pill.querySelector('input[type="checkbox"]');
+      if (!chk) return;
+      const syncClass = () => {
+        const val = chk.value.toLowerCase();
+        pill.classList.toggle(`active-${val}`, chk.checked);
+      };
+      chk.addEventListener('change', syncClass);
+      syncClass();
+    });
+  }
+  setTimeout(setupExchangePillHandlers, 50);
+
   function getSelectedCatalogExchanges() {
     const list = [];
     if (catExHSX && catExHSX.checked) list.push('HSX');
@@ -2160,8 +2187,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      const finExHSX = document.getElementById('finExHSX');
+      const finExHNX = document.getElementById('finExHNX');
+      let allowedExchanges = [];
+      if (finExHSX && finExHSX.checked) allowedExchanges.push('HSX');
+      if (finExHNX && finExHNX.checked) allowedExchanges.push('HNX');
+      if (allowedExchanges.length === 0 || allowedExchanges.length === 2) {
+        allowedExchanges = ['HSX', 'HNX'];
+      }
+
+      // Filter tickersToAdd by allowed exchanges
+      tickersToAdd = tickersToAdd.filter(t => {
+        const ex = (window.tickerExchangesMap && window.tickerExchangesMap[t.toUpperCase()]) || 'HSX';
+        return allowedExchanges.includes(ex);
+      });
+
       if (tickersToAdd.length === 0) {
-        alert('Không tìm thấy mã nào trong phân ngành đã chọn.');
+        alert('Không tìm thấy mã nào thuộc sàn đã chọn trong phân ngành này.');
         return;
       }
 
@@ -2174,10 +2216,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnFinAddAllTickers = document.getElementById('btnFinAddAllTickers');
   if (btnFinAddAllTickers) {
     btnFinAddAllTickers.addEventListener('click', () => {
+      const finExHSX = document.getElementById('finExHSX');
+      const finExHNX = document.getElementById('finExHNX');
+      let allowedExchanges = [];
+      if (finExHSX && finExHSX.checked) allowedExchanges.push('HSX');
+      if (finExHNX && finExHNX.checked) allowedExchanges.push('HNX');
+      if (allowedExchanges.length === 0 || allowedExchanges.length === 2) {
+        allowedExchanges = ['HSX', 'HNX'];
+      }
+
       finSectorTree.forEach(s => {
         (s.subsectors || []).forEach(sub => {
           (sub.tickers || []).forEach(t => {
-            finSelectedTickers.add(t.toUpperCase());
+            const upT = t.toUpperCase();
+            const ex = (window.tickerExchangesMap && window.tickerExchangesMap[upT]) || 'HSX';
+            if (allowedExchanges.includes(ex)) {
+              finSelectedTickers.add(upT);
+            }
           });
         });
       });
@@ -2996,8 +3051,24 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         }
 
+        const newsExHSX = document.getElementById('newsExHSX');
+        const newsExHNX = document.getElementById('newsExHNX');
+        const newsExUPCOM = document.getElementById('newsExUPCOM');
+        let allowedExchanges = [];
+        if (newsExHSX && newsExHSX.checked) allowedExchanges.push('HSX');
+        if (newsExHNX && newsExHNX.checked) allowedExchanges.push('HNX');
+        if (newsExUPCOM && newsExUPCOM.checked) allowedExchanges.push('UPCOM');
+        if (allowedExchanges.length === 0 || allowedExchanges.length === 3) {
+          allowedExchanges = ['HSX', 'HNX', 'UPCOM'];
+        }
+
+        tickersToAdd = tickersToAdd.filter(t => {
+          const ex = (window.tickerExchangesMap && window.tickerExchangesMap[t.toUpperCase()]) || 'HSX';
+          return allowedExchanges.includes(ex);
+        });
+
         if (tickersToAdd.length === 0) {
-          alert('Không tìm thấy mã nào trong ngành này.');
+          alert('Không tìm thấy mã nào thuộc sàn đã chọn trong ngành này.');
           return;
         }
 

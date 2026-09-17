@@ -193,6 +193,21 @@ def get_catalog_tickers():
     return {"tickers": catalog.get_ticker_summary()}
 
 
+@app.get("/api/catalog/ticker-exchanges")
+def get_catalog_ticker_exchanges():
+    """Bản đồ mã chứng khoán -> Sàn giao dịch (HSX, HNX, UPCOM) cho toàn thị trường."""
+    catalog.industry_classifier.initialize()
+    res = {}
+    for t, info in catalog.industry_classifier._ticker_full_map.items():
+        raw = info.get("exchange", "HSX").upper().strip()
+        if raw == "HOSE":
+            res[t] = "HSX"
+        else:
+            res[t] = raw
+    return {"exchanges": res}
+
+
+
 @app.get("/api/catalog/sectors")
 def get_catalog_sectors():
     """Danh mục phân ngành ICB Level 1 và Level 2 kèm số lượng báo cáo."""

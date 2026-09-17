@@ -1201,4 +1201,61 @@ body {
   color: #991b1b;
 }
 
+/* ==========================================================================
+   Exchange Filter Pills (HSX, HNX, UPCoM)
+   ========================================================================== */
+.exchange-pills-wrap {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.exchange-pill-chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-elevated);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.exchange-pill-chk:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.exchange-pill-chk input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
+  accent-color: var(--brand-primary);
+}
+
+.exchange-pill-chk.active-hsx,
+.exchange-pill-chk:has(input[value="HSX"]:checked) {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #93c5fd;
+}
+
+.exchange-pill-chk.active-hnx,
+.exchange-pill-chk:has(input[value="HNX"]:checked) {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+}
+
+.exchange-pill-chk.active-upcom,
+.exchange-pill-chk:has(input[value="UPCOM"]:checked) {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+
 
