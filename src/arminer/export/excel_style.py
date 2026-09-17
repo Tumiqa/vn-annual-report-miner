@@ -161,8 +161,6 @@ def add_cover_sheet(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -
     - Logo arminer và thông tin bản quyền Trương Minh Quân
     - Thời gian xuất dữ liệu và tổng quan kỹ thuật
     - Mục lục giải thích chi tiết mục đích từng Sheet
-    - Hướng dẫn khai báo mô hình kinh tế lượng (Stata, R, Python)
-    - Khuyến nghị trích dẫn khoa học chuẩn mực (Suggested Academic Citation)
     """
     # If Trang_Bia or Cover_Sheet already exists, return existing
     for sname in ("Trang_Bia", "Cover_Sheet", "Cover"):
@@ -297,76 +295,6 @@ def add_cover_sheet(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -
         ws.merge_cells(start_row=curr_row, start_column=3, end_row=curr_row, end_column=4)
         c_desc = ws.cell(row=curr_row, column=3, value=desc)
         c_desc.font = FONT_BODY
-        for col in (3, 4):
-            ws.cell(row=curr_row, column=col).border = THIN_BORDER
-        curr_row += 1
-
-    curr_row += 1
-
-    # --- Section III: Hướng dẫn trích dẫn khoa học ---
-    ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=4)
-    sec3 = ws.cell(row=curr_row, column=2, value="III. HƯỚNG DẪN TRÍCH DẪN KHOA HỌC (SUGGESTED CITATION)")
-    sec3.font = Font(name="Segoe UI", size=11, bold=True, color=NAVY)
-    sec3.fill = FILL_SECTION_HDR
-    sec3.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    for col in (2, 3, 4):
-        ws.cell(row=curr_row, column=col).border = THIN_BORDER
-    ws.row_dimensions[curr_row].height = 24
-    curr_row += 1
-
-    citation_intro = "Khi sử dụng dữ liệu từ công cụ cho các bài báo khoa học, luận văn hoặc đề tài NCKH, vui lòng trích dẫn:"
-    ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=4)
-    c_ci = ws.cell(row=curr_row, column=2, value=citation_intro)
-    c_ci.font = Font(name="Segoe UI", size=9.5, italic=True, color="475569")
-    for col in (2, 3, 4):
-        ws.cell(row=curr_row, column=col).border = THIN_BORDER
-    ws.row_dimensions[curr_row].height = 18
-    curr_row += 1
-
-    citation_box = (
-        'Truong Minh Quan (2026). "arminer: Vietnam Corporate Data Mining & Econometric Panel Platform". '
-        'Open-Source Research Engine. Repository: https://github.com/Tumiqa/vn-annual-report-miner'
-    )
-    ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=4)
-    c_cb = ws.cell(row=curr_row, column=2, value=citation_box)
-    c_cb.font = Font(name="Segoe UI", size=9.5, bold=True, color="0F172A")
-    c_cb.fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
-    for col in (2, 3, 4):
-        ws.cell(row=curr_row, column=col).border = Border(
-            left=Side(style="thin", color=GOLD),
-            right=Side(style="thin", color=GOLD),
-            top=Side(style="thin", color=GOLD),
-            bottom=Side(style="thin", color=GOLD),
-        )
-    ws.row_dimensions[curr_row].height = 28
-    curr_row += 2
-
-    # --- Section IV: Cú pháp phân tích kinh tế lượng nhanh ---
-    ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=4)
-    sec4 = ws.cell(row=curr_row, column=2, value="IV. CÚ PHÁP HỒI QUY DỮ LIỆU BẢNG (ECONOMETRIC CODE SNIPPETS)")
-    sec4.font = Font(name="Segoe UI", size=11, bold=True, color=NAVY)
-    sec4.fill = FILL_SECTION_HDR
-    sec4.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    for col in (2, 3, 4):
-        ws.cell(row=curr_row, column=col).border = THIN_BORDER
-    ws.row_dimensions[curr_row].height = 24
-    curr_row += 1
-
-    syntax_items = [
-        ("Stata (xtreg)", "xtset ticker year  // Khai báo Panel Data\nxtreg Y log_frequency Control1 Control2, fe vce(robust)"),
-        ("Python (pandas)", "import pandas as pd\ndf = pd.read_excel('ten_file.xlsx', sheet_name='Firm_Year_Panel')"),
-        ("R (plm)", "library(plm)\npdata <- pdata.frame(df, index = c('ticker', 'year'))\nmodel <- plm(Y ~ log_frequency, data = pdata, model = 'within')"),
-    ]
-
-    for prog, code in syntax_items:
-        ws.row_dimensions[curr_row].height = 22
-        c_p = ws.cell(row=curr_row, column=2, value=prog)
-        c_p.font = FONT_BODY_BOLD
-        c_p.border = THIN_BORDER
-
-        ws.merge_cells(start_row=curr_row, start_column=3, end_row=curr_row, end_column=4)
-        c_c = ws.cell(row=curr_row, column=3, value=code)
-        c_c.font = FONT_CODE
         for col in (3, 4):
             ws.cell(row=curr_row, column=col).border = THIN_BORDER
         curr_row += 1
