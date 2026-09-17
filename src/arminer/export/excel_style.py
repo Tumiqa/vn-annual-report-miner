@@ -90,6 +90,7 @@ _SHEET_COLORS = {
     "Merged_Panel": DARK_BLUE,
     "Articles_Detail": TEAL,
     "Raw_Keywords": PURPLE,
+    "Context": EMERALD,
     "Codebook": DARK_BLUE,
     "Descriptive_Stats": GREEN,
     "Correlation": DARK_BLUE,
@@ -104,6 +105,7 @@ _SHEET_DESCRIPTIONS = {
     "Panel_Data": "Bảng dữ liệu bảng cấp độ Doanh nghiệp - Năm phục vụ mô hình hồi quy kinh tế lượng",
     "Articles_Detail": "Danh sách chi tiết từng bài báo / văn bản đã thu thập (Tiêu đề, nguồn tin, ngày, số từ, URL)",
     "Raw_Keywords": "Thống kê chi tiết tần suất xuất hiện của từng từ khóa đơn lẻ và phân loại nhóm chủ đề",
+    "Context": "Ngữ cảnh câu chứa từ khóa — Trích xuất thông minh theo ranh giới câu (±1 câu lân cận) cho từng lần xuất hiện",
     "Codebook": "Từ điển giải thích chi tiết ý nghĩa, thang đo, công thức tính toán và tài liệu tham khảo",
     "Merged_Panel": "Dữ liệu bảng ghép nối hoàn chỉnh giữa biến văn bản (Mining) và biến tài chính (BCTC)",
     "Bao_Cao_Tai_Chinh": "Toàn bộ 702 chỉ tiêu kế toán chi tiết theo 13 nhóm chuẩn mực kế toán Việt Nam",
@@ -503,7 +505,23 @@ def style_worksheet(
 
     # --- Auto column width ---
     if auto_width:
-        _auto_col_width(ws)
+        # Context sheet: wider max_width for Sentence_Context column
+        if ws.title == "Context":
+            _auto_col_width(ws, max_width=90)
+            # Force Sentence_Context column to be extra wide with wrap_text
+            for col_idx, cname in enumerate(col_names, 1):
+                if cname.lower() in ("sentence_context",):
+                    col_letter = get_column_letter(col_idx)
+                    ws.column_dimensions[col_letter].width = 85
+                    # Apply wrap_text to all data cells in this column
+                    for row_idx in range(2, max_row + 1):
+                        cell = ws.cell(row=row_idx, column=col_idx)
+                        cell.alignment = Alignment(
+                            horizontal="left", vertical="top", wrap_text=True
+                        )
+                        ws.row_dimensions[row_idx].height = 60
+        else:
+            _auto_col_width(ws)
 
 
 def style_workbook(wb: openpyxl.Workbook, custom_title: Optional[str] = None) -> openpyxl.Workbook:

@@ -128,6 +128,7 @@ from loguru import logger
 
 from arminer.core.smart_mode import FlexibleDictionary, SmartVariableCalculator, ResearchOutputGenerator
 from arminer.mining.matcher import GenericFuzzyMatcher
+from arminer.mining.snippet_extractor import SnippetExtractor
 from arminer.data.pdf_source import PDFSource
 from arminer.data.catalog import UnifiedCatalog
 from arminer.core.dictionary_manager import DictionaryManager
@@ -658,6 +659,10 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
     return text, n_pages
 
 
+# Shared SnippetExtractor instance for sentence-boundary context
+_snippet_extractor = SnippetExtractor(context_chars=500)
+
+
 def _process_one_bctn(
     item: Dict[str, Any],
     matcher: GenericFuzzyMatcher,
@@ -709,9 +714,10 @@ def _process_one_bctn(
             "Frequency": cnt,
         })
 
+    # UI preview snippets (short, ±70 chars — for quick display)
     item_snippets = []
     text_len = len(text)
-    for m in matches[:3]:
+    for m in matches[:5]:
         pos = m.get("position", 0)
         kw = m.get("keyword_found", "")
         snippet = text[max(0, pos - 70):min(text_len, pos + len(kw) + 70)].replace("\n", " ").strip()
@@ -723,10 +729,18 @@ def _process_one_bctn(
             "context": snippet,
         })
 
+    # Full sentence-boundary context snippets (for Excel sheet "Context")
+    context_snippets = _snippet_extractor.extract_all_with_context(
+        text, matches,
+        ticker=item["ticker"],
+        year=item.get("year"),
+    )
+
     return {
         "row": row,
         "raw_keywords": item_raw_keywords,
         "snippets": item_snippets,
+        "context_snippets": context_snippets,
         "matches_count": len(matches),
         "ticker": item["ticker"],
         "year": item["year"],
@@ -802,12 +816,14 @@ def scan_selected_reports(req: ScanSelectedRequest):
     rows = []
     all_snippets = []
     all_raw_keywords = []
+    all_context_snippets = []
 
     for res in results:
         if res:
             rows.append(res["row"])
             all_raw_keywords.extend(res["raw_keywords"])
             all_snippets.extend(res["snippets"])
+            all_context_snippets.extend(res.get("context_snippets", []))
 
     if not rows:
         raise HTTPException(status_code=400, detail="Không thể trích xuất nội dung từ các file đã chọn.")
@@ -817,10 +833,11 @@ def scan_selected_reports(req: ScanSelectedRequest):
     other_cols = [c for c in df.columns if c not in first_cols]
     df = df[first_cols + other_cols]
 
-    # Generate research pack
+    # Generate research pack (including Context sheet)
     raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
+    context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
     generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-    generator.generate_all(df, raw_keywords_df=raw_df)
+    generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
 
     p_name = (req.topic or "topic").lower()
     freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
@@ -832,7 +849,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
         "files_with_hits": firms_with_hits,
         "total_mentions": total_mentions,
         "top_rows": df.head(50).to_dict(orient="records"),
-        "snippets": all_snippets[:50],
+        "snippets": all_snippets[:200],
         "excel_download": "/api/download/panel_data.xlsx",
         "stata_download": "/api/download/panel_data.dta",
         "csv_download": "/api/download/panel_data.csv",
@@ -947,6 +964,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         rows = []
         all_snippets = []
         all_raw_keywords = []
+        all_context_snippets = []
         total = len(target_items)
         workers = min(8, max(2, (os.cpu_count() or 4)))
 
@@ -975,6 +993,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                         rows.append(res["row"])
                         all_raw_keywords.extend(res["raw_keywords"])
                         all_snippets.extend(res["snippets"])
+                        all_context_snippets.extend(res.get("context_snippets", []))
                         hit_info = f"({res['matches_count']} từ khóa)" if res['matches_count'] > 0 else ""
                     else:
                         hit_info = "(bỏ qua)"
@@ -1011,8 +1030,9 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         df = df[first_cols + other_cols]
 
         raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
+        context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
         generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-        generator.generate_all(df, raw_keywords_df=raw_df)
+        generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
 
         p_name = (req.topic or "topic").lower()
         freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
@@ -1024,7 +1044,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
             "files_with_hits": firms_with_hits,
             "total_mentions": total_mentions,
             "top_rows": df.head(50).to_dict(orient="records"),
-            "snippets": all_snippets[:50],
+            "snippets": all_snippets[:200],
             "excel_download": "/api/download/panel_data.xlsx",
             "stata_download": "/api/download/panel_data.dta",
             "csv_download": "/api/download/panel_data.csv",
@@ -1279,18 +1299,18 @@ async def scan_file(
 
     snippets = []
     text_len = len(text)
-    for m in matches[:50]:
+    for m in matches[:200]:
         pos = m.get("position", 0)
         kw = m.get("keyword_found", "")
-        start = max(0, pos - 80)
-        end = min(text_len, pos + len(kw) + 80)
+        # Use sentence-boundary context for richer display
+        sentence_ctx = _snippet_extractor.extract_sentence_context(text, pos, len(kw))
         snippets.append({
             "keyword": kw,
             "canonical": m.get("keyword_canonical", kw),
             "category": m.get("category", "default"),
             "similarity": m.get("similarity", 100),
             "match_type": m.get("match_type", "exact"),
-            "context": text[start:end].replace("\n", " ").strip(),
+            "context": sentence_ctx,
         })
 
     parsed = PDFSource.parse_filename(filename)
@@ -1358,11 +1378,13 @@ async def scan_folder(
 
     rows = []
     all_raw_keywords = []
+    all_context_snippets = []
 
     for res in results:
         if res:
             rows.append(res["row"])
             all_raw_keywords.extend(res["raw_keywords"])
+            all_context_snippets.extend(res.get("context_snippets", []))
 
     if not rows:
         raise HTTPException(status_code=400, detail="Không xử lý được file nào.")
@@ -1373,8 +1395,9 @@ async def scan_folder(
     df = df[first_cols + other_cols]
 
     raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
+    context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
     generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-    generator.generate_all(df, raw_keywords_df=raw_df)
+    generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
 
     p_name = (topic or "topic").lower()
     freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"

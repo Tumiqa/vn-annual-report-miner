@@ -748,6 +748,7 @@ class ResearchOutputGenerator:
         panel_df: pd.DataFrame,
         variable_info: Optional[List[Dict]] = None,
         raw_keywords_df: Optional[pd.DataFrame] = None,
+        context_snippets_df: Optional[pd.DataFrame] = None,
     ) -> Dict[str, Path]:
         outputs = {}
 
@@ -760,10 +761,18 @@ class ResearchOutputGenerator:
             raw_keywords_df.to_csv(rk_csv, index=False, encoding="utf-8-sig")
             outputs["raw_keywords_csv"] = rk_csv
 
-        # Panel data (Excel 3 sheets, CSV, Parquet, Stata)
+        # Context snippets CSV if available
+        if context_snippets_df is not None and not context_snippets_df.empty:
+            ctx_csv = self.output_dir / "context_snippets.csv"
+            context_snippets_df.to_csv(ctx_csv, index=False, encoding="utf-8-sig")
+            outputs["context_snippets_csv"] = ctx_csv
+
+        # Panel data (Excel with Context sheet, CSV, Parquet, Stata)
         for fmt in ("excel", "csv", "parquet", "stata"):
             try:
-                outputs[f"panel_{fmt}"] = self._export(panel_df, fmt, variable_info, raw_keywords_df)
+                outputs[f"panel_{fmt}"] = self._export(
+                    panel_df, fmt, variable_info, raw_keywords_df, context_snippets_df
+                )
             except Exception as e:
                 logger.warning(f"Failed exporting format {fmt}: {e}")
 
@@ -781,6 +790,7 @@ class ResearchOutputGenerator:
         fmt: str,
         variable_info: Optional[List[Dict]] = None,
         raw_keywords_df: Optional[pd.DataFrame] = None,
+        context_snippets_df: Optional[pd.DataFrame] = None,
     ) -> Path:
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
@@ -793,10 +803,26 @@ class ResearchOutputGenerator:
                         writer, sheet_name="Raw_Keywords", index=False
                     )
 
-                # Sheet 2: Panel_Data (Main regression variables)
+                # Sheet 2: Context (Sentence-boundary context for every keyword match)
+                if context_snippets_df is not None and not context_snippets_df.empty:
+                    # Ensure column order for readability
+                    ctx_cols = ["STT", "Firm", "Year", "Keyword", "Canonical",
+                                "Category", "Match_Type", "Similarity", "Sentence_Context"]
+                    existing_cols = [c for c in ctx_cols if c in context_snippets_df.columns]
+                    extra_cols = [c for c in context_snippets_df.columns if c not in ctx_cols]
+                    context_snippets_df[existing_cols + extra_cols].to_excel(
+                        writer, sheet_name="Context", index=False
+                    )
+                else:
+                    pd.DataFrame(columns=[
+                        "STT", "Firm", "Year", "Keyword", "Canonical",
+                        "Category", "Match_Type", "Similarity", "Sentence_Context"
+                    ]).to_excel(writer, sheet_name="Context", index=False)
+
+                # Sheet 3: Panel_Data (Main regression variables)
                 df.to_excel(writer, sheet_name="Panel_Data", index=False)
 
-                # Sheet 3: Codebook (Variable explanations & citations)
+                # Sheet 4: Codebook (Variable explanations & citations)
                 if variable_info:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 

@@ -1241,18 +1241,31 @@ document.addEventListener('DOMContentLoaded', () => {
       snips.forEach((s, idx) => {
         const item = document.createElement('div');
         item.className = 'snippet-box';
+        const contextEscaped = escapeHtml(s.context);
+        const contextHighlighted = contextEscaped.replace(
+          new RegExp(escapeRegExp(escapeHtml(s.keyword)), 'gi'),
+          `<span class="snippet-kw">${escapeHtml(s.keyword)}</span>`
+        );
+        const isLong = s.context.length > 200;
+        const snippetId = `snippet-ctx-${idx}`;
+        const toggleId = `snippet-toggle-${idx}`;
+
         item.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span style="font-weight: 600; font-family: var(--font-mono); color: var(--text-primary);">${s.ticker || 'DN'} (${s.year || '—'})</span>
               <span class="badge badge-cat">${escapeHtml(s.category)}</span>
+              ${s.match_type === 'fuzzy' ? `<span class="badge" style="background: rgba(251,191,36,0.15); color: #d97706; font-size: 0.7rem;">fuzzy ${typeof s.similarity === 'number' ? s.similarity.toFixed(0) + '%' : ''}</span>` : ''}
             </div>
             <button class="btn btn-secondary btn-sm btn-copy-snippet" title="Sao chép đoạn trích dẫn này">Sao chép</button>
           </div>
-          <p style="color: var(--text-secondary); line-height: 1.6;">
-            "...${escapeHtml(s.context).replace(new RegExp(escapeRegExp(escapeHtml(s.keyword)), 'gi'), `<span class="snippet-kw">${escapeHtml(s.keyword)}</span>`)}..."
-          </p>
+          <div id="${snippetId}" style="color: var(--text-secondary); line-height: 1.7; ${isLong ? 'max-height: 4.2em; overflow: hidden; transition: max-height 0.3s ease;' : ''}">
+            <p style="margin: 0;">${contextHighlighted}</p>
+          </div>
+          ${isLong ? `<button id="${toggleId}" class="btn-expand-snippet" style="background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 0.8rem; padding: 4px 0; margin-top: 2px;">▼ Xem thêm</button>` : ''}
         `;
+
+        // Copy button
         const copyBtn = item.querySelector('.btn-copy-snippet');
         if (copyBtn) {
           copyBtn.addEventListener('click', () => {
@@ -1264,6 +1277,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           });
         }
+
+        // Expand/collapse toggle for long contexts
+        if (isLong) {
+          const ctxEl = item.querySelector(`#${snippetId}`);
+          const toggleBtn = item.querySelector(`#${toggleId}`);
+          if (toggleBtn && ctxEl) {
+            let expanded = false;
+            toggleBtn.addEventListener('click', () => {
+              expanded = !expanded;
+              ctxEl.style.maxHeight = expanded ? 'none' : '4.2em';
+              ctxEl.style.overflow = expanded ? 'visible' : 'hidden';
+              toggleBtn.textContent = expanded ? '▲ Thu gọn' : '▼ Xem thêm';
+            });
+          }
+        }
+
         snippetsContainer.appendChild(item);
       });
     }
