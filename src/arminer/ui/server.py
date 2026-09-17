@@ -848,7 +848,12 @@ def scan_selected_reports(req: ScanSelectedRequest):
         raise HTTPException(status_code=400, detail="Không thể trích xuất nội dung từ các file đã chọn.")
 
     df = pd.DataFrame(rows)
-    first_cols = [c for c in ["ticker", "year", "icb_level1", "icb_level2", "file", "pages"] if c in df.columns]
+    core_order = [
+        "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+        "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
+        "Substantive", "Unique_Keywords", "Coverage",
+    ]
+    first_cols = [c for c in core_order if c in df.columns]
     other_cols = [c for c in df.columns if c not in first_cols]
     df = df[first_cols + other_cols]
 
@@ -859,7 +864,9 @@ def scan_selected_reports(req: ScanSelectedRequest):
     generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
 
     p_name = (req.topic or "topic").lower()
-    freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
+    freq_col = "Frequency" if "Frequency" in df.columns else (
+        f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
+    )
     total_mentions = int(df[freq_col].sum()) if freq_col in df.columns else 0
     firms_with_hits = int((df[freq_col] > 0).sum()) if freq_col in df.columns else 0
 
@@ -1046,7 +1053,12 @@ async def scan_selected_stream(req: ScanSelectedRequest):
             return
 
         df = pd.DataFrame(rows)
-        first_cols = [c for c in ["ticker", "year", "icb_level1", "icb_level2", "file", "pages"] if c in df.columns]
+        core_order = [
+            "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+            "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
+            "Substantive", "Unique_Keywords", "Coverage",
+        ]
+        first_cols = [c for c in core_order if c in df.columns]
         other_cols = [c for c in df.columns if c not in first_cols]
         df = df[first_cols + other_cols]
 
@@ -1056,7 +1068,9 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
 
         p_name = (req.topic or "topic").lower()
-        freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
+        freq_col = "Frequency" if "Frequency" in df.columns else (
+            f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
+        )
         total_mentions = int(df[freq_col].sum()) if freq_col in df.columns else 0
         firms_with_hits = int((df[freq_col] > 0).sum()) if freq_col in df.columns else 0
 
@@ -1411,7 +1425,12 @@ async def scan_folder(
         raise HTTPException(status_code=400, detail="Không xử lý được file nào.")
 
     df = pd.DataFrame(rows)
-    first_cols = [c for c in ["ticker", "year", "file", "pages"] if c in df.columns]
+    core_order = [
+        "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+        "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
+        "Substantive", "Unique_Keywords", "Coverage",
+    ]
+    first_cols = [c for c in core_order if c in df.columns]
     other_cols = [c for c in df.columns if c not in first_cols]
     df = df[first_cols + other_cols]
 
@@ -1421,7 +1440,9 @@ async def scan_folder(
     generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
 
     p_name = (topic or "topic").lower()
-    freq_col = f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
+    freq_col = "Frequency" if "Frequency" in df.columns else (
+        f"{p_name}_Frequency" if f"{p_name}_Frequency" in df.columns else f"{p_name}_frequency"
+    )
     df_sorted = df.sort_values(by=freq_col, ascending=False) if freq_col in df.columns else df
 
     return {

@@ -120,19 +120,14 @@ def _export_dataset(df, output_path: Path, dict_name: str = "Dictionary"):
     if ext in (".xlsx", ".xls"):
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name="Panel_Data", index=False)
-            num = df.select_dtypes(include=["number"])
-            if not num.empty:
-                desc = num.describe().T
-                desc["N"] = num.count()
-                desc["missing"] = num.isna().sum()
-                cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
-                desc[cols_desc].to_excel(writer, sheet_name="Descriptive_Stats")
+            from arminer.core.smart_mode import build_descriptive_stats_table, build_correlation_matrix
+            desc_df = build_descriptive_stats_table(df)
+            if not desc_df.empty:
+                desc_df.to_excel(writer, sheet_name="Descriptive_Stats", index=False)
 
-                skip = [c for c in num.columns if c.startswith(("year_", "ind_"))]
-                cols = [c for c in num.columns if c not in skip]
-                if len(cols) > 1:
-                    corr = num[cols].corr().round(4)
-                    corr.to_excel(writer, sheet_name="Correlation")
+            corr_df = build_correlation_matrix(df)
+            if not corr_df.empty:
+                corr_df.to_excel(writer, sheet_name="Correlation", index=False)
 
         # Apply premium styling
         try:

@@ -183,6 +183,22 @@ def test_research_output_generator_with_context_sheet():
         # Row count: 1 header + 2 data rows = 3 rows
         assert ws_ctx.max_row == 3
 
+        # Verify Descriptive_Stats sheet content & pruning
+        ws_desc = wb["Descriptive_Stats"]
+        desc_headers = [cell.value for cell in ws_desc[1]]
+        assert desc_headers == ["Variable", "N", "Mean", "Std Dev", "Min", "Median", "Max"]
+        desc_vars = [ws_desc.cell(row=r, column=1).value for r in range(2, ws_desc.max_row + 1)]
+        assert "year" not in desc_vars
+        assert "pages" not in desc_vars
+        assert "blockchain_frequency" in desc_vars
+
+        # Verify Correlation sheet content & pruning
+        ws_corr = wb["Correlation"]
+        corr_headers = [cell.value for cell in ws_corr[1]]
+        assert "Variable" in corr_headers
+        assert "year" not in corr_headers
+        assert "blockchain_frequency" in corr_headers
+
         # Also verify context_snippets.csv was generated
         csv_path = outputs.get("context_snippets_csv")
         assert csv_path is not None
@@ -190,3 +206,23 @@ def test_research_output_generator_with_context_sheet():
 
         # Verify styling runs smoothly without error
         style_excel_file(excel_path)
+
+
+def test_smart_variable_calculator_core_metrics():
+    from arminer.core.smart_mode import SmartVariableCalculator
+    calc = SmartVariableCalculator()
+    matches = [
+        {"keyword_canonical": "blockchain", "keyword_found": "blockchain", "category": "tech"},
+        {"keyword_canonical": "blockchain", "keyword_found": "blockchain", "category": "tech"},
+        {"keyword_canonical": "smart contract", "keyword_found": "smart contract", "category": "legal"},
+    ]
+    res = calc.calculate_all(matches, total_words=1000, category_names=["tech", "legal"], topic_prefix="fintech", total_dict_keywords=10)
+    assert res["Word_Count"] == 1000
+    assert res["Frequency"] == 3
+    assert res["Log_Frequency"] > 0
+    assert res["Mention"] == 1
+    assert res["Density"] == 0.3
+    assert res["Substantive"] == 1
+    # Check topic aliases also preserved
+    assert res["fintech_Frequency"] == 3
+    assert res["fintech_Mention"] == 1

@@ -110,8 +110,8 @@ _SHEET_DESCRIPTIONS = {
     "Merged_Panel": "Dữ liệu bảng ghép nối hoàn chỉnh giữa biến văn bản (Mining) và biến tài chính (BCTC)",
     "Bao_Cao_Tai_Chinh": "Toàn bộ 702 chỉ tiêu kế toán chi tiết theo 13 nhóm chuẩn mực kế toán Việt Nam",
     "Ty_So_Tai_Chinh": "Hệ thống 116 chỉ số tài chính chuyên sâu chuẩn học thuật (Sinh lời, Cấu trúc vốn, Thanh khoản, Dòng tiền, CAMELS, Altman Z-score)",
-    "Descriptive_Stats": "Bảng thống kê mô tả (Mean, SD, Min, Max, Quantiles) của các biến số",
-    "Correlation": "Ma trận tương quan Pearson giữa các biến số trong nghiên cứu",
+    "Descriptive_Stats": "Bảng thống kê mô tả chuẩn học thuật (N, Mean, Std Dev, Min, Median, Max) của các biến nghiên cứu",
+    "Correlation": "Ma trận tương quan Pearson giữa các biến nghiên cứu thực chất (đã loại bỏ biến hành chính và biến hằng số)",
 }
 
 
@@ -141,16 +141,20 @@ def _guess_number_format(col_name: str) -> Optional[str]:
     cl = col_name.lower().strip()
     if cl in ("year", "nam", "published_year"):
         return "0"
-    if cl in ("mention", "dummy"):
+    if cl in ("mention", "dummy", "substantive"):
         return "0"
     if any(k in cl for k in ("pct", "ratio", "rate", "roa", "roe", "ros", "margin", "ty_le", "bien")):
         return "0.00%"
     if any(k in cl for k in ("log", "ln_", "log_frequency", "log_freq")):
         return "0.0000"
-    if any(k in cl for k in ("density", "mat_do")):
+    if any(k in cl for k in ("density", "mat_do", "coverage")):
         return "0.0000"
-    if any(k in cl for k in ("freq", "count", "n", "so_luong", "total_words", "word_count", "hits", "total_articles", "articles_with_hits", "total_mentions")):
+    if cl in ("n", "obs", "n_obs", "observations", "so_luong", "total_words", "word_count", "hits", "total_articles", "articles_with_hits", "total_mentions", "unique_keywords"):
         return "#,##0"
+    if any(k in cl for k in ("_freq", "count", "so_luong")) or cl.endswith("frequency") or cl == "frequency":
+        return "#,##0"
+    if cl in ("mean", "std dev", "std", "median", "min", "max"):
+        return "#,##0.0000"
     return None
 
 
@@ -385,13 +389,30 @@ def style_worksheet(
             cname_lower = col_names[col_idx - 1].lower()
 
             # Alignments & Formats
-            if cname_lower in ("ticker", "ma_ck", "code"):
+            if ws.title == "Correlation":
+                if col_idx == 1:
+                    cell.font = FONT_BODY_BOLD
+                    cell.alignment = LEFT
+                elif isinstance(cell.value, (int, float)):
+                    cell.alignment = RIGHT
+                    cell.number_format = "0.0000"
+            elif ws.title == "Descriptive_Stats":
+                if col_idx == 1 or cname_lower == "variable":
+                    cell.font = FONT_BODY_BOLD
+                    cell.alignment = LEFT
+                elif cname_lower == "n":
+                    cell.alignment = RIGHT
+                    cell.number_format = "#,##0"
+                elif isinstance(cell.value, (int, float)):
+                    cell.alignment = RIGHT
+                    cell.number_format = "#,##0.0000"
+            elif cname_lower in ("ticker", "ma_ck", "code"):
                 cell.font = FONT_BODY_BOLD
                 cell.alignment = CENTER
             elif cname_lower in ("year", "nam", "published_year"):
                 cell.alignment = CENTER
                 cell.number_format = "0"
-            elif cname_lower in ("mention", "dummy"):
+            elif cname_lower in ("mention", "dummy", "substantive"):
                 cell.alignment = CENTER
                 cell.number_format = "0"
             elif isinstance(cell.value, (int, float)):

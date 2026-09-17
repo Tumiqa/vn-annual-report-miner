@@ -519,28 +519,39 @@ class SmartVariableCalculator:
             for m in matches
         )
 
-        # === 6 biến chuẩn quốc tế ===
-        result[f"{p}_Frequency"] = freq
-        result[f"{p}_Log_Frequency"] = round(math.log(1 + freq), 6)
-        result[f"{p}_Mention"] = 1 if freq > 0 else 0
-        result[f"{p}_Substantive"] = 1 if freq > 2 else 0
-        result[f"{p}_Density"] = (
+        # === 5 biến mining cốt lõi chuẩn học thuật & Stata (Số Từ, Frequency, Log, Mention, Density) ===
+        result["Word_Count"] = total_words
+        result["Frequency"] = freq
+        result["Log_Frequency"] = round(math.log(1 + freq), 6)
+        result["Mention"] = 1 if freq > 0 else 0
+        result["Density"] = (
             round((freq / total_words) * 100, 4)
             if total_words > 0 else 0.0
         )
-        result[f"{p}_Unique_Keywords"] = len(unique_kws)
-        result[f"{p}_Coverage"] = (
+        result["Substantive"] = 1 if freq > 2 else 0
+        result["Unique_Keywords"] = len(unique_kws)
+        result["Coverage"] = (
             round(len(unique_kws) / total_dict_keywords, 4)
             if total_dict_keywords > 0 else 0.0
         )
+
+        # Tiền tố chủ đề (nếu p != "topic" và p != "default") để đảm bảo tương thích ngược
+        if p and p not in ("topic", "default"):
+            result[f"{p}_Frequency"] = freq
+            result[f"{p}_Log_Frequency"] = result["Log_Frequency"]
+            result[f"{p}_Mention"] = result["Mention"]
+            result[f"{p}_Substantive"] = result["Substantive"]
+            result[f"{p}_Density"] = result["Density"]
+            result[f"{p}_Unique_Keywords"] = result["Unique_Keywords"]
+            result[f"{p}_Coverage"] = result["Coverage"]
 
         # === Per-category frequency only (Fang et al. 2024) ===
         for cat in category_names:
             cat_matches = [m for m in matches if m.get("category") == cat]
             cc = cat.lower().replace(" ", "_")
-            result[f"{p}_{cc}_Freq"] = len(cat_matches)
+            pref = f"{p}_" if (p and p not in ("topic", "default")) else ""
+            result[f"{pref}{cc}_Freq"] = len(cat_matches)
 
-        result["Word_Count"] = total_words
         return result
 
 
@@ -625,50 +636,50 @@ def auto_generate_codebook(df: pd.DataFrame) -> List[Dict[str, str]]:
             formula = "Tổng số trang của file PDF"
             ref = ""
         elif c_lower == "word_count":
-            desc = "Tổng số từ trong toàn văn báo cáo thường niên"
+            desc = "Số Từ — Tổng số từ trong toàn văn báo cáo thường niên (Word Count)"
             vtype = "Định lượng (Continuous)"
             formula = "Tổng số từ trích xuất sau khi làm sạch văn bản"
             ref = ""
-        # === 6 biến chuẩn quốc tế ===
-        elif c_lower.endswith("_frequency"):
-            topic = col.rsplit("_", 1)[0]
-            desc = f"Tổng tần suất xuất hiện các từ khóa liên quan đến {topic}"
+        # === 5 biến mining cốt lõi chuẩn quốc tế ===
+        elif c_lower == "frequency" or (c_lower.endswith("_frequency") and not c_lower.endswith("_log_frequency")):
+            topic = col.rsplit("_", 1)[0] if "_" in col else "từ khóa"
+            desc = f"Frequency — Tổng tần suất xuất hiện các từ khóa liên quan đến {topic}"
             vtype = "Đếm số lần (Count)"
             formula = "Σ keyword occurrences"
             ref = "Wu et al. (2021)"
-        elif c_lower.endswith("_log_frequency"):
-            topic = col.rsplit("_", 2)[0]
-            desc = f"Chỉ số công bố thông tin chủ đề {topic} (biến chính)"
+        elif c_lower in ("log_frequency", "log_freq", "log_main") or c_lower.endswith("_log_frequency"):
+            topic = col.rsplit("_", 2)[0] if "_" in col else "từ khóa"
+            desc = f"Log (Main) — Chỉ số công bố thông tin chủ đề {topic} (Biến độc lập chính)"
             vtype = "Biến logarit liên tục (Continuous Log) — BIẾN CHÍNH"
             formula = "ln(1 + Frequency)"
             ref = "Wu et al. (2021), MDPI (2026), Springer (2026 VN)"
-        elif c_lower.endswith("_mention"):
-            topic = col.rsplit("_", 1)[0]
-            desc = f"Biến giả nhận diện công bố thông tin về {topic}"
+        elif c_lower == "mention" or c_lower.endswith("_mention"):
+            topic = col.rsplit("_", 1)[0] if "_" in col else "từ khóa"
+            desc = f"Mention — Biến giả nhận diện có công bố thông tin về {topic} (0/1)"
             vtype = "Biến giả (Dummy 0/1) — Robustness"
             formula = "1 nếu Frequency > 0, ngược lại bằng 0"
             ref = "Baier et al. (2020)"
-        elif c_lower.endswith("_substantive"):
-            topic = col.rsplit("_", 1)[0]
-            desc = f"Biến giả công bố thực chất (Substantive Disclosure) về {topic}"
-            vtype = "Biến giả (Dummy 0/1) — Robustness"
-            formula = "1 nếu Frequency > 2, ngược lại bằng 0"
-            ref = "British Journal of Management (2025)"
-        elif c_lower.endswith("_density"):
-            topic = col.rsplit("_", 1)[0]
-            desc = f"Mật độ từ khóa chủ đề {topic} (Keyword Density)"
+        elif c_lower == "density" or c_lower.endswith("_density"):
+            topic = col.rsplit("_", 1)[0] if "_" in col else "từ khóa"
+            desc = f"Density (%) — Mật độ từ khóa chủ đề {topic} trên tổng số từ báo cáo"
             vtype = "Tỷ lệ liên tục (%) — Robustness"
             formula = "(Frequency / Word_Count) × 100"
             ref = "PLOS ONE (2022), Emerald, Wiley (2025)"
-        elif c_lower.endswith("_unique_keywords"):
-            topic = col.rsplit("_", 2)[0]
-            desc = f"Số từ khóa phân biệt (distinct) xuất hiện cho {topic}"
+        elif c_lower == "substantive" or c_lower.endswith("_substantive"):
+            topic = col.rsplit("_", 1)[0] if "_" in col else "từ khóa"
+            desc = f"Substantive — Biến giả công bố thực chất (Substantive Disclosure) về {topic}"
+            vtype = "Biến giả (Dummy 0/1) — Robustness"
+            formula = "1 nếu Frequency > 2, ngược lại bằng 0"
+            ref = "British Journal of Management (2025)"
+        elif c_lower == "unique_keywords" or c_lower.endswith("_unique_keywords"):
+            topic = col.rsplit("_", 2)[0] if "_" in col else "từ khóa"
+            desc = f"Unique_Keywords — Số từ khóa phân biệt (distinct) xuất hiện cho {topic}"
             vtype = "Đếm số lượng (Count)"
             formula = "Số lượng từ khóa khác nhau xuất hiện ít nhất 1 lần"
             ref = ""
-        elif c_lower.endswith("_coverage"):
-            topic = col.rsplit("_", 1)[0]
-            desc = f"Phạm vi sử dụng từ vựng chủ đề {topic} (Keyword Coverage)"
+        elif c_lower == "coverage" or c_lower.endswith("_coverage"):
+            topic = col.rsplit("_", 1)[0] if "_" in col else "từ khóa"
+            desc = f"Coverage — Phạm vi sử dụng từ vựng chủ đề {topic} (Keyword Coverage)"
             vtype = "Tỷ lệ [0,1] — Robustness bổ sung"
             formula = "Unique Keywords Used / Total Dictionary Keywords"
             ref = ""
@@ -730,6 +741,133 @@ def auto_generate_codebook(df: pd.DataFrame) -> List[Dict[str, str]]:
             entry["Tham chiếu"] = ref
         codebook.append(entry)
     return codebook
+
+
+# =====================================================================
+# Academic Descriptive Statistics & Correlation Matrix Generators
+# =====================================================================
+
+def select_research_variables(
+    df: pd.DataFrame, 
+    require_variance: bool = False
+) -> List[str]:
+    """
+    Chọn lọc các biến nghiên cứu thực chất cho Descriptive_Stats và Correlation.
+    Ưu tiên 5 biến mining cốt lõi: Word_Count, Frequency, Log_Frequency, Mention, Density...
+    Loại bỏ biến hành chính (year, pages, stt, id) và các biến sub-category (_Freq).
+    """
+    ignored_names = {
+        "year", "nam", "pages", "page", "stt", "id", "index", 
+        "unnamed: 0", "article_id", "file_id", "source_id", "date", "time", "quarter", "quy", "url"
+    }
+    priority_metrics = [
+        "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
+        "Substantive", "Unique_Keywords", "Coverage"
+    ]
+    num_df = df.select_dtypes(include=["number"])
+    valid_cols = []
+    
+    # 1. Ưu tiên đưa các biến mining cốt lõi vào trước theo đúng thứ tự
+    for pm in priority_metrics:
+        target_col = None
+        if pm in num_df.columns:
+            target_col = pm
+        else:
+            for c in num_df.columns:
+                c_low = c.lower()
+                if (c_low == pm.lower() or c_low.endswith(f"_{pm.lower()}")) and not c_low.endswith(f"_log_{pm.lower()}"):
+                    target_col = c
+                    break
+        if target_col and target_col not in valid_cols:
+            series = num_df[target_col].dropna()
+            if len(series) > 0:
+                if require_variance:
+                    if len(series) >= 2 and float(series.std()) > 0:
+                        valid_cols.append(target_col)
+                else:
+                    valid_cols.append(target_col)
+
+    # 2. Bổ sung các biến kiểm soát tài chính (ROA, ROE, Size, Leverage...)
+    for col in num_df.columns:
+        if col in valid_cols:
+            continue
+        cl = str(col).lower().strip()
+        if cl in ignored_names:
+            continue
+        if cl.startswith(("year_", "ind_", "fe_", "firm_", "sec_", "dummy_")):
+            continue
+        # Bỏ các biến sub-category _Freq để không làm loãng bảng thống kê
+        if cl.endswith("_freq") or "_freq_" in cl:
+            continue
+        if any(cl.endswith(f"_{pm.lower()}") for pm in priority_metrics):
+            continue
+
+        series = num_df[col].dropna()
+        if len(series) == 0:
+            continue
+        if require_variance:
+            if len(series) < 2 or float(series.std()) == 0.0:
+                continue
+        valid_cols.append(col)
+        
+    return valid_cols
+
+
+def build_descriptive_stats_table(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Xây dựng bảng Thống kê mô tả chuẩn học thuật (Academic Summary Statistics).
+    
+    Chỉ giữ lại 6 chỉ số cốt lõi chuẩn bài báo quốc tế (Table 1 trong các tạp chí Q1/Q2):
+    [Variable, N, Mean, Std Dev, Min, Median, Max]
+    
+    Loại bỏ:
+    - Biến hành chính/thời gian: year, pages, stt, id,...
+    - Chỉ số thừa: 25%, 75% (phân vị thừa gây rối bảng), missing (thừa)
+    """
+    cols = select_research_variables(df, require_variance=False)
+    if not cols:
+        return pd.DataFrame(columns=["Variable", "N", "Mean", "Std Dev", "Min", "Median", "Max"])
+    
+    sub = df[cols]
+    desc = sub.describe().T
+    desc["N"] = sub.count().astype(int)
+    desc.index.name = "Variable"
+    
+    rename_map = {
+        "mean": "Mean",
+        "std": "Std Dev",
+        "min": "Min",
+        "50%": "Median",
+        "max": "Max"
+    }
+    desc = desc.rename(columns=rename_map)
+    stat_cols = [c for c in ["N", "Mean", "Std Dev", "Min", "Median", "Max"] if c in desc.columns]
+    desc_df = desc[stat_cols].round(4).reset_index()
+    if "N" in desc_df.columns:
+        desc_df["N"] = desc_df["N"].astype(int)
+    return desc_df
+
+
+def build_correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Xây dựng Ma trận tương quan Pearson chuẩn học thuật.
+    
+    - Chỉ giữ các biến nghiên cứu thực chất có phương sai > 0 (std > 0)
+    - Loại bỏ triệt để biến year, pages, stt và các biến có std == 0 để tránh phát sinh giá trị NaN
+    - Làm tròn 4 chữ số thập phân chuẩn xác, đường chéo chính bằng 1.0000
+    - Cột đầu tiên đặt tên rõ ràng là 'Variable'
+    """
+    cols = select_research_variables(df, require_variance=True)
+    if len(cols) < 2:
+        if len(cols) == 1:
+            corr_df = df[cols].corr().round(4).reset_index()
+            corr_df.rename(columns={"index": "Variable"}, inplace=True)
+            return corr_df
+        return pd.DataFrame(columns=["Variable"])
+        
+    corr_df = df[cols].corr(method="pearson").round(4).reset_index()
+    corr_df.rename(columns={"index": "Variable"}, inplace=True)
+    return corr_df
 
 
 # =====================================================================
@@ -798,11 +936,25 @@ class ResearchOutputGenerator:
         raw_keywords_df: Optional[pd.DataFrame] = None,
         context_snippets_df: Optional[pd.DataFrame] = None,
     ) -> Path:
+        # Sắp xếp thứ tự cột chuẩn xác trong Panel_Data:
+        # 1. Metadata: ticker, year, icb_level1, icb_level2, file, pages
+        # 2. 5 biến mining cốt lõi: Word_Count, Frequency, Log_Frequency, Mention, Density
+        # 3. Biến mở rộng: Substantive, Unique_Keywords, Coverage
+        # 4. Các biến category breakdown và biến khác
+        core_order = [
+            "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+            "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
+            "Substantive", "Unique_Keywords", "Coverage",
+        ]
+        ordered_cols = [c for c in core_order if c in df.columns]
+        extra_cols = [c for c in df.columns if c not in ordered_cols]
+        export_df = df[ordered_cols + extra_cols]
+
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
             with pd.ExcelWriter(p, engine="openpyxl") as writer:
                 # Sheet 1: Panel_Data (Main econometric panel regression variables)
-                df.to_excel(writer, sheet_name="Panel_Data", index=False)
+                export_df.to_excel(writer, sheet_name="Panel_Data", index=False)
 
                 # Sheet 2: Context (Sentence-boundary context for each keyword occurrence)
                 if context_snippets_df is not None and not context_snippets_df.empty:
@@ -827,24 +979,23 @@ class ResearchOutputGenerator:
                         writer, sheet_name="Raw_Keywords", index=False
                     )
 
-                # Sheet 4: Descriptive_Stats (Academic descriptive statistics)
-                num = df.select_dtypes(include=["number"])
-                if not num.empty:
-                    desc = num.describe().T
-                    desc["N"] = num.count()
-                    desc["missing"] = num.isna().sum()
-                    desc.index.name = "Variable"
-                    cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
-                    desc_df = desc[cols_desc].round(4).reset_index()
+                # Sheet 4: Descriptive_Stats (Academic descriptive statistics - pruned & standardized)
+                desc_df = build_descriptive_stats_table(df)
+                if not desc_df.empty:
                     desc_df.to_excel(writer, sheet_name="Descriptive_Stats", index=False)
+                else:
+                    pd.DataFrame(columns=["Variable", "N", "Mean", "Std Dev", "Min", "Median", "Max"]).to_excel(
+                        writer, sheet_name="Descriptive_Stats", index=False
+                    )
 
-                    # Sheet 5: Correlation (Pearson correlation matrix)
-                    skip_corr = {"year", "pages", "stt"}
-                    cols = [c for c in num.columns if c.lower() not in skip_corr and not c.lower().startswith(("year_", "ind_")) and (num[c].std() > 0 or len(num) <= 1)]
-                    if cols:
-                        corr_df = num[cols].corr().round(4).reset_index()
-                        corr_df.rename(columns={"index": "Variable"}, inplace=True)
-                        corr_df.to_excel(writer, sheet_name="Correlation", index=False)
+                # Sheet 5: Correlation (Pearson correlation matrix - non-zero variance research variables)
+                corr_df = build_correlation_matrix(df)
+                if not corr_df.empty:
+                    corr_df.to_excel(writer, sheet_name="Correlation", index=False)
+                else:
+                    pd.DataFrame(columns=["Variable"]).to_excel(
+                        writer, sheet_name="Correlation", index=False
+                    )
 
                 # Sheet 6: Codebook (Variable explanations & citations)
                 if variable_info:
@@ -859,15 +1010,15 @@ class ResearchOutputGenerator:
 
         elif fmt == "csv":
             p = self.output_dir / "panel_data.csv"
-            df.to_csv(p, index=False, encoding="utf-8-sig")
+            export_df.to_csv(p, index=False, encoding="utf-8-sig")
 
         elif fmt == "parquet":
             p = self.output_dir / "panel_data.parquet"
-            df.to_parquet(p, index=False, engine="pyarrow")
+            export_df.to_parquet(p, index=False, engine="pyarrow")
 
         elif fmt == "stata":
             p = self.output_dir / "panel_data.dta"
-            sdf, labels = sanitize_stata_dataframe(df)
+            sdf, labels = sanitize_stata_dataframe(export_df)
             try:
                 sdf.to_stata(p, write_index=False, version=118, variable_labels=labels)
             except Exception as e:
@@ -877,29 +1028,14 @@ class ResearchOutputGenerator:
 
     def _descriptive(self, df: pd.DataFrame) -> Path:
         p = self.output_dir / "descriptive_statistics.csv"
-        num = df.select_dtypes(include=["number"])
-        if num.empty:
-            pd.DataFrame().to_csv(p, encoding="utf-8-sig")
-            return p
-        desc = num.describe().T
-        desc["N"] = num.count()
-        desc["missing"] = num.isna().sum()
-        desc.index.name = "Variable"
-        cols_desc = [c for c in ["N", "mean", "std", "min", "25%", "50%", "75%", "max", "missing"] if c in desc.columns]
-        desc[cols_desc].round(4).to_csv(p, encoding="utf-8-sig")
+        desc_df = build_descriptive_stats_table(df)
+        desc_df.to_csv(p, index=False, encoding="utf-8-sig")
         return p
 
     def _correlation(self, df: pd.DataFrame) -> Path:
         p = self.output_dir / "correlation_matrix.csv"
-        num = df.select_dtypes(include=["number"])
-        skip_corr = {"year", "pages", "stt"}
-        cols = [c for c in num.columns if c.lower() not in skip_corr and not c.lower().startswith(("year_", "ind_")) and num[c].std() > 0]
-        if len(cols) > 1:
-            corr = num[cols].corr().round(4)
-            corr.index.name = "Variable"
-            corr.to_csv(p, encoding="utf-8-sig")
-        else:
-            pd.DataFrame().to_csv(p, encoding="utf-8-sig")
+        corr_df = build_correlation_matrix(df)
+        corr_df.to_csv(p, index=False, encoding="utf-8-sig")
         return p
 
     def _codebook(self, info: List[Dict]) -> Path:
