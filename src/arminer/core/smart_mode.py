@@ -979,25 +979,7 @@ class ResearchOutputGenerator:
                         writer, sheet_name="Raw_Keywords", index=False
                     )
 
-                # Sheet 4: Descriptive_Stats (Academic descriptive statistics - pruned & standardized)
-                desc_df = build_descriptive_stats_table(df)
-                if not desc_df.empty:
-                    desc_df.to_excel(writer, sheet_name="Descriptive_Stats", index=False)
-                else:
-                    pd.DataFrame(columns=["Variable", "N", "Mean", "Std Dev", "Min", "Median", "Max"]).to_excel(
-                        writer, sheet_name="Descriptive_Stats", index=False
-                    )
-
-                # Sheet 5: Correlation (Pearson correlation matrix - non-zero variance research variables)
-                corr_df = build_correlation_matrix(df)
-                if not corr_df.empty:
-                    corr_df.to_excel(writer, sheet_name="Correlation", index=False)
-                else:
-                    pd.DataFrame(columns=["Variable"]).to_excel(
-                        writer, sheet_name="Correlation", index=False
-                    )
-
-                # Sheet 6: Codebook (Variable explanations & citations)
+                # Sheet 4: Codebook (Variable explanations & citations)
                 if variable_info:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 

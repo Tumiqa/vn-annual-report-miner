@@ -92,8 +92,6 @@ _SHEET_COLORS = {
     "Raw_Keywords": PURPLE,
     "Context": EMERALD,
     "Codebook": DARK_BLUE,
-    "Descriptive_Stats": GREEN,
-    "Correlation": DARK_BLUE,
     "Financial_Data": NAVY,
     "Bao_Cao_Tai_Chinh": NAVY,
     "Ty_So_Tai_Chinh": TEAL,
@@ -110,8 +108,6 @@ _SHEET_DESCRIPTIONS = {
     "Merged_Panel": "Dữ liệu bảng ghép nối hoàn chỉnh giữa biến văn bản (Mining) và biến tài chính (BCTC)",
     "Bao_Cao_Tai_Chinh": "Toàn bộ 702 chỉ tiêu kế toán chi tiết theo 13 nhóm chuẩn mực kế toán Việt Nam",
     "Ty_So_Tai_Chinh": "Hệ thống 116 chỉ số tài chính chuyên sâu chuẩn học thuật (Sinh lời, Cấu trúc vốn, Thanh khoản, Dòng tiền, CAMELS, Altman Z-score)",
-    "Descriptive_Stats": "Bảng thống kê mô tả chuẩn học thuật (N, Mean, Std Dev, Min, Median, Max) của các biến nghiên cứu",
-    "Correlation": "Ma trận tương quan Pearson giữa các biến nghiên cứu thực chất (đã loại bỏ biến hành chính và biến hằng số)",
 }
 
 
@@ -389,24 +385,7 @@ def style_worksheet(
             cname_lower = col_names[col_idx - 1].lower()
 
             # Alignments & Formats
-            if ws.title == "Correlation":
-                if col_idx == 1:
-                    cell.font = FONT_BODY_BOLD
-                    cell.alignment = LEFT
-                elif isinstance(cell.value, (int, float)):
-                    cell.alignment = RIGHT
-                    cell.number_format = "0.0000"
-            elif ws.title == "Descriptive_Stats":
-                if col_idx == 1 or cname_lower == "variable":
-                    cell.font = FONT_BODY_BOLD
-                    cell.alignment = LEFT
-                elif cname_lower == "n":
-                    cell.alignment = RIGHT
-                    cell.number_format = "#,##0"
-                elif isinstance(cell.value, (int, float)):
-                    cell.alignment = RIGHT
-                    cell.number_format = "#,##0.0000"
-            elif cname_lower in ("ticker", "ma_ck", "code"):
+            if cname_lower in ("ticker", "ma_ck", "code"):
                 cell.font = FONT_BODY_BOLD
                 cell.alignment = CENTER
             elif cname_lower in ("year", "nam", "published_year"):

@@ -158,16 +158,12 @@ def test_research_output_generator_with_context_sheet():
         assert excel_path is not None
         assert excel_path.exists()
 
-        # Check sheets in generated Excel file
+        # Check sheets in generated Excel file (clean 5-sheet structure)
         wb = openpyxl.load_workbook(excel_path)
         sheet_names = wb.sheetnames
-        assert "Trang_Bia" in sheet_names
-        assert "Panel_Data" in sheet_names
-        assert "Context" in sheet_names
-        assert "Raw_Keywords" in sheet_names
-        assert "Descriptive_Stats" in sheet_names
-        assert "Correlation" in sheet_names
-        assert "Codebook" in sheet_names
+        assert sheet_names == ["Trang_Bia", "Panel_Data", "Context", "Raw_Keywords", "Codebook"]
+        assert "Descriptive_Stats" not in sheet_names
+        assert "Correlation" not in sheet_names
 
         # Verify Panel_Data is the first data sheet and Context is the second data sheet
         assert sheet_names.index("Panel_Data") < sheet_names.index("Context")
@@ -182,22 +178,6 @@ def test_research_output_generator_with_context_sheet():
 
         # Row count: 1 header + 2 data rows = 3 rows
         assert ws_ctx.max_row == 3
-
-        # Verify Descriptive_Stats sheet content & pruning
-        ws_desc = wb["Descriptive_Stats"]
-        desc_headers = [cell.value for cell in ws_desc[1]]
-        assert desc_headers == ["Variable", "N", "Mean", "Std Dev", "Min", "Median", "Max"]
-        desc_vars = [ws_desc.cell(row=r, column=1).value for r in range(2, ws_desc.max_row + 1)]
-        assert "year" not in desc_vars
-        assert "pages" not in desc_vars
-        assert "blockchain_frequency" in desc_vars
-
-        # Verify Correlation sheet content & pruning
-        ws_corr = wb["Correlation"]
-        corr_headers = [cell.value for cell in ws_corr[1]]
-        assert "Variable" in corr_headers
-        assert "year" not in corr_headers
-        assert "blockchain_frequency" in corr_headers
 
         # Also verify context_snippets.csv was generated
         csv_path = outputs.get("context_snippets_csv")
