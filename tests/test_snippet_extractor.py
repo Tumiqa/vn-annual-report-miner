@@ -202,7 +202,11 @@ def test_smart_variable_calculator_core_metrics():
     assert res["Log_Frequency"] > 0
     assert res["Mention"] == 1
     assert res["Density"] == 0.3
-    assert res["Substantive"] == 1
-    # Check topic aliases also preserved
-    assert res["fintech_Frequency"] == 3
-    assert res["fintech_Mention"] == 1
+    assert res["Unique_Keywords"] == 2
+    assert res["fintech_tech_Freq"] == 2
+    assert res["fintech_legal_Freq"] == 1
+    # Check that duplicates and Substantive/Coverage were removed
+    assert "Substantive" not in res
+    assert "Coverage" not in res
+    assert "fintech_Frequency" not in res
+    assert "fintech_Mention" not in res

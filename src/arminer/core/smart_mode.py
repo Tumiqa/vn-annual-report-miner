@@ -528,22 +528,7 @@ class SmartVariableCalculator:
             round((freq / total_words) * 100, 4)
             if total_words > 0 else 0.0
         )
-        result["Substantive"] = 1 if freq > 2 else 0
         result["Unique_Keywords"] = len(unique_kws)
-        result["Coverage"] = (
-            round(len(unique_kws) / total_dict_keywords, 4)
-            if total_dict_keywords > 0 else 0.0
-        )
-
-        # Tiền tố chủ đề (nếu p != "topic" và p != "default") để đảm bảo tương thích ngược
-        if p and p not in ("topic", "default"):
-            result[f"{p}_Frequency"] = freq
-            result[f"{p}_Log_Frequency"] = result["Log_Frequency"]
-            result[f"{p}_Mention"] = result["Mention"]
-            result[f"{p}_Substantive"] = result["Substantive"]
-            result[f"{p}_Density"] = result["Density"]
-            result[f"{p}_Unique_Keywords"] = result["Unique_Keywords"]
-            result[f"{p}_Coverage"] = result["Coverage"]
 
         # === Per-category frequency only (Fang et al. 2024) ===
         for cat in category_names:
@@ -944,7 +929,7 @@ class ResearchOutputGenerator:
         core_order = [
             "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
-            "Substantive", "Unique_Keywords", "Coverage",
+            "Unique_Keywords",
         ]
         ordered_cols = [c for c in core_order if c in df.columns]
         extra_cols = [c for c in df.columns if c not in ordered_cols]

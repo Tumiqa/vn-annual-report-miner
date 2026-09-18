@@ -851,7 +851,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
     core_order = [
         "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
         "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
-        "Substantive", "Unique_Keywords", "Coverage",
+        "Unique_Keywords",
     ]
     first_cols = [c for c in core_order if c in df.columns]
     other_cols = [c for c in df.columns if c not in first_cols]
@@ -1056,7 +1056,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         core_order = [
             "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
-            "Substantive", "Unique_Keywords", "Coverage",
+            "Unique_Keywords",
         ]
         first_cols = [c for c in core_order if c in df.columns]
         other_cols = [c for c in df.columns if c not in first_cols]
@@ -1428,7 +1428,7 @@ async def scan_folder(
     core_order = [
         "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
         "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
-        "Substantive", "Unique_Keywords", "Coverage",
+        "Unique_Keywords",
     ]
     first_cols = [c for c in core_order if c in df.columns]
     other_cols = [c for c in df.columns if c not in first_cols]
