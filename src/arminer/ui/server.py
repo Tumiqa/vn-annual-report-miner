@@ -147,7 +147,21 @@ if not FIXTURES_DIR.exists():
 SAMPLE_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "sample_templates"
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "arminer_downloads"
+
+# Auto-detect Google Colab: lưu kết quả vào Google Drive thay vì /tmp
+# (file trong /tmp không tải xuống được qua Colab proxy và sẽ mất khi session hết hạn)
+_IS_COLAB = os.path.exists("/content") and "COLAB_RELEASE_TAG" in os.environ
+if _IS_COLAB:
+    _gdrive_path = Path("/content/drive/MyDrive/arminer_results")
+    if _gdrive_path.exists() or Path("/content/drive").exists():
+        DOWNLOAD_DIR = _gdrive_path
+        logger.info(f"Colab detected: kết quả sẽ lưu vào Google Drive ({DOWNLOAD_DIR})")
+    else:
+        # Google Drive chưa mount → dùng /content/ (vẫn download được qua Colab proxy)
+        DOWNLOAD_DIR = Path("/content/arminer_downloads")
+        logger.warning("Colab detected nhưng Google Drive chưa mount. Hãy chạy Ô 4 (Mount Drive) để lưu kết quả an toàn.")
+else:
+    DOWNLOAD_DIR = Path(tempfile.gettempdir()) / "arminer_downloads"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 

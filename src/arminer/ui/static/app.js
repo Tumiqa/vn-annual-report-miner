@@ -33,6 +33,49 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
+  // FIX FOR GOOGLE COLAB: Global Download Interceptor using Fetch API
+  // Colab proxy blocks binary file downloads via standard <a> tags inside iframe.
+  // We intercept clicks on /api/download/ links and download via fetch + Blob.
+  // --------------------------------------------------------------------------
+  document.addEventListener('click', async (e) => {
+    const target = e.target.closest('a');
+    if (target && target.hasAttribute('download') && (target.href.includes('/api/download/') || target.href.includes('/catalog/download-zip'))) {
+      e.preventDefault();
+      const url = target.getAttribute('href');
+      let filename = target.getAttribute('download');
+      if (!filename || filename === 'true' || filename === '') {
+        filename = url.split('/').pop().split('?')[0] || 'download_file';
+      }
+
+      const originalText = target.innerHTML;
+      target.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang tải...';
+      target.style.pointerEvents = 'none';
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('File not found or server error');
+        
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        window.URL.revokeObjectURL(downloadUrl);
+        a.remove();
+      } catch (err) {
+        alert('Lỗi tải xuống: ' + err.message);
+      } finally {
+        target.innerHTML = originalText;
+        target.style.pointerEvents = 'auto';
+      }
+    }
+  });
+
+  // --------------------------------------------------------------------------
   // 2. Catalog & Mining Tab with Industry Taxonomy
   // --------------------------------------------------------------------------
   const catTickerInput = document.getElementById('catTickerInput');
