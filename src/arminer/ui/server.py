@@ -2492,6 +2492,13 @@ async def financial_query(req: FinancialQueryRequest):
                     pivot.to_excel(writer, sheet_name="Financial_Data", index=False)
                     if fin_codebook:
                         pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
+                    try:
+                        from arminer.core.smart_mode import load_company_info_df
+                        company_df = load_company_info_df()
+                        if company_df is not None:
+                            company_df.to_excel(writer, sheet_name="Company_Info", index=False)
+                    except Exception:
+                        pass
             except (PermissionError, OSError):
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 export_xlsx = DOWNLOAD_DIR / f"financial_data_{timestamp}.xlsx"
@@ -2499,6 +2506,13 @@ async def financial_query(req: FinancialQueryRequest):
                     pivot.to_excel(writer, sheet_name="Financial_Data", index=False)
                     if fin_codebook:
                         pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
+                    try:
+                        from arminer.core.smart_mode import load_company_info_df
+                        company_df = load_company_info_df()
+                        if company_df is not None:
+                            company_df.to_excel(writer, sheet_name="Company_Info", index=False)
+                    except Exception:
+                        pass
             try:
                 from arminer.export.excel_style import style_excel_file
                 style_excel_file(export_xlsx)
@@ -3132,6 +3146,14 @@ async def mine_news_stream(req: NewsMineRequest):
                 df_articles.to_excel(writer, sheet_name="Articles_Detail", index=False)
                 if not raw_df.empty:
                     raw_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
+                # Company_Info sheet
+                try:
+                    from arminer.core.smart_mode import load_company_info_df
+                    company_df = load_company_info_df()
+                    if company_df is not None:
+                        company_df.to_excel(writer, sheet_name="Company_Info", index=False)
+                except Exception:
+                    pass
             from arminer.export.excel_style import style_excel_file
             style_excel_file(out_xlsx)
         except Exception as e:

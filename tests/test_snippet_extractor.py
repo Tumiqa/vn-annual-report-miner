@@ -161,7 +161,7 @@ def test_research_output_generator_with_context_sheet():
         # Check sheets in generated Excel file (clean 5-sheet structure)
         wb = openpyxl.load_workbook(excel_path)
         sheet_names = wb.sheetnames
-        assert sheet_names == ["Trang_Bia", "Panel_Data", "Context", "Raw_Keywords", "Codebook"]
+        assert sheet_names == ["Trang_Bia", "Panel_Data", "Context", "Raw_Keywords", "Codebook", "Company_Info"]
         assert "Descriptive_Stats" not in sheet_names
         assert "Correlation" not in sheet_names
 

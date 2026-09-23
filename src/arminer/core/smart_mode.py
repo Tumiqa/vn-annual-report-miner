@@ -856,6 +856,32 @@ def build_correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # =====================================================================
+# Company Info Sheet Helper
+# =====================================================================
+
+def load_company_info_df() -> Optional[pd.DataFrame]:
+    """Load danh_sach_doanh_nghiep_niem_yet.csv (bỏ cột cuối: Cổng thông tin IR) để dùng làm sheet Company_Info."""
+    possible_paths = [
+        Path(__file__).resolve().parent.parent / "data" / "fixtures" / "fiinpro_icb_companies.csv",
+        Path(__file__).resolve().parents[3] / "danh_sach_doanh_nghiep_niem_yet.csv",
+        Path(__file__).resolve().parents[3] / "src" / "arminer" / "data" / "fixtures" / "fiinpro_icb_companies.csv",
+    ]
+    for p in possible_paths:
+        if p.exists():
+            try:
+                df = pd.read_csv(p, encoding="utf-8-sig")
+                # Bỏ cột cuối cùng (Cổng thông tin IR / Quan hệ CĐ)
+                if len(df.columns) > 1:
+                    df = df.iloc[:, :-1]
+                logger.info(f"Loaded Company_Info: {len(df)} doanh nghiệp từ {p.name}")
+                return df
+            except Exception as e:
+                logger.warning(f"Không đọc được file company info ({p.name}): {e}")
+    logger.debug("Không tìm thấy file danh sách doanh nghiệp niêm yết để tạo sheet Company_Info")
+    return None
+
+
+# =====================================================================
 # ResearchOutputGenerator
 # =====================================================================
 
@@ -967,6 +993,11 @@ class ResearchOutputGenerator:
                 # Sheet 4: Codebook (Variable explanations & citations)
                 if variable_info:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
+
+                # Sheet 5: Company_Info (Danh sách doanh nghiệp niêm yết, bỏ cột IR)
+                company_df = load_company_info_df()
+                if company_df is not None:
+                    company_df.to_excel(writer, sheet_name="Company_Info", index=False)
 
             # Apply premium styling & Cover Sheet (Trang_Bia)
             try:

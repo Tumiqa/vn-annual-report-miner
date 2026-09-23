@@ -95,6 +95,7 @@ _SHEET_COLORS = {
     "Financial_Data": NAVY,
     "Bao_Cao_Tai_Chinh": NAVY,
     "Ty_So_Tai_Chinh": TEAL,
+    "Company_Info": EMERALD,
 }
 
 # Standard sheet description lookup for Cover Sheet
@@ -108,6 +109,7 @@ _SHEET_DESCRIPTIONS = {
     "Merged_Panel": "Dữ liệu bảng ghép nối hoàn chỉnh giữa biến văn bản (Mining) và biến tài chính (BCTC)",
     "Bao_Cao_Tai_Chinh": "Toàn bộ 702 chỉ tiêu kế toán chi tiết theo 13 nhóm chuẩn mực kế toán Việt Nam",
     "Ty_So_Tai_Chinh": "Hệ thống 116 chỉ số tài chính chuyên sâu chuẩn học thuật (Sinh lời, Cấu trúc vốn, Thanh khoản, Dòng tiền, CAMELS, Altman Z-score)",
+    "Company_Info": "Danh sách toàn bộ doanh nghiệp niêm yết trên HOSE, HNX, UPCoM — Phân ngành ICB 4 cấp chuẩn FiinPro",
 }
 
 

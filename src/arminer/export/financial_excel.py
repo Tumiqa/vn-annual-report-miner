@@ -1961,6 +1961,21 @@ def populate_financial_sheets(
     ws_guide = wb.create_sheet("Huong_Dan")
     _create_guide_sheet(ws_guide)
 
+    # 8. Company_Info (Danh sách doanh nghiệp niêm yết)
+    try:
+        from arminer.core.smart_mode import load_company_info_df
+        company_df = load_company_info_df()
+        if company_df is not None:
+            from openpyxl.utils.dataframe import dataframe_to_rows
+            ws_company = wb.create_sheet("Company_Info")
+            for r_idx, row in enumerate(dataframe_to_rows(company_df, index=False, header=True), 1):
+                for c_idx, val in enumerate(row, 1):
+                    ws_company.cell(row=r_idx, column=c_idx, value=val)
+            from arminer.export.excel_style import style_worksheet
+            style_worksheet(ws_company)
+    except Exception as e:
+        logger.debug(f"Skipped Company_Info sheet in financial export: {e}")
+
     return wb
 
 
