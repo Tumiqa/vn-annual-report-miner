@@ -1074,6 +1074,8 @@ def catalog_search(ticker, year_from, year_to, sector, limit):
         sector=sector,
         limit=limit,
     )
+    if isinstance(results, tuple):
+        results = results[0]
 
     table = Table(title=f"Report Search Results (Showing top {len(results)})")
     table.add_column("Ticker", style="cyan bold")

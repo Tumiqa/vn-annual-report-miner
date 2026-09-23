@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Set
 import pandas as pd
 from loguru import logger
 
@@ -531,6 +531,8 @@ class UnifiedCatalog:
             exchange=exchange,
             limit=0,
         )
+        if isinstance(records, tuple):
+            records = records[0]
         return [r["record_id"] for r in records if r.get("record_id")]
 
     def lookup_records(self, record_ids: List[str]) -> List[Dict[str, Any]]:

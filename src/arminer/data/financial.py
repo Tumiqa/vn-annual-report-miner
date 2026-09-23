@@ -26,7 +26,7 @@ def _ensure_hf_token() -> Optional[str]:
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
     if not token:
         try:
-            from google.colab import userdata
+            from google.colab import userdata  # pyright: ignore[reportMissingImports]
             token = userdata.get("HF_TOKEN")
         except Exception:
             pass

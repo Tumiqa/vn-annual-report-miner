@@ -37,7 +37,7 @@ def _ensure_hf_token() -> Optional[str]:
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_HUB_TOKEN")
     if not token:
         try:
-            from google.colab import userdata
+            from google.colab import userdata  # pyright: ignore[reportMissingImports]
             token = userdata.get("HF_TOKEN")
         except Exception:
             pass
@@ -606,6 +606,7 @@ def _resolve_dictionary(topic: Optional[str] = None, keywords: Optional[str] = N
 
 # Two-tier cache for PDF/TXT text extraction: Tier-1 memory (LRU OrderedDict, up to 500 reports) + Tier-2 disk cache
 from collections import OrderedDict
+from typing import Tuple
 _BCTN_MEMORY_CACHE: OrderedDict[str, Tuple[str, int]] = OrderedDict()
 _BCTN_MEMORY_CACHE_MAX = 500
 _BCTN_CACHE_DIR = Path.home() / ".arminer" / "text_cache"

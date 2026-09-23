@@ -332,15 +332,15 @@ class FlexibleDictionary:
             if not keyword or keyword == "nan":
                 continue
 
-            if act_col:
+            if act_col is not None:
                 act_val = str(row[act_col]).strip().lower()
                 if act_val in ("0", "false", "no", "inactive"):
                     continue
 
-            category = str(row[cat_col]).strip().lower() if cat_col and pd.notna(row[cat_col]) else "default"
-            variants = str(row[var_col]).strip() if var_col and pd.notna(row[var_col]) else None
+            category = str(row[cat_col]).strip().lower() if cat_col is not None and pd.notna(row[cat_col]) else "default"
+            variants = str(row[var_col]).strip() if var_col is not None and pd.notna(row[var_col]) else None
             is_amb = False
-            if amb_col and pd.notna(row[amb_col]):
+            if amb_col is not None and pd.notna(row[amb_col]):
                 is_amb = str(row[amb_col]).strip().lower() in ("1", "true", "yes")
 
             d._add(keyword, category=category, variants=variants, is_ambiguous=is_amb)
@@ -843,14 +843,17 @@ def build_correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:
     - Cột đầu tiên đặt tên rõ ràng là 'Variable'
     """
     cols = select_research_variables(df, require_variance=True)
+    sub_df = df[cols]
+    if not isinstance(sub_df, pd.DataFrame):
+        sub_df = sub_df.to_frame()
     if len(cols) < 2:
         if len(cols) == 1:
-            corr_df = df[cols].corr().round(4).reset_index()
+            corr_df = sub_df.corr().round(4).reset_index()
             corr_df.rename(columns={"index": "Variable"}, inplace=True)
             return corr_df
-        return pd.DataFrame(columns=["Variable"])
+        return pd.DataFrame(columns=list(["Variable"]))
         
-    corr_df = df[cols].corr(method="pearson").round(4).reset_index()
+    corr_df = sub_df.corr(method="pearson").round(4).reset_index()
     corr_df.rename(columns={"index": "Variable"}, inplace=True)
     return corr_df
 
@@ -971,6 +974,7 @@ class ResearchOutputGenerator:
         extra_cols = [c for c in df.columns if c not in ordered_cols]
         export_df = df[ordered_cols + extra_cols]
 
+        p = self.output_dir / f"panel_data.{fmt if fmt in ('csv', 'parquet') else ('xlsx' if fmt == 'excel' else 'dta')}"
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
             with pd.ExcelWriter(p, engine="openpyxl") as writer:
@@ -1005,7 +1009,7 @@ class ResearchOutputGenerator:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 
                 # Sheet 5: Company_Info (Danh sách doanh nghiệp niêm yết, bỏ cột IR)
-                panel_tickers = export_df["ticker"].dropna().unique().tolist() if "ticker" in export_df.columns else None
+                panel_tickers = pd.Series(export_df["ticker"]).dropna().unique().tolist() if "ticker" in export_df.columns else None
                 company_df = load_company_info_df(tickers=panel_tickers)
                 if company_df is not None:
                     company_df.to_excel(writer, sheet_name="Company_Info", index=False)

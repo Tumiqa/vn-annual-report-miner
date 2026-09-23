@@ -877,7 +877,7 @@ def compute_financial_ratios(pivot: pd.DataFrame) -> pd.DataFrame:
 
     df = df.sort_values(["ticker", "year"]).reset_index(drop=True)
 
-    def coalesce_cols(patterns):
+    def coalesce_cols(patterns: list[str]) -> pd.Series:
         res = pd.Series(np.nan, index=df.index, dtype=float)
         matched_cols = []
         # Priority 1: Exact case-insensitive match
@@ -1269,7 +1269,7 @@ def _get_master_items(all_data, fin_codebook):
     if fin_codebook:
         selected_items = {item.get("Biến") for item in fin_codebook if item.get("Phân loại") == "Chỉ tiêu kế toán"}
         if selected_items and len(selected_items) < len(df_master):
-            df_master = df_master[df_master["item_code"].isin(selected_items)].copy()
+            df_master = df_master[df_master["item_code"].isin(list(selected_items))].copy()
 
     return df_master
 
@@ -1301,12 +1301,14 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
     ws.column_dimensions["A"].width = 4
     ws.column_dimensions["B"].width = 24
     ws.column_dimensions["C"].width = 65
+    ws.row_dimensions[2].height = 50  # Make room for the logo
 
     # Try embedding arminer PNG logo image
     logo_path = Path(__file__).resolve().parent.parent / "ui" / "static" / "arminer_logo.png"
     if logo_path.exists():
         try:
-            img = openpyxl.drawing.image.Image(str(logo_path))
+            from openpyxl.drawing.image import Image as ExcelImage
+            img = ExcelImage(str(logo_path))
             img.width = 62
             img.height = 62
             ws.add_image(img, "B2")
@@ -1932,6 +1934,7 @@ def populate_financial_sheets(
     ws_data_bctc = wb.create_sheet("Data_BCTC")
     bctc_last_row = _create_hidden_bctc_sheet(ws_data_bctc, df_master, tickers, years, data_lookup)
 
+    tyso_last_row = 0
     if active_ratios:
         ws_data_tyso = wb.create_sheet("Data_TySo")
         tyso_last_row = _create_hidden_tyso_sheet(ws_data_tyso, pivot, tickers, years, active_ratios)
