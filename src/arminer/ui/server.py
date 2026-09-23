@@ -2494,7 +2494,8 @@ async def financial_query(req: FinancialQueryRequest):
                         pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
                     try:
                         from arminer.core.smart_mode import load_company_info_df
-                        company_df = load_company_info_df()
+                        fin_tickers = pivot["ticker"].dropna().unique().tolist() if "ticker" in pivot.columns else None
+                        company_df = load_company_info_df(tickers=fin_tickers)
                         if company_df is not None:
                             company_df.to_excel(writer, sheet_name="Company_Info", index=False)
                     except Exception:
@@ -2508,7 +2509,8 @@ async def financial_query(req: FinancialQueryRequest):
                         pd.DataFrame(fin_codebook).to_excel(writer, sheet_name="Codebook", index=False)
                     try:
                         from arminer.core.smart_mode import load_company_info_df
-                        company_df = load_company_info_df()
+                        fin_tickers2 = pivot["ticker"].dropna().unique().tolist() if "ticker" in pivot.columns else None
+                        company_df = load_company_info_df(tickers=fin_tickers2)
                         if company_df is not None:
                             company_df.to_excel(writer, sheet_name="Company_Info", index=False)
                     except Exception:
@@ -3149,7 +3151,8 @@ async def mine_news_stream(req: NewsMineRequest):
                 # Company_Info sheet
                 try:
                     from arminer.core.smart_mode import load_company_info_df
-                    company_df = load_company_info_df()
+                    news_tickers = df_firm_year["ticker"].dropna().unique().tolist() if "ticker" in df_firm_year.columns else None
+                    company_df = load_company_info_df(tickers=news_tickers)
                     if company_df is not None:
                         company_df.to_excel(writer, sheet_name="Company_Info", index=False)
                 except Exception:

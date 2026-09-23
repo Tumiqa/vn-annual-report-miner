@@ -859,8 +859,12 @@ def build_correlation_matrix(df: pd.DataFrame) -> pd.DataFrame:
 # Company Info Sheet Helper
 # =====================================================================
 
-def load_company_info_df() -> Optional[pd.DataFrame]:
-    """Load danh_sach_doanh_nghiep_niem_yet.csv (bỏ cột cuối: Cổng thông tin IR) để dùng làm sheet Company_Info."""
+def load_company_info_df(tickers: Optional[List[str]] = None) -> Optional[pd.DataFrame]:
+    """Load danh_sach_doanh_nghiep_niem_yet.csv (bỏ cột cuối: Cổng thông tin IR) để dùng làm sheet Company_Info.
+    
+    Args:
+        tickers: Danh sách mã CK cần lọc. Nếu None thì trả về toàn bộ.
+    """
     possible_paths = [
         Path(__file__).resolve().parent.parent / "data" / "fixtures" / "fiinpro_icb_companies.csv",
         Path(__file__).resolve().parents[3] / "danh_sach_doanh_nghiep_niem_yet.csv",
@@ -873,6 +877,12 @@ def load_company_info_df() -> Optional[pd.DataFrame]:
                 # Bỏ cột cuối cùng (Cổng thông tin IR / Quan hệ CĐ)
                 if len(df.columns) > 1:
                     df = df.iloc[:, :-1]
+                # Lọc chỉ các cổ phiếu đang xử lý
+                if tickers:
+                    ticker_col = df.columns[0]  # "Mã CK"
+                    ticker_set = {t.upper().strip() for t in tickers}
+                    df = df[df[ticker_col].astype(str).str.upper().str.strip().isin(ticker_set)]
+                    df = df.reset_index(drop=True)
                 logger.info(f"Loaded Company_Info: {len(df)} doanh nghiệp từ {p.name}")
                 return df
             except Exception as e:
@@ -995,7 +1005,8 @@ class ResearchOutputGenerator:
                     pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
 
                 # Sheet 5: Company_Info (Danh sách doanh nghiệp niêm yết, bỏ cột IR)
-                company_df = load_company_info_df()
+                panel_tickers = export_df["ticker"].dropna().unique().tolist() if "ticker" in export_df.columns else None
+                company_df = load_company_info_df(tickers=panel_tickers)
                 if company_df is not None:
                     company_df.to_excel(writer, sheet_name="Company_Info", index=False)
 

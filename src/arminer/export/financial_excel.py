@@ -1964,7 +1964,7 @@ def populate_financial_sheets(
     # 8. Company_Info (Danh sách doanh nghiệp niêm yết)
     try:
         from arminer.core.smart_mode import load_company_info_df
-        company_df = load_company_info_df()
+        company_df = load_company_info_df(tickers=tickers)
         if company_df is not None:
             from openpyxl.utils.dataframe import dataframe_to_rows
             ws_company = wb.create_sheet("Company_Info")
