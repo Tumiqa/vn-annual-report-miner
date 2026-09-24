@@ -132,7 +132,7 @@ class DictionaryManager:
                 v_list = []
 
             categories[cat].append({
-                "keyword": str(kw.get("keyword", "")).strip().lower(),
+                "keyword": str(kw.get("keyword", "")).strip(),
                 "weight": float(kw.get("weight", 1.0)),
                 "variants": v_list,
                 "language": kw.get("language", "vi"),
@@ -159,18 +159,19 @@ class DictionaryManager:
     def add_keyword(self, topic_id: str, keyword: str, category: str = "default", weight: float = 1.0, variants: str = "") -> Dict[str, Any]:
         """Thêm từ khóa mới vào từ điển."""
         dict_data = self.get_dictionary(topic_id)
-        kw_clean = keyword.strip().lower()
-        if not kw_clean:
+        kw_raw = keyword.strip()
+        kw_clean = kw_raw.lower()
+        if not kw_raw:
             raise ValueError("Từ khóa không được để trống.")
 
         # Check existing
         for item in dict_data["keywords"]:
             if item["keyword"].lower() == kw_clean:
-                raise ValueError(f"Từ khóa '{kw_clean}' đã tồn tại trong nhóm '{item['category']}'.")
+                raise ValueError(f"Từ khóa '{kw_raw}' đã tồn tại trong nhóm '{item['category']}'.")
 
         new_entry = {
             "id": len(dict_data["keywords"]) + 1,
-            "keyword": kw_clean,
+            "keyword": kw_raw,
             "category": category.strip().lower() or "default",
             "weight": float(weight),
             "variants": variants.strip(),
@@ -189,7 +190,7 @@ class DictionaryManager:
 
         for item in dict_data["keywords"]:
             if item["keyword"].lower() == old_keyword.strip().lower():
-                item["keyword"] = new_keyword.strip().lower()
+                item["keyword"] = new_keyword.strip()
                 item["category"] = category.strip().lower() or "default"
                 item["weight"] = float(weight)
                 if variants is not None:
@@ -277,7 +278,8 @@ class DictionaryManager:
         }
 
         for entry in entries:
-            kw_clean = str(entry.get("keyword", "")).strip().lower()
+            kw_raw = str(entry.get("keyword", "")).strip()
+            kw_clean = kw_raw.lower()
             if not kw_clean:
                 continue
 
@@ -309,7 +311,7 @@ class DictionaryManager:
             else:
                 kw_map[kw_clean] = {
                     "id": len(kw_map) + 1,
-                    "keyword": kw_clean,
+                    "keyword": kw_raw,
                     "variants": " | ".join([v for v in v_list if v.lower() != kw_clean]),
                     "category": cat,
                     "weight": weight,

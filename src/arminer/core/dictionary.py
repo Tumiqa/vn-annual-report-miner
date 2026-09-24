@@ -38,7 +38,7 @@ class KeywordEntry:
     """Đại diện cho 1 từ khóa trong từ điển."""
 
     __slots__ = (
-        "keyword", "variants", "language", "weight",
+        "keyword", "original_keyword", "variants", "language", "weight",
         "is_ambiguous", "ambiguity_note", "category",
     )
 
@@ -52,7 +52,8 @@ class KeywordEntry:
         ambiguity_note: Optional[str] = None,
         category: Optional[str] = None,
     ):
-        self.keyword = keyword.strip().lower()
+        self.original_keyword = keyword.strip()
+        self.keyword = self.original_keyword.lower()
         self.variants = variants
         self.language = language
         self.weight = weight
@@ -311,7 +312,7 @@ class Dictionary:
 
                 for form in entry.all_forms:
                     if form not in excluded:
-                        mapping[form] = entry.keyword
+                        mapping[form] = entry.original_keyword
 
         return mapping
 

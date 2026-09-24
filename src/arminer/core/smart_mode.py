@@ -391,7 +391,7 @@ class FlexibleDictionary:
     def _add(self, keyword: str, category: str = "default",
              variants: Optional[str] = None, language: str = "en",
              weight: float = 1.0, is_ambiguous: bool = False):
-        keyword = keyword.strip().lower()
+        keyword = keyword.strip()
         if not keyword:
             return
         self._categories.add(category)
