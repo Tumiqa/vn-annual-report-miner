@@ -655,12 +655,26 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
             # Use PyMuPDF C-level flags: TEXT_DEHYPHENATE automatically removes line-break hyphens,
             # TEXT_PRESERVE_WHITESPACE preserves tabular alignments
             extract_flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_PRESERVE_WHITESPACE
-            page_texts = [page.get_text(flags=extract_flags) for page in doc]
+            
+            has_scanned_pages = False
+            file_size_kb = file_path.stat().st_size / 1024
+            kb_per_page = file_size_kb / n_pages if n_pages > 0 else 0
+            
+            page_texts = []
+            for page in doc:
+                p_text = page.get_text(flags=extract_flags)
+                page_texts.append(p_text)
+                
+                # Phát hiện trang nghi ngờ là ảnh scan (ít text + có hình ảnh + file nặng)
+                if not has_scanned_pages and len(p_text.strip()) < 400:
+                    if len(page.get_images()) > 0 and kb_per_page > 20:
+                        has_scanned_pages = True
+
             text = "\n".join(page_texts)
             doc.close()
 
-            # Nếu trung bình mỗi trang có quá ít text (< 300 ký tự/trang), khả năng cao đây là PDF scan
-            if len(text.strip()) < n_pages * 300 and n_pages > 0:
+            # Nếu phát hiện có trang scan (Hybrid) HOẶC toàn bộ file quá ít chữ (Full scan)
+            if has_scanned_pages or (len(text.strip()) < n_pages * 300 and n_pages > 0):
                 try:
                     from arminer.ocr.engine import OCREngine
                     ocr_engine = OCREngine()
