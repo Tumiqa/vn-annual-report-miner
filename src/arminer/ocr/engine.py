@@ -167,20 +167,26 @@ class OCREngine:
             self._resolved_backend = self.ocr_backend
             return self._resolved_backend
 
-        # Auto-detect: thử easyocr trước
+        # Auto-detect: ưu tiên Tesseract (chính xác và ổn định hơn cho văn bản dài/document)
+        import shutil
+        import sys
+        if shutil.which("tesseract") or (sys.platform.startswith("win") and any(Path(p).exists() for p in [
+            "C:/Program Files/Tesseract-OCR/tesseract.exe",
+            "C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"
+        ])):
+            try:
+                import pytesseract  # noqa: F401
+                self._resolved_backend = "tesseract"
+                logger.info("OCR backend: Tesseract (auto-detected, preferred)")
+                return self._resolved_backend
+            except ImportError:
+                pass
+                
+        # Fallback: easyocr
         try:
             import easyocr  # noqa: F401
             self._resolved_backend = "easyocr"
-            logger.info("OCR backend: EasyOCR (auto-detected)")
-            return self._resolved_backend
-        except ImportError:
-            pass
-
-        # Fallback: tesseract
-        try:
-            import pytesseract  # noqa: F401
-            self._resolved_backend = "tesseract"
-            logger.info("OCR backend: Tesseract (fallback)")
+            logger.info("OCR backend: EasyOCR (fallback)")
             return self._resolved_backend
         except ImportError:
             pass
