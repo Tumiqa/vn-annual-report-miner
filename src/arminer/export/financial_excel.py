@@ -1293,7 +1293,7 @@ def _build_data_lookup(all_data):
 # SHEET: Cover (Trang_Bia)
 # =====================================================================
 
-def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]] = None):
+def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]] = None, num_bctc_items: int = 702, num_ratios: int = 116):
     """Create a premium cover sheet."""
     from datetime import datetime
 
@@ -1344,8 +1344,8 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
         ("Mã chứng khoán:", ", ".join(tickers)),
         ("Giai đoạn:", f"{min(years)} — {max(years)}"),
         ("Ngày xuất báo cáo:", datetime.now().strftime("%d/%m/%Y %H:%M")),
-        ("Số chỉ tiêu BCTC:", "702 chỉ tiêu (13 nhóm kế toán chuẩn mực)"),
-        ("Số tỷ số tài chính:", f"{len(FINANCIAL_RATIOS)} chỉ số (Chuẩn học thuật: CFA, IFRS/VAS, Basel III, CAMELS)"),
+        ("Số chỉ tiêu BCTC:", f"{num_bctc_items} chỉ tiêu (13 nhóm kế toán chuẩn mực)"),
+        ("Số tỷ số tài chính:", f"{num_ratios} chỉ số (Chuẩn học thuật: CFA, IFRS/VAS, Basel III, CAMELS)"),
     ]
     if missing_tickers:
         info_items.append(("⚠️ Mã không có dữ liệu:", f"{', '.join(missing_tickers)} (Đã tự động loại bỏ)"))
@@ -1367,8 +1367,8 @@ def _create_cover_sheet(ws, tickers, years, missing_tickers: Optional[List[str]]
     row += 1
 
     nav_items = [
-        ("→ Bao_Cao_Tai_Chinh", "702 chỉ tiêu kế toán — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
-        ("→ Ty_So_Tai_Chinh", "116 chỉ số tài chính — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
+        ("→ Bao_Cao_Tai_Chinh", f"{num_bctc_items} chỉ tiêu kế toán — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
+        ("→ Ty_So_Tai_Chinh", f"{num_ratios} chỉ số tài chính — Chọn mã CK ở ô B2, dữ liệu tự động cập nhật"),
         ("→ Panel_Data_Goc", "Bảng phẳng Panel Data (tất cả mã) — sẵn sàng cho Stata / R / Python"),
         ("→ Codebook", "Từ điển biến, công thức tính toán và nguồn dữ liệu"),
         ("→ Huong_Dan", "Hướng dẫn sử dụng bộ chọn mã chứng khoán"),
@@ -1941,7 +1941,7 @@ def populate_financial_sheets(
 
     # 2. Cover sheet
     ws_cover = wb.create_sheet("Trang_Bia", 0)  # Insert at position 0 (first)
-    _create_cover_sheet(ws_cover, tickers, years, missing_tickers=missing_tickers)
+    _create_cover_sheet(ws_cover, tickers, years, missing_tickers=missing_tickers, num_bctc_items=len(df_master), num_ratios=len(active_ratios))
 
     # 3. BCTC report (with formulas)
     ws_bctc = wb.create_sheet("Bao_Cao_Tai_Chinh")
