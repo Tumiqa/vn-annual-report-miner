@@ -160,11 +160,8 @@ def _scan_single_file(pdf_file: Path, flex_dict, topic, fuzzy, threshold, output
 
     if pdf_file.suffix.lower() == ".pdf":
         try:
-            import fitz
-            doc = fitz.open(pdf_file)
-            text = "\n".join(page.get_text() for page in doc)
-            n_pages = len(doc)
-            doc.close()
+            from arminer.ui.server import _extract_text_cached
+            text, n_pages = _extract_text_cached(pdf_file)
         except Exception as e:
             console.print(f"[red]Cannot read PDF: {e}[/]")
             raise SystemExit(1)
