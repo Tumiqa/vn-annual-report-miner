@@ -659,8 +659,8 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
             text = "\n".join(page_texts)
             doc.close()
 
-            # If PDF has pages but virtually 0 embedded text (pure scanned image PDF), fallback to OCR
-            if len(text.strip()) < 50 and n_pages > 0:
+            # Nếu trung bình mỗi trang có quá ít text (< 300 ký tự/trang), khả năng cao đây là PDF scan
+            if len(text.strip()) < n_pages * 300 and n_pages > 0:
                 try:
                     from arminer.ocr.engine import OCREngine
                     ocr_engine = OCREngine()

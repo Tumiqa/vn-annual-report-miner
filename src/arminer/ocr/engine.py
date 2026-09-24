@@ -114,7 +114,7 @@ class OCREngine:
         tesseract_lang: str = "vie+eng",
         tesseract_config: str = "--oem 3 --psm 6",
         easyocr_langs: Optional[List[str]] = None,
-        min_text_per_page: int = 100,
+        min_text_per_page: int = 400,
         dpi: int = 300,
         use_gpu: Optional[bool] = None,
         preprocess: bool = True,
