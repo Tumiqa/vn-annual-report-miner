@@ -317,11 +317,12 @@ class Dictionary:
         return mapping
 
     def get_category_map(self) -> Dict[str, str]:
-        """Mapping: từ khóa chính → category name."""
+        """Mapping: từ khóa chính (cả lowercase lẫn original case) → category name."""
         result: Dict[str, str] = {}
         for cat_name, cat in self.categories.items():
             for entry in cat.keywords:
-                result[entry.keyword] = cat_name
+                result[entry.keyword] = cat_name           # lowercase form
+                result[entry.original_keyword] = cat_name  # original case form
         return result
 
     def get_keywords_by_category(self, category: str,
