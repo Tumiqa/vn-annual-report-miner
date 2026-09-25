@@ -977,17 +977,32 @@ class ResearchOutputGenerator:
         p = self.output_dir / f"panel_data.{fmt if fmt in ('csv', 'parquet') else ('xlsx' if fmt == 'excel' else 'dta')}"
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
+
+            # Sanitize dataframes to remove illegal Excel control characters (often produced by OCR)
+            import re
+            illegal_chars_re = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
+            def sanitize(df_in):
+                if df_in is None or df_in.empty: return df_in
+                df_out = df_in.copy()
+                for col in df_out.select_dtypes(include=['object', 'string']).columns:
+                    df_out[col] = df_out[col].apply(lambda x: illegal_chars_re.sub('', x) if isinstance(x, str) else x)
+                return df_out
+
+            export_df_clean = sanitize(export_df)
+            context_clean = sanitize(context_snippets_df)
+            raw_clean = sanitize(raw_keywords_df)
+
             with pd.ExcelWriter(p, engine="openpyxl") as writer:
                 # Sheet 1: Panel_Data (Main econometric panel regression variables)
-                export_df.to_excel(writer, sheet_name="Panel_Data", index=False)
+                export_df_clean.to_excel(writer, sheet_name="Panel_Data", index=False)
 
                 # Sheet 2: Context (Sentence-boundary context for each keyword occurrence)
-                if context_snippets_df is not None and not context_snippets_df.empty:
+                if context_clean is not None and not context_clean.empty:
                     ctx_cols = ["STT", "Firm", "Year", "Keyword", "Canonical",
                                 "Category", "Match_Type", "Similarity", "Sentence_Context"]
-                    existing_cols = [c for c in ctx_cols if c in context_snippets_df.columns]
-                    extra_cols = [c for c in context_snippets_df.columns if c not in ctx_cols]
-                    context_snippets_df[existing_cols + extra_cols].to_excel(
+                    existing_cols = [c for c in ctx_cols if c in context_clean.columns]
+                    extra_cols = [c for c in context_clean.columns if c not in ctx_cols]
+                    context_clean[existing_cols + extra_cols].to_excel(
                         writer, sheet_name="Context", index=False
                     )
                 else:
@@ -997,8 +1012,8 @@ class ResearchOutputGenerator:
                     ]).to_excel(writer, sheet_name="Context", index=False)
 
                 # Sheet 3: Raw_Keywords (Detailed frequency breakdown of raw keyword matches)
-                if raw_keywords_df is not None and not raw_keywords_df.empty:
-                    raw_keywords_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
+                if raw_clean is not None and not raw_clean.empty:
+                    raw_clean.to_excel(writer, sheet_name="Raw_Keywords", index=False)
                 else:
                     pd.DataFrame(columns=["Firm", "Year", "Keyword", "Category", "Frequency"]).to_excel(
                         writer, sheet_name="Raw_Keywords", index=False
@@ -1006,13 +1021,13 @@ class ResearchOutputGenerator:
 
                 # Sheet 4: Codebook (Variable explanations & citations)
                 if variable_info:
-                    pd.DataFrame(variable_info).to_excel(writer, sheet_name="Codebook", index=False)
+                    sanitize(pd.DataFrame(variable_info)).to_excel(writer, sheet_name="Codebook", index=False)
 
                 # Sheet 5: Company_Info (Danh sách doanh nghiệp niêm yết, bỏ cột IR)
                 panel_tickers = pd.Series(export_df["ticker"]).dropna().unique().tolist() if "ticker" in export_df.columns else None
                 company_df = load_company_info_df(tickers=panel_tickers)
                 if company_df is not None:
-                    company_df.to_excel(writer, sheet_name="Company_Info", index=False)
+                    sanitize(company_df).to_excel(writer, sheet_name="Company_Info", index=False)
 
             # Apply premium styling & Cover Sheet (Trang_Bia)
             try:
