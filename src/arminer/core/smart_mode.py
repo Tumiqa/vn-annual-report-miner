@@ -978,14 +978,21 @@ class ResearchOutputGenerator:
         if fmt == "excel":
             p = self.output_dir / "panel_data.xlsx"
 
-            # Sanitize dataframes to remove illegal Excel control characters (often produced by OCR)
+            # Sanitize dataframes to remove ALL illegal Excel characters (exact openpyxl regex)
             import re
-            illegal_chars_re = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
+            # This is the EXACT regex openpyxl uses internally (openpyxl.cell.cell.ILLEGAL_CHARACTERS_RE)
+            # Covers: C0/C1 control chars, surrogates, FFFE/FFFF, and more
+            illegal_chars_re = re.compile(
+                r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f'
+                r'\ud800-\udfff\ufdd0-\ufdef\ufffe\uffff]'
+            )
             def sanitize(df_in):
                 if df_in is None or df_in.empty: return df_in
                 df_out = df_in.copy()
                 for col in df_out.select_dtypes(include=['object', 'string']).columns:
                     df_out[col] = df_out[col].apply(lambda x: illegal_chars_re.sub('', x) if isinstance(x, str) else x)
+                # Also sanitize column names themselves
+                df_out.columns = [illegal_chars_re.sub('', str(c)) if isinstance(c, str) else c for c in df_out.columns]
                 return df_out
 
             export_df_clean = sanitize(export_df)
