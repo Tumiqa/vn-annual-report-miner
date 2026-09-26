@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     catalogTableBody.innerHTML = `
       <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
         <span class="spinner-sm" style="display: inline-block; vertical-align: middle; margin-right: 8px;"></span>
-        Đang tải báo cáo từ kho Zenodo...
+        Đang tải báo cáo...
       </td></tr>
     `;
 
@@ -332,7 +332,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td style="text-align: center;">
           <input type="checkbox" class="custom-chk row-chk" data-id="${r.record_id}" ${isChecked ? 'checked' : ''}>
         </td>
-        <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${r.ticker}</strong></td>
+        <td>
+          <strong style="color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;">${r.ticker}</strong>
+          ${r.company_name ? `<div style="font-size: 11px; color: var(--text-secondary); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(r.company_name)}">${escapeHtml(r.company_name)}</div>` : ''}
+        </td>
         <td style="text-align: center;">${exchBadge}</td>
         <td class="tabular">${r.year}</td>
         <td>
@@ -344,9 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${escapeHtml(r.file_name)}
         </td>
         <td style="text-align: center;">
-          <span class="badge" style="background: rgba(99,102,241,0.1); color: var(--brand-primary); font-size: 11px;">
-            ${r.archive_period || 'Zenodo'}
-          </span>
+          ${(r.source === 'gap_filler' || r.archive_period === 'gap_filler' || (r.record_id && r.record_id.startsWith('GAP_'))) ? '<span class="badge" style="background: rgba(16,185,129,0.15); color: #059669; font-size: 11px; font-weight: 600;">Google Drive</span>' : ((r.source === 'supplement' || r.archive_period === 'supplement' || (r.record_id && r.record_id.startsWith('SUPP_'))) ? '<span class="badge" style="background: rgba(245,158,11,0.15); color: #d97706; font-size: 11px; font-weight: 600;">Supplement</span>' : `<span class="badge" style="background: rgba(99,102,241,0.1); color: var(--brand-primary); font-size: 11px;">${r.archive_period || 'Zenodo'}</span>`)}
         </td>
         <td style="text-align: right;" class="tabular">${r.file_size_mb ? r.file_size_mb + ' MB' : '—'}</td>
       `;

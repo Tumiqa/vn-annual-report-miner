@@ -119,15 +119,23 @@ def create_reports_zip_archive(
             zf.write(src_file, arcname=arcname)
             zipped_count += 1
 
-            # Luu metadata cho file index CSV
+            # Luu metadata cho file index CSV voi day du thong tin doanh nghiep
             index_rows.append({
                 "Mã CK": ticker,
-                "Năm": year,
-                "Ngành cấp 1": r.get("icb_l1") or "",
-                "Ngành cấp 2": r.get("icb_l2") or "",
+                "Tên Doanh Nghiệp": r.get("company_name") or "",
+                "Tên Thương Hiệu": r.get("company_short_name") or "",
+                "Sàn Giao Dịch": str(r.get("exchange") or "HSX").upper(),
+                "Năm Báo Cáo": year,
+                "Ngành Cấp 1 (ICB L1)": r.get("icb_l1") or "",
+                "Ngành Cấp 2 (ICB L2)": r.get("icb_l2") or "",
+                "Ngành Cấp 3 (ICB L3)": r.get("icb_l3") or "",
+                "Ngành Cấp 4 (ICB L4)": r.get("icb_l4") or "",
+                "Mã ICB": r.get("icb_code") or "",
+                "Trang Chủ (Website)": r.get("website") or "",
+                "Cổng Thông Tin IR": r.get("ir_portal") or "",
                 "Tên file gốc": original_filename,
                 "Đường dẫn trong ZIP": arcname,
-                "Dung lượng (KB)": f"{file_size / 1024:.1f}",
+                "Dung lượng (MB)": f"{file_size / (1024 * 1024):.2f}",
                 "Nguồn lưu trữ": r.get("source") or "Zenodo",
                 "Trạng thái": "Thành công",
             })

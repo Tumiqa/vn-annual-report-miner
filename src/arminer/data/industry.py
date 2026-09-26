@@ -20,6 +20,7 @@ trên thị trường chứng khoán Việt Nam (HOSE, HNX, UPCoM).
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 import pandas as pd
@@ -89,6 +90,9 @@ ICB_LEVEL2 = {
 
 class IndustryClassifier:
     """Bộ phân loại ngành ICB 4 cấp (L1 - L2 - L3 - L4) chuẩn FiinPro cho cổ phiếu Việt Nam."""
+    _shared_ticker_map: Optional[Dict[str, Tuple[str, str]]] = None
+    _shared_ticker_full_map: Optional[Dict[str, Dict[str, Any]]] = None
+    _lock = threading.Lock()
 
     def __init__(self, workspace_root: Optional[Path] = None):
         if workspace_root is None:
@@ -103,12 +107,21 @@ class IndustryClassifier:
         if self._initialized:
             return
 
-        self._load_master_fixture()
-        self._initialized = True
-        logger.info(
-            f"IndustryClassifier: Indexed {len(self._ticker_map)} ticker-industry mappings "
-            f"from FiinPro ICB Master (100% coverage across HOSE, HNX, UPCoM)"
-        )
+        with IndustryClassifier._lock:
+            if IndustryClassifier._shared_ticker_map is not None:
+                self._ticker_map = IndustryClassifier._shared_ticker_map
+                self._ticker_full_map = IndustryClassifier._shared_ticker_full_map
+                self._initialized = True
+                return
+
+            self._load_master_fixture()
+            IndustryClassifier._shared_ticker_map = self._ticker_map
+            IndustryClassifier._shared_ticker_full_map = self._ticker_full_map
+            self._initialized = True
+            logger.info(
+                f"IndustryClassifier: Indexed {len(self._ticker_map)} ticker-industry mappings "
+                f"from FiinPro ICB Master (100% coverage across HOSE, HNX, UPCoM)"
+            )
 
     def _load_master_fixture(self):
         """Tải dữ liệu từ fixture fiinpro_icb_companies.csv hoặc master csv."""

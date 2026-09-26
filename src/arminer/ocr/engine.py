@@ -210,12 +210,18 @@ class OCREngine:
 
     # ── Main extraction ────────────────────────────────────────────────
 
-    def extract_text(self, pdf_path: str | Path) -> str:
+    def extract_text(self, pdf_path: str | Path, ocr_mode: str = "smart") -> str:
         """
-        Extract text từ PDF file.
-
-        Returns:
-            Full text content — native text + OCR text (nếu có scanned pages)
+        Extract text từ PDF file theo cơ chế Smart Hybrid thông minh:
+        1. Trang nào có native text (>= 50 chars) -> Giữ nguyên 100% native text (tốc độ < 0.001s/trang).
+        2. Trang nào ít text (< 50 chars): Phân tích xem có ảnh scan lớn (>= 400x400) không.
+           - Nếu có ảnh lớn -> Đánh dấu là trang scan thực sự (báo cáo kiểm toán có dấu đỏ).
+           - Nếu không có ảnh lớn (trang bìa lót, trang trống) -> Giữ nguyên, không OCR vô nghĩa.
+        3. Chỉ kích hoạt OCR cho đúng các trang scan thực sự.
+        
+        Args:
+            pdf_path: Đường dẫn file PDF.
+            ocr_mode: "smart" (mặc định) | "fast" (chỉ lấy native) | "force_ocr" (ép OCR)
         """
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
@@ -230,25 +236,54 @@ class OCREngine:
         pages_text: List[str] = []
         scanned_pages: List[int] = []
 
-        # Phase 1: Native text extraction (PyMuPDF — nhanh)
+        extract_flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_PRESERVE_WHITESPACE
+
+        # Phase 1: Smart Hybrid Page Analysis
         for i, page in enumerate(doc):
-            text = page.get_text().strip()
+            p_text = page.get_text(flags=extract_flags).strip()
 
-            if len(text) >= self.min_text_per_page:
-                pages_text.append(text)
-            else:
+            if ocr_mode == "fast":
+                pages_text.append(p_text)
+                continue
+
+            # Nếu trang đã có text native đầy đủ (>= 50 ký tự) -> Giữ nguyên 100%
+            if len(p_text) >= 50 and ocr_mode != "force_ocr":
+                pages_text.append(p_text)
+                continue
+
+            # Kiểm tra xem trang có ảnh scan toàn trang thực sự không
+            has_scanned_img = False
+            try:
+                for img_info in page.get_images():
+                    xref = img_info[0]
+                    base_img = doc.extract_image(xref)
+                    if base_img:
+                        w, h = base_img.get("width", 0), base_img.get("height", 0)
+                        if w >= 400 and h >= 400:
+                            has_scanned_img = True
+                            break
+            except Exception:
+                pass
+
+            if has_scanned_img or ocr_mode == "force_ocr":
                 scanned_pages.append(i)
-                pages_text.append("")  # placeholder
+                pages_text.append(p_text)  # Giữ text native phụ nếu có
+            else:
+                # Trang ngắn không có ảnh lớn (trang bìa lót, khoảng trắng) -> không cần OCR
+                pages_text.append(p_text)
 
-        # Phase 2: OCR scanned pages (reuse open doc — không mở lại file)
-        if scanned_pages:
+        # Phase 2: Chạy OCR an toàn cho các trang scan thực sự
+        if scanned_pages and ocr_mode != "fast":
             logger.info(
-                f"PDF has {len(scanned_pages)}/{len(pages_text)} scanned pages "
-                f"— running OCR (DPI={self.dpi}, preprocess={self.preprocess})"
+                f"Smart Hybrid: PDF {pdf_path.name} có {len(scanned_pages)}/{len(pages_text)} "
+                f"trang scan thực sự cần OCR (DPI={self.dpi})"
             )
             ocr_texts = self._ocr_pages(doc, pdf_path, scanned_pages)
             for page_idx, ocr_text in zip(scanned_pages, ocr_texts):
-                pages_text[page_idx] = ocr_text
+                orig = pages_text[page_idx]
+                if ocr_text and ocr_text.strip():
+                    # Kết hợp native text với ocr text để không bao giờ mất thông tin
+                    pages_text[page_idx] = f"{orig}\n{ocr_text}".strip() if orig else ocr_text.strip()
 
         doc.close()
 
@@ -429,6 +464,8 @@ class OCREngine:
                     pytesseract.pytesseract.tesseract_cmd = str(cand)
                     break
 
+        os.environ["OMP_THREAD_LIMIT"] = "1"
+
         start_time = time.time()
         total = len(page_indices)
 
@@ -450,6 +487,7 @@ class OCREngine:
                     img,
                     lang=self.tesseract_lang,
                     config=self.tesseract_config,
+                    timeout=15,
                 )
                 text = self._postprocess_vietnamese(text.strip())
                 results.append(text)

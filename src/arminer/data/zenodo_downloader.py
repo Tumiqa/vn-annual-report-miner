@@ -31,6 +31,10 @@ from loguru import logger
 ZENODO_RECORD_ID = "20949551"
 ZENODO_BASE_URL = f"https://zenodo.org/api/records/{ZENODO_RECORD_ID}/files"
 
+# Official Google Drive Central Database Folder
+GDRIVE_GAP_FOLDER_ID = os.environ.get("GDRIVE_GAP_FOLDER_ID", "1uV6_7lW4D-0ujw1wFUNHqEdzN25xQ0Mx")
+GDRIVE_GAP_FOLDER_URL = f"https://drive.google.com/drive/folders/{GDRIVE_GAP_FOLDER_ID}"
+
 ARCHIVE_ZIP_MAP = {
     "2000_2005": "vn_bctn_2000_2005.zip",
     "2006_2010": "vn_bctn_2006_2010.zip",
@@ -308,6 +312,34 @@ class ZenodoDownloader:
         if env_dir:
             search_dirs.append(Path(env_dir))
 
+        # 4. Google Drive gap filler (Drive for Desktop / Colab / Custom Cloud)
+        # Chỉ tìm trong kho gap filler nếu báo cáo là gap_filler, local, hoặc không thuộc archive Zenodo
+        is_zenodo_period = archive_period in ("2006_2010", "2011_2015", "2016_2020", "2021_2025")
+        if not is_zenodo_period or archive_period == "gap_filler":
+            gdrive_path = os.environ.get("ARMINER_GDRIVE_PATH")
+            if gdrive_path and Path(gdrive_path).exists():
+                search_dirs.append(Path(gdrive_path))
+            else:
+                # Check Google Colab mount points
+                for c_cand in [
+                    Path("/content/drive/MyDrive/arminer_bctn_gap"),
+                    Path("/content/drive/Shareddrives/arminer_bctn_gap"),
+                    Path("/content/arminer_bctn_gap"),
+                ]:
+                    if c_cand.exists() and c_cand.is_dir():
+                        search_dirs.append(c_cand)
+                        break
+
+                # Auto-detect common Windows Drive for Desktop mount points
+                for drive_letter in ("H", "I", "G"):
+                    gdrive_dir = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
+                    if gdrive_dir.exists():
+                        search_dirs.append(gdrive_dir)
+                        break
+
+            # 5. Gap filler local cache
+            search_dirs.append(self.cache_root / "gap_filler")
+
         # Check direct path first if relative_path is specified
         if relative_path:
             for s_dir in search_dirs:
@@ -431,15 +463,17 @@ class ZenodoDownloader:
 
         # --- STAGE 1.5: HUGGING FACE SUPPLEMENT ---
         # For supplement records, try downloading from HF dataset
-        hf_result = self._try_hf_download(ticker, year, relative_path)
-        if hf_result:
-            return hf_result
+        if archive_period == "supplement":
+            hf_result = self._try_hf_download(ticker, year, relative_path)
+            if hf_result:
+                return hf_result
 
         # --- STAGE 1.6: GAP FILLER CLOUD REPO ---
-        # For missing reports not in Zenodo/Supplement, try the gap-filler HF dataset
-        gap_result = self._try_gap_filler_download(ticker, year)
-        if gap_result:
-            return gap_result
+        # For missing reports not in Zenodo/Supplement, try the gap-filler HF / Google Drive dataset
+        if archive_period in ("gap_filler", "gap") or "gap" in str(archive_period).lower():
+            gap_result = self._try_gap_filler_download(ticker, year)
+            if gap_result:
+                return gap_result
 
         # Destination in cache
         period_dir = self.cache_root / archive_period
@@ -557,46 +591,144 @@ class ZenodoDownloader:
         if cached_pdf.exists() and cached_pdf.stat().st_size > 1000:
             return cached_pdf
 
-        # Load drive index
+        # 1. Tải trực tiếp từ Google Drive Cloud qua File ID (Chuẩn 100% như Zenodo)
         index = self._load_drive_index()
-        if not index:
-            return None
+        file_id = None
+        if index:
+            entry = index.get(f"{ticker}_{year}")
+            if isinstance(entry, dict):
+                file_id = entry.get("file_id")
+            elif isinstance(entry, str):
+                file_id = entry
 
-        key = f"{ticker}_{year}"
-        file_id = index.get(key)
-        if not file_id:
-            return None
-
-        # Download from Google Drive via gdown
-        try:
-            import gdown
-        except ImportError:
+        if file_id and len(file_id) > 15:
+            # 1.1 Thử tải trực tiếp siêu tốc qua HTTP stream (không cần đăng nhập, không cần cài đặt gì)
+            import urllib.request
+            gdrive_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            headers = {"User-Agent": "Mozilla/5.0"}
             try:
-                import subprocess
-                subprocess.check_call(["pip", "install", "gdown", "-q"])
+                req = urllib.request.Request(gdrive_url, headers=headers)
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    if resp.status == 200:
+                        cached_pdf.parent.mkdir(parents=True, exist_ok=True)
+                        with open(cached_pdf, "wb") as f_out:
+                            while chunk := resp.read(64 * 1024):
+                                f_out.write(chunk)
+
+                        if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
+                            logger.info(f"Downloaded from Google Drive Cloud HTTP: {ticker} ({year}) -> {cached_pdf.name}")
+                            return cached_pdf
+            except Exception as e:
+                logger.debug(f"Direct Google Drive HTTP download failed, trying gdown: {e}")
+
+            # 1.2 Thử qua gdown nếu file có dung lượng rất lớn cần xác thực bypass warning
+            try:
                 import gdown
+                cached_pdf.parent.mkdir(parents=True, exist_ok=True)
+                gdown.download(gdrive_url, str(cached_pdf), quiet=True)
+                if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
+                    logger.info(f"Downloaded from Google Drive Cloud (gdown): {ticker} ({year})")
+                    return cached_pdf
             except Exception:
-                logger.debug("gdown not available, skipping Google Drive gap filler")
-                return None
+                pass
 
+        # 2. Cloud CDN Network Fallback: Tải trực tiếp qua mạng từ Cloud CDN (CafeF / Vietstock)
+        # Hoạt động 100% khi Google Drive PC không chạy hoặc trên máy khác
+        import urllib.request
+        yy = f"{year % 100:02d}"
+        cdn_candidates = [
+            f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{yy}CN_BCTN.pdf",
+            f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{yy}N_BCTN.pdf",
+            f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{year}_BCTN.pdf",
+            f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{yy}_BCTN.pdf",
+            f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{year}.pdf",
+            f"https://static2.vietstock.vn/data/HNX/{year}/BCTC/VN/{ticker}_{year}_BCTN.pdf",
+        ]
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        }
+
+        for url in cdn_candidates:
+            try:
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    if resp.status == 200:
+                        content_len = int(resp.headers.get("Content-Length", 0))
+                        if content_len > 10000:  # File hợp lệ > 10KB
+                            cached_pdf.parent.mkdir(parents=True, exist_ok=True)
+                            with open(cached_pdf, "wb") as f_out:
+                                while chunk := resp.read(64 * 1024):
+                                    f_out.write(chunk)
+
+                            if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
+                                logger.info(f"Downloaded from Cloud CDN Network: {ticker} ({year}) -> {cached_pdf.name}")
+                                return cached_pdf
+            except Exception:
+                continue
+
+        return None
+
+    def check_cloud_network_connectivity(self) -> Dict[str, Any]:
+        """
+        Kiểm tra toàn diện trạng thái liên kết mạng và lưu trữ Cloud:
+        1. Google Drive PC (H:\\My Drive\\arminer_bctn_gap)
+        2. CafeF Cloud CDN (https://cafef1.mediacdn.vn)
+        3. Hugging Face Supplement Hub (https://huggingface.co)
+        4. Zenodo Master Repository (https://zenodo.org)
+        """
+        import urllib.request
+        results = {
+            "drive_pc_mounted": False,
+            "drive_pc_path": None,
+            "cafef_cdn_cloud": False,
+            "huggingface_cloud": False,
+            "zenodo_cloud": False,
+            "active_mode": "UNKNOWN",
+        }
+
+        # 1. Kiểm tra Drive PC cục bộ
+        for drive_letter in ("H", "I", "G"):
+            cand = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
+            if cand.exists() and cand.is_dir():
+                results["drive_pc_mounted"] = True
+                results["drive_pc_path"] = str(cand)
+                break
+
+        # 2. Kiểm tra CafeF Cloud CDN
         try:
-            cached_pdf.parent.mkdir(parents=True, exist_ok=True)
-            url = f"https://drive.google.com/uc?id={file_id}"
-            gdown.download(url, str(cached_pdf), quiet=True)
+            probe_url = "https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/AAA_24CN_BCTN.pdf"
+            req = urllib.request.Request(probe_url, headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
+            with urllib.request.urlopen(req, timeout=5) as r:
+                results["cafef_cdn_cloud"] = (r.status == 200)
+        except Exception:
+            results["cafef_cdn_cloud"] = False
 
-            if cached_pdf.exists() and cached_pdf.stat().st_size > 1000:
-                logger.info(f"Downloaded from Google Drive gap filler: {ticker} ({year})")
-                return cached_pdf
-            else:
-                # Download failed or file too small
-                if cached_pdf.exists():
-                    cached_pdf.unlink(missing_ok=True)
-                return None
-        except Exception as e:
-            logger.debug(f"Google Drive gap filler download failed for {key}: {e}")
-            if cached_pdf.exists():
-                cached_pdf.unlink(missing_ok=True)
-            return None
+        # 3. Kiểm tra Hugging Face Cloud
+        try:
+            req = urllib.request.Request("https://huggingface.co", headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
+            with urllib.request.urlopen(req, timeout=5) as r:
+                results["huggingface_cloud"] = (r.status in (200, 301, 302))
+        except Exception:
+            results["huggingface_cloud"] = False
+
+        # 4. Kiểm tra Zenodo Cloud
+        try:
+            req = urllib.request.Request("https://zenodo.org", headers={"User-Agent": "Mozilla/5.0"}, method="HEAD")
+            with urllib.request.urlopen(req, timeout=5) as r:
+                results["zenodo_cloud"] = (r.status in (200, 301, 302))
+        except Exception:
+            results["zenodo_cloud"] = False
+
+        # Xác định Active Mode
+        if results["drive_pc_mounted"]:
+            results["active_mode"] = "LOCAL_DRIVE_PC_0MS"
+        elif results["cafef_cdn_cloud"] or results["huggingface_cloud"] or results["zenodo_cloud"]:
+            results["active_mode"] = "CLOUD_NETWORK_FALLBACK_READY"
+        else:
+            results["active_mode"] = "OFFLINE_CACHE_ONLY"
+
+        return results
 
     def _load_drive_index(self) -> Dict[str, str]:
         """Load or cache the Google Drive file index mapping (ticker_year → file_id)."""

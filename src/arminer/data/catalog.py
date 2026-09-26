@@ -9,8 +9,10 @@ Includes ICB Level 1 & Level 2 Industry Taxonomy.
 
 from __future__ import annotations
 
+import json
 import os
 import re
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple, Set
 import pandas as pd
@@ -23,6 +25,7 @@ from arminer.data.pdf_source import PDFSource
 
 class UnifiedCatalog:
     """Unified repository index for local files & Zenodo cloud dataset with ICB sectors."""
+    _init_lock = threading.Lock()
 
     def __init__(self, workspace_root: Optional[Path] = None):
         if workspace_root is None:
@@ -49,12 +52,14 @@ class UnifiedCatalog:
         """Index local directories, load Zenodo master catalog, and construct inverted indices."""
         if self._initialized:
             return
-
-        self.industry_classifier.initialize()
-        self._index_local_sources()
-        self._load_zenodo_catalog()
-        self._build_inverted_indices()
-        self._initialized = True
+        with self._init_lock:
+            if self._initialized:
+                return
+            self.industry_classifier.initialize()
+            self._index_local_sources()
+            self._load_zenodo_catalog()
+            self._build_inverted_indices()
+            self._initialized = True
 
     def index_directory(self, directory: str | Path, source_name: str = "custom_local"):
         """Chủ động lập chỉ mục cho một thư mục PDF bất kỳ trên máy tính người dùng."""
@@ -122,6 +127,69 @@ class UnifiedCatalog:
         for s_dir in standard_dirs:
             if s_dir.exists():
                 self.index_directory(s_dir, source_name="local_storage")
+
+        # 3. Google Drive gap filler (Drive for Desktop / Google Colab / Custom Cloud)
+        drive_index_file = self.workspace_root / "data" / "gap_filler" / "drive_index.json"
+        active_gdrive_base: Optional[Path] = None
+
+        gdrive_path = os.environ.get("ARMINER_GDRIVE_PATH")
+        if gdrive_path and Path(gdrive_path).exists():
+            active_gdrive_base = Path(gdrive_path)
+        else:
+            colab_candidates = [
+                Path("/content/drive/MyDrive/arminer_bctn_gap"),
+                Path("/content/drive/Shareddrives/arminer_bctn_gap"),
+                Path("/content/arminer_bctn_gap"),
+            ]
+            for c_cand in colab_candidates:
+                if c_cand.exists() and c_cand.is_dir():
+                    active_gdrive_base = c_cand
+                    break
+
+            if not active_gdrive_base:
+                for drive_letter in ("H", "I", "G", "D"):
+                    gdrive_dir = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
+                    if gdrive_dir.exists():
+                        active_gdrive_base = gdrive_dir
+                        break
+
+        # Fast index from drive_index.json in 0.01s (tuyệt đối không quét rglob trên ổ đĩa ảo)
+        if drive_index_file.exists():
+            try:
+                drive_data = json.loads(drive_index_file.read_text(encoding="utf-8"))
+                for key, item in drive_data.items():
+                    parts = key.rsplit("_", 1)
+                    if len(parts) == 2 and parts[1].isdigit():
+                        ticker, year = parts[0].upper(), int(parts[1])
+                        rec_id = f"LOCAL_{ticker}_{year}"
+                        if rec_id not in self._local_index:
+                            l1, l2 = self.industry_classifier.get_industry(ticker)
+                            c_info = self.industry_classifier.get_company_info(ticker) or {}
+                            raw_ex = str(c_info.get("exchange", "HSX")).upper().strip()
+                            norm_ex = "HSX" if raw_ex in ("HOSE", "HSX") else ("HNX" if raw_ex == "HNX" else ("UPCOM" if "UPCOM" in raw_ex else raw_ex))
+
+                            fname = item.get("file_name", f"{ticker}_{year}_BCTN.pdf")
+                            local_p = str(active_gdrive_base / ticker / fname) if active_gdrive_base else ""
+
+                            self._local_index[rec_id] = {
+                                "record_id": rec_id,
+                                "ticker": ticker,
+                                "year": year,
+                                "exchange": norm_ex,
+                                "file_name": fname,
+                                "local_path": local_p,
+                                "source": "gdrive_gap_filler",
+                                "icb_l1": l1,
+                                "icb_l2": l2,
+                                "file_size_mb": round(item.get("file_size", 0) / (1024 * 1024), 2),
+                                "status": "ready" if local_p else "cloud_available",
+                                "gdrive_file_id": item.get("file_id", ""),
+                                "direct_url": item.get("direct_url", ""),
+                            }
+            except Exception as e:
+                logger.warning(f"UnifiedCatalog: Could not load drive_index.json: {e}")
+        elif active_gdrive_base:
+            self.index_directory(str(active_gdrive_base), source_name="gdrive_gap_filler")
 
         logger.info(f"UnifiedCatalog: Indexed {len(self._local_index)} local PDFs")
 
@@ -211,42 +279,119 @@ class UnifiedCatalog:
         into the catalog so they become searchable and downloadable via the
         gap-filler HuggingFace dataset (Stage 1.6 in zenodo_downloader).
         """
+        rows = []
+        seen_keys = set()
+
+        # 1. From gap_manifest.csv
         gap_csv = self.workspace_root / "data" / "gap_manifest.csv"
-        if not gap_csv.exists():
+        if gap_csv.exists():
+            try:
+                gap_df = pd.read_csv(gap_csv, encoding="utf-8-sig")
+                uploaded = gap_df[gap_df["search_status"].isin(["uploaded", "verified"])]
+                for _, r in uploaded.iterrows():
+                    ticker = str(r["ticker"]).upper()
+                    year = int(r["year"])
+                    fname = f"{ticker}_{year}_BCTN.pdf"
+                    seen_keys.add((ticker, year))
+                    rows.append({
+                        "record_id": f"GAP_{ticker}_{year}",
+                        "ticker_folder": ticker,
+                        "ticker_file": ticker,
+                        "year_full": year,
+                        "archive_period": "gap_filler",
+                        "document_type": "annual_report",
+                        "file_name": fname,
+                        "relative_path": f"{ticker}/{fname}",
+                        "file_size_bytes": 0,
+                        "file_size_mb": 0.0,
+                        "sha256": "",
+                        "status": "gap_filler",
+                        "notes": str(r.get("source", "")),
+                    })
+            except Exception as e:
+                logger.warning(f"Could not load gap manifest: {e}")
+
+        # 2. Auto-discover physical PDFs in Google Drive folder
+        gdrive_dirs = []
+        gdrive_env = os.environ.get("ARMINER_GDRIVE_PATH")
+        if gdrive_env and Path(gdrive_env).exists():
+            gdrive_dirs.append(Path(gdrive_env))
+        for dl in ("H", "I", "G", "D"):
+            p = Path(f"{dl}:\\My Drive\\arminer_bctn_gap")
+            if p.exists():
+                gdrive_dirs.append(p)
+                break
+
+        # 2. Fast Auto-discover from drive_index.json (tránh rglob trên ổ đĩa ảo cực chậm)
+        drive_index_file = self.workspace_root / "data" / "gap_filler" / "drive_index.json"
+        indexed_from_json = False
+        if drive_index_file.exists():
+            try:
+                d_map = json.loads(drive_index_file.read_text(encoding="utf-8"))
+                for k, v in d_map.items():
+                    parts = k.split("_", 1)
+                    if len(parts) == 2 and parts[1].isdigit():
+                        t = parts[0].upper()
+                        y = int(parts[1])
+                        if (t, y) not in seen_keys:
+                            seen_keys.add((t, y))
+                            fname = v.get("file_name", f"{t}_{y}_BCTN.pdf")
+                            f_size = v.get("file_size", 0)
+                            rows.append({
+                                "record_id": f"GAP_{t}_{y}",
+                                "ticker_folder": t,
+                                "ticker_file": t,
+                                "year_full": y,
+                                "archive_period": "gap_filler",
+                                "document_type": "annual_report",
+                                "file_name": fname,
+                                "relative_path": f"{t}/{fname}",
+                                "file_size_bytes": f_size,
+                                "file_size_mb": round(f_size / (1024 * 1024), 2),
+                                "sha256": "",
+                                "status": "gap_filler",
+                                "notes": "gdrive_cloud",
+                            })
+                indexed_from_json = True
+            except Exception as e:
+                logger.warning(f"Could not load drive_index.json: {e}")
+
+        if not indexed_from_json:
+            for g_dir in gdrive_dirs:
+                try:
+                    for pdf_file in g_dir.rglob("*.pdf"):
+                        if pdf_file.stat().st_size < 50_000:
+                            continue
+                        m = re.match(r"^([A-Z0-9]{2,10})_(\d{4})_BCTN\.pdf$", pdf_file.name, re.IGNORECASE)
+                        if m:
+                            t = m.group(1).upper()
+                            y = int(m.group(2))
+                            if (t, y) not in seen_keys:
+                                seen_keys.add((t, y))
+                                size_mb = round(pdf_file.stat().st_size / (1024 * 1024), 2)
+                                rows.append({
+                                    "record_id": f"GAP_{t}_{y}",
+                                    "ticker_folder": t,
+                                    "ticker_file": t,
+                                    "year_full": y,
+                                    "archive_period": "gap_filler",
+                                    "document_type": "annual_report",
+                                    "file_name": pdf_file.name,
+                                    "relative_path": f"{t}/{pdf_file.name}",
+                                    "file_size_bytes": pdf_file.stat().st_size,
+                                    "file_size_mb": size_mb,
+                                    "sha256": "",
+                                    "status": "gap_filler",
+                                    "notes": "gdrive_physical",
+                                })
+                except Exception as e:
+                    logger.warning(f"Could not scan Google Drive directory: {e}")
+
+        if not rows:
             return
 
         try:
-            gap_df = pd.read_csv(gap_csv, encoding="utf-8-sig")
-            # Only include records that have been actually uploaded
-            uploaded = gap_df[gap_df["search_status"].isin(["uploaded", "verified"])]
-            if uploaded.empty:
-                logger.debug(f"UnifiedCatalog: gap_manifest.csv has {len(gap_df)} entries but none uploaded yet")
-                return
-
-            # Build records in Zenodo-compatible schema
-            rows = []
-            for _, r in uploaded.iterrows():
-                ticker = str(r["ticker"]).upper()
-                year = int(r["year"])
-                fname = f"{ticker}_{year}_BCTN.pdf"
-                rows.append({
-                    "record_id": f"GAP_{ticker}_{year}",
-                    "ticker_folder": ticker,
-                    "ticker_file": ticker,
-                    "year_full": year,
-                    "archive_period": "gap_filler",
-                    "document_type": "annual_report",
-                    "file_name": fname,
-                    "relative_path": f"{ticker}/{fname}",
-                    "file_size_bytes": 0,
-                    "file_size_mb": 0.0,
-                    "sha256": "",
-                    "status": "gap_filler",
-                    "notes": str(r.get("source", "")),
-                })
-
             gap_records = pd.DataFrame(rows)
-
             if self._zenodo_df is not None:
                 existing_keys = set(
                     zip(self._zenodo_df["ticker_folder"].str.upper(),
@@ -293,6 +438,12 @@ class UnifiedCatalog:
 
         full_map = self.industry_classifier._ticker_full_map
 
+        # Map local files from _local_index and Google Drive (in-memory, instant)
+        gdrive_map: Dict[Tuple[str, int], str] = {}
+        for rec in self._local_index.values():
+            if rec.get("local_path"):
+                gdrive_map[(rec["ticker"], rec["year"])] = rec["local_path"]
+
         for i, row in enumerate(df.to_dict("records")):
             t = str(row["ticker_folder"]).upper()
             y = int(row["year_full"]) if pd.notna(row["year_full"]) else 0
@@ -306,22 +457,49 @@ class UnifiedCatalog:
             raw_ex = str(c_info.get("exchange", "Khác")).upper().strip()
             norm_ex = "HSX" if raw_ex in ("HOSE", "HSX") else ("HNX" if raw_ex == "HNX" else ("UPCOM" if "UPCOM" in raw_ex else "Khác"))
 
+            row_status = str(row.get("status", ""))
+            row_arch = str(row.get("archive_period", ""))
+            rec_id = str(row.get("record_id", ""))
+
+            if row_status == "gap_filler" or row_arch == "gap_filler" or "GAP_" in rec_id:
+                src = "gap_filler"
+            elif row_arch == "supplement" or "SUPP_" in rec_id:
+                src = "supplement"
+            else:
+                src = "zenodo"
+
+            # Check local file existence in Google Drive or local index
+            is_local = False
+            local_path = ""
+            if (t, y) in gdrive_map:
+                is_local = True
+                local_path = gdrive_map[(t, y)]
+            elif f"{t}_{y}" in self._local_index:
+                is_local = True
+                local_path = self._local_index[f"{t}_{y}"].get("local_path", "")
+
             rec = {
-                "record_id": str(row["record_id"]),
+                "record_id": rec_id,
                 "ticker": t,
+                "company_name": c_info.get("name", ""),
+                "company_short_name": c_info.get("short_name", ""),
                 "year": y,
                 "exchange": norm_ex,
                 "file_name": str(row["file_name"]),
                 "relative_path": str(row["relative_path"]),
-                "archive_period": str(row["archive_period"]),
-                "source": "zenodo",
+                "archive_period": row_arch,
+                "source": src,
                 "icb_l1": l1,
                 "icb_l2": l2,
                 "icb_l3": l3,
                 "icb_l4": l4,
                 "icb_code": icb_code,
                 "file_size_mb": float(row["file_size_mb"]) if pd.notna(row["file_size_mb"]) else 0.0,
+                "website": c_info.get("website", ""),
+                "ir_portal": c_info.get("ir_portal", ""),
                 "status": "available",
+                "is_local": is_local,
+                "local_path": local_path,
             }
             records.append(rec)
 
@@ -440,6 +618,32 @@ class UnifiedCatalog:
         has_upcom = "UPCOM" in exchanges_set
         return has_hsx and has_hnx and has_upcom
 
+    @staticmethod
+    def _strip_vietnamese_accents(text: str) -> str:
+        """Chuyển đổi chuỗi tiếng Việt có dấu sang không dấu để tìm kiếm mờ mượt mà."""
+        import unicodedata
+        nfkd = unicodedata.normalize('NFKD', text)
+        return "".join([c for c in nfkd if not unicodedata.combining(c)]).replace('đ', 'd').replace('Đ', 'D')
+
+    def _find_tickers_by_company_name(self, query: str) -> List[str]:
+        """Tìm mã chứng khoán theo tên công ty hoặc tên thương hiệu viết tắt."""
+        if not query or len(query.strip()) < 4:
+            return []
+        q = query.strip().upper()
+        q_ascii = self._strip_vietnamese_accents(q)
+        matched = []
+        for t, info in self.industry_classifier._ticker_full_map.items():
+            name = str(info.get("name", "")).upper()
+            short_name = str(info.get("short_name", "")).upper()
+            if q in name or q in short_name:
+                matched.append(t)
+            elif q_ascii:
+                name_ascii = self._strip_vietnamese_accents(name)
+                short_ascii = self._strip_vietnamese_accents(short_name)
+                if q_ascii in name_ascii or q_ascii in short_ascii:
+                    matched.append(t)
+        return matched
+
     def search(
         self,
         ticker: Optional[str] = None,
@@ -455,7 +659,7 @@ class UnifiedCatalog:
         limit: int = 500,
         return_total: bool = False,
     ) -> List[Dict[str, Any]] | Tuple[List[Dict[str, Any]], int]:
-        """Ultra-fast search across 14,528 reports via O(1) Inverted Indices."""
+        """Ultra-fast search across all reports via O(1) Inverted Indices and Company Name matching."""
         self.initialize()
         results: List[Dict[str, Any]] = []
         total_matched = 0
@@ -464,27 +668,26 @@ class UnifiedCatalog:
         if source_filter != "local_only" and self._records_cache:
             matched_indices: Optional[Set[int]] = None
 
-            # 1. Ticker filter
+            # 1. Ticker & Company Name filter
             if ticker and ticker.strip():
                 tokens, is_multi = self._parse_ticker_filter(ticker)
+                t_indices: Set[int] = set()
+
                 if tokens:
-                    t_indices: Set[int] = set()
-                    if not is_multi:
-                        tok = tokens[0]
+                    for tok in tokens:
                         if tok in self._ticker_index:
                             t_indices.update(self._ticker_index[tok])
                         for ut in self._unique_tickers:
                             if tok in ut and ut != tok:
                                 t_indices.update(self._ticker_index[ut])
-                    else:
-                        for tok in tokens:
-                            if tok in self._ticker_index:
-                                t_indices.update(self._ticker_index[tok])
-                            elif len(tok) < 3:
-                                for ut in self._unique_tickers:
-                                    if tok in ut:
-                                        t_indices.update(self._ticker_index[ut])
-                    matched_indices = t_indices
+
+                # Mở rộng tìm theo Tên doanh nghiệp & Thương hiệu
+                matched_by_name = self._find_tickers_by_company_name(ticker)
+                for mt in matched_by_name:
+                    if mt in self._ticker_index:
+                        t_indices.update(self._ticker_index[mt])
+
+                matched_indices = t_indices
 
             # 2. Sector filter
             if sector:
@@ -682,10 +885,17 @@ class UnifiedCatalog:
             loc_yrs = sorted(set(data["local_years"]))
             zen_yrs = sorted(set(data["zenodo_years"]))
             all_yrs = sorted(set(loc_yrs + zen_yrs))
+            c_info = self.industry_classifier._ticker_full_map.get(t, {})
+            raw_ex = str(c_info.get("exchange", "Khác")).upper().strip()
+            norm_ex = "HSX" if raw_ex in ("HOSE", "HSX") else ("HNX" if raw_ex == "HNX" else ("UPCOM" if "UPCOM" in raw_ex else "Khác"))
             summaries.append({
                 "ticker": t,
-                "icb_l1": data["icb_l1"],
-                "icb_l2": data["icb_l2"],
+                "company_name": c_info.get("name", ""),
+                "company_short_name": c_info.get("short_name", ""),
+                "exchange": norm_ex,
+                "icb_l1": data["icb_l1"] or c_info.get("icb_l1", "Khác"),
+                "icb_l2": data["icb_l2"] or c_info.get("icb_l2", "Chưa phân loại"),
+                "website": c_info.get("website", ""),
                 "total_reports": len(all_yrs),
                 "local_reports": len(loc_yrs),
                 "has_local": len(loc_yrs) > 0,

@@ -650,41 +650,26 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
     n_pages = 1
     if file_path.suffix.lower() == ".pdf":
         try:
-            doc = fitz.open(file_path)
-            n_pages = len(doc)
-            # Use PyMuPDF C-level flags: TEXT_DEHYPHENATE automatically removes line-break hyphens,
-            # TEXT_PRESERVE_WHITESPACE preserves tabular alignments
-            extract_flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_PRESERVE_WHITESPACE
-            
-            has_scanned_pages = False
-            file_size_kb = file_path.stat().st_size / 1024
-            kb_per_page = file_size_kb / n_pages if n_pages > 0 else 0
-            
-            page_texts = []
-            for page in doc:
-                p_text = page.get_text(flags=extract_flags)
-                page_texts.append(p_text)
-                
-                # Phát hiện trang nghi ngờ là ảnh scan (ít text + có hình ảnh + file nặng)
-                if not has_scanned_pages and len(p_text.strip()) < 400:
-                    if len(page.get_images()) > 0 and kb_per_page > 20:
-                        has_scanned_pages = True
-
-            text = "\n".join(page_texts)
-            doc.close()
-
-            # Nếu phát hiện có trang scan (Hybrid) HOẶC toàn bộ file quá ít chữ (Full scan)
-            if has_scanned_pages or (len(text.strip()) < n_pages * 300 and n_pages > 0):
-                try:
-                    from arminer.ocr.engine import OCREngine
-                    ocr_engine = OCREngine()
-                    ocr_res = ocr_engine.extract_text(file_path)
-                    if ocr_res and len(ocr_res.strip()) > len(text.strip()):
-                        text = ocr_res
-                except Exception as ocr_err:
-                    logger.debug(f"OCR fallback skipped for {file_path}: {ocr_err}")
+            from arminer.ocr.engine import OCREngine
+            ocr_engine = OCREngine()
+            # Trích xuất Smart Hybrid: Native PyMuPDF siêu tốc cho 100% trang có chữ,
+            # chỉ OCR các trang scan thực sự (báo cáo kiểm toán, bảng biểu có dấu đỏ).
+            text = ocr_engine.extract_text(file_path, ocr_mode="smart")
+            try:
+                doc_probe = fitz.open(file_path)
+                n_pages = len(doc_probe)
+                doc_probe.close()
+            except Exception:
+                n_pages = 1
         except Exception as e:
             logger.debug(f"Failed to extract PDF {file_path}: {e}")
+            try:
+                doc = fitz.open(file_path)
+                n_pages = len(doc)
+                text = "\n".join(p.get_text() for p in doc)
+                doc.close()
+            except Exception:
+                text = ""
     else:
         try:
             text = file_path.read_text(encoding="utf-8", errors="replace")
@@ -738,6 +723,8 @@ def _process_one_bctn(
 
     row = {
         "ticker": item["ticker"],
+        "company_name": item.get("company_name", ""),
+        "exchange": item.get("exchange", ""),
         "year": item["year"],
         "icb_level1": item.get("icb_l1", "Khác"),
         "icb_level2": item.get("icb_l2", "Khác"),
@@ -974,6 +961,8 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                         target_items.append({
                             "path": Path(lp),
                             "ticker": r.get("ticker", ""),
+                            "company_name": r.get("company_name", ""),
+                            "exchange": r.get("exchange", "HSX"),
                             "year": r.get("year"),
                             "icb_l1": r.get("icb_l1", "Khác"),
                             "icb_l2": r.get("icb_l2", "Khác"),
@@ -997,8 +986,11 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                     t_val = parsed[0] if parsed else p.parent.name.replace("MST_", "").upper()
                     y_val = parsed[1] if parsed else None
                     l1, l2 = catalog.industry_classifier.get_industry(t_val)
+                    c_info = catalog.industry_classifier._ticker_full_map.get(t_val, {})
                     target_items.append({
                         "path": p, "ticker": t_val, "year": y_val,
+                        "company_name": c_info.get("name", ""),
+                        "exchange": c_info.get("exchange", "HSX"),
                         "icb_l1": l1, "icb_l2": l2,
                     })
 
@@ -1083,7 +1075,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         df = pd.DataFrame(rows)
         core_order = [
-            "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+            "ticker", "company_name", "exchange", "year", "icb_level1", "icb_level2", "file", "pages",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
             "Unique_Keywords",
         ]
