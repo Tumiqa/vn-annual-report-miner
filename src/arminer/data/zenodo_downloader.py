@@ -534,33 +534,111 @@ class ZenodoDownloader:
         ticker: str,
         year: int,
     ) -> Optional[Path]:
-        """Try downloading a PDF from the gap-filler HuggingFace dataset.
+        """Try downloading a PDF from the gap-filler Google Drive repository.
 
-        This dataset contains reports that are missing from both Zenodo and
-        the primary HF supplement. Returns None silently if unavailable.
+        Uses a shared Google Drive folder with a drive_index.json file that maps
+        (ticker, year) → Google Drive file ID. Downloads via gdown for speed and
+        reliability (no rate limits, no authentication needed for shared files).
+
+        Setup: Set GDRIVE_GAP_INDEX_URL env var to the direct download link of
+        drive_index.json, or place it at data/gap_filler/drive_index.json.
+
+        drive_index.json format:
+        {
+            "ACB_2015": "1aBcDeFgHiJkLmNoPqRsTuVwXyZ",
+            "VNM_2010": "1xYzAbCdEfGhIjKlMnOpQrStUvW",
+            ...
+        }
         """
-        try:
-            from huggingface_hub import hf_hub_download
-        except ImportError:
+        gap_dir = self.cache_root / "gap_filler"
+        cached_pdf = gap_dir / ticker / f"{ticker}_{year}_BCTN.pdf"
+
+        # Already cached locally
+        if cached_pdf.exists() and cached_pdf.stat().st_size > 1000:
+            return cached_pdf
+
+        # Load drive index
+        index = self._load_drive_index()
+        if not index:
             return None
 
-        hf_repo = os.environ.get("HF_GAP_FILLER_REPO", "Tumiqa103/vn-bctn-gap-filler")
-        hf_filename = f"pdfs/{ticker}/{ticker}_{year}_BCTN.pdf"
+        key = f"{ticker}_{year}"
+        file_id = index.get(key)
+        if not file_id:
+            return None
+
+        # Download from Google Drive via gdown
+        try:
+            import gdown
+        except ImportError:
+            try:
+                import subprocess
+                subprocess.check_call(["pip", "install", "gdown", "-q"])
+                import gdown
+            except Exception:
+                logger.debug("gdown not available, skipping Google Drive gap filler")
+                return None
 
         try:
-            local_path = hf_hub_download(
-                repo_id=hf_repo,
-                filename=hf_filename,
-                repo_type="dataset",
-                cache_dir=str(self.cache_root / "hf_cache"),
-            )
-            if local_path and Path(local_path).exists():
-                logger.info(f"Downloaded from Gap Filler: {hf_filename}")
-                return Path(local_path)
-        except Exception:
-            # Silent fallback — gap filler repo not available or file not uploaded yet
-            pass
-        return None
+            cached_pdf.parent.mkdir(parents=True, exist_ok=True)
+            url = f"https://drive.google.com/uc?id={file_id}"
+            gdown.download(url, str(cached_pdf), quiet=True)
+
+            if cached_pdf.exists() and cached_pdf.stat().st_size > 1000:
+                logger.info(f"Downloaded from Google Drive gap filler: {ticker} ({year})")
+                return cached_pdf
+            else:
+                # Download failed or file too small
+                if cached_pdf.exists():
+                    cached_pdf.unlink(missing_ok=True)
+                return None
+        except Exception as e:
+            logger.debug(f"Google Drive gap filler download failed for {key}: {e}")
+            if cached_pdf.exists():
+                cached_pdf.unlink(missing_ok=True)
+            return None
+
+    def _load_drive_index(self) -> Dict[str, str]:
+        """Load or cache the Google Drive file index mapping (ticker_year → file_id)."""
+        if hasattr(self, "_drive_index_cache") and self._drive_index_cache is not None:
+            return self._drive_index_cache
+
+        # 1. Check local file
+        local_index = Path(__file__).resolve().parent.parent.parent.parent / "data" / "gap_filler" / "drive_index.json"
+        if not local_index.exists():
+            # Also check workspace root
+            try:
+                from pathlib import Path as P
+                cwd_index = P.cwd() / "data" / "gap_filler" / "drive_index.json"
+                if cwd_index.exists():
+                    local_index = cwd_index
+            except Exception:
+                pass
+
+        if local_index.exists():
+            try:
+                self._drive_index_cache = json.loads(local_index.read_text(encoding="utf-8"))
+                logger.info(f"Loaded Google Drive gap index: {len(self._drive_index_cache)} entries")
+                return self._drive_index_cache
+            except Exception as e:
+                logger.warning(f"Could not parse drive_index.json: {e}")
+
+        # 2. Try downloading from env URL
+        index_url = os.environ.get("GDRIVE_GAP_INDEX_URL")
+        if index_url:
+            try:
+                resp = requests.get(index_url, timeout=15)
+                if resp.status_code == 200:
+                    local_index.parent.mkdir(parents=True, exist_ok=True)
+                    local_index.write_text(resp.text, encoding="utf-8")
+                    self._drive_index_cache = resp.json()
+                    logger.info(f"Downloaded Google Drive gap index: {len(self._drive_index_cache)} entries")
+                    return self._drive_index_cache
+            except Exception:
+                pass
+
+        self._drive_index_cache = {}
+        return self._drive_index_cache
 
     def download_reports(
         self,
