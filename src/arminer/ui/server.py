@@ -1295,7 +1295,8 @@ def catalog_cache_status():
 
 @app.post("/api/catalog/clear-cache")
 def catalog_clear_cache():
-    """Xóa sạch bộ nhớ đệm Zenodo để giải phóng dung lượng ổ đĩa."""
+    """Xóa sạch bộ nhớ đệm Zenodo và RAM để giải phóng dung lượng ổ đĩa."""
+    _BCTN_MEMORY_CACHE.clear()
     result = zenodo_downloader.clear_cache(also_clear_home_c=True)
     return result
 

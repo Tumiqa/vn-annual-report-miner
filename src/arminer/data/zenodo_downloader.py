@@ -55,17 +55,25 @@ def _get_cache_root() -> Path:
     Get or create the Zenodo cache root directory.
     Priority:
     1. Environment variable: ARMINER_CACHE_DIR
-    2. Non-C working drive (e.g. D:/.../data/zenodo_cache) to prevent filling OS drive C
-    3. Fallback: User home directory (~/.arminer/zenodo_cache)
+    2. Repository workspace root (vn-annual-report-miner/data/zenodo_cache)
+    3. Current working directory (cwd/data/zenodo_cache)
+    4. Fallback: User home directory (~/.arminer/zenodo_cache)
     """
     env_dir = os.environ.get("ARMINER_CACHE_DIR")
     if env_dir:
         cache_root = Path(env_dir)
     else:
+        ws_root = Path(__file__).resolve().parent.parent.parent.parent
+        ws_cache = ws_root / "data" / "zenodo_cache"
+        if ws_cache.exists():
+            return ws_cache
+
         try:
             cwd = Path.cwd()
+            if (cwd / "data" / "zenodo_cache").exists():
+                return cwd / "data" / "zenodo_cache"
             if cwd.drive and cwd.drive.upper() != "C:":
-                cache_root = cwd / "data" / "zenodo_cache"
+                cache_root = ws_cache if ws_root.exists() else (cwd / "data" / "zenodo_cache")
             else:
                 cache_root = Path.home() / ".arminer" / "zenodo_cache"
         except Exception:
@@ -858,48 +866,101 @@ class ZenodoDownloader:
         return reports
 
     def get_cache_status(self) -> Dict[str, Any]:
-        """Report what's currently cached in ~/.arminer/zenodo_cache/."""
+        """Report what's currently cached across all known cache directories."""
         status = {}
+        ws_root = Path(__file__).resolve().parent.parent.parent.parent
+        candidate_roots = [
+            self.cache_root,
+            ws_root / "data" / "zenodo_cache",
+            Path.cwd() / "data" / "zenodo_cache",
+            Path.cwd().parent / "data" / "zenodo_cache",
+            Path.home() / ".arminer" / "zenodo_cache",
+        ]
+        seen_roots = set()
+        active_roots = []
+        for r in candidate_roots:
+            if r.exists():
+                res = str(r.resolve())
+                if res not in seen_roots:
+                    seen_roots.add(res)
+                    active_roots.append(r)
+
         for period, zip_name in ARCHIVE_ZIP_MAP.items():
-            period_dir = self.cache_root / period
-            if period_dir.exists():
-                pdfs = list(period_dir.rglob("*.pdf"))
-                total_size = sum(f.stat().st_size for f in pdfs)
-                status[period] = {
-                    "cached_pdfs": len(pdfs),
-                    "total_size_mb": round(total_size / (1024 * 1024), 1),
-                }
-            else:
-                status[period] = {"cached_pdfs": 0, "total_size_mb": 0.0}
+            period_pdfs = set()
+            total_size = 0
+            for a_root in active_roots:
+                period_dir = a_root / period
+                if period_dir.exists():
+                    for f in period_dir.rglob("*.pdf"):
+                        res_p = str(f.resolve())
+                        if res_p not in period_pdfs:
+                            period_pdfs.add(res_p)
+                            total_size += f.stat().st_size
+            status[period] = {
+                "cached_pdfs": len(period_pdfs),
+                "total_size_mb": round(total_size / (1024 * 1024), 1),
+            }
         return status
 
     def clear_cache(self, also_clear_home_c: bool = True) -> Dict[str, Any]:
         """
-        Xoa toan bo file PDF trong bo nho dem de giai phong dung luong o dia.
+        Xóa toàn bộ file PDF và text cache trong bộ nhớ đệm để giải phóng dung lượng ổ đĩa.
+        Quét sạch tất cả các thư mục cache trên máy tính (cả ổ D: và ổ C:).
         """
         deleted_count = 0
         freed_bytes = 0
 
-        targets = [self.cache_root]
+        ws_root = Path(__file__).resolve().parent.parent.parent.parent
+        candidate_dirs = [
+            self.cache_root,
+            ws_root / "data" / "zenodo_cache",
+            Path.cwd() / "data" / "zenodo_cache",
+            Path.cwd().parent / "data" / "zenodo_cache",
+            ws_root / "data" / "gap_filler" / "cache",
+            self.cache_root / "gap_filler",
+        ]
         if also_clear_home_c:
-            home_cache = Path.home() / ".arminer" / "zenodo_cache"
-            if home_cache != self.cache_root and home_cache.exists():
-                targets.append(home_cache)
+            candidate_dirs.extend([
+                Path.home() / ".arminer" / "zenodo_cache",
+                Path.home() / ".arminer" / "text_cache",
+                Path.home() / ".arminer" / "reports",
+            ])
 
-        for t in targets:
-            if t.exists():
-                for p in list(t.rglob("*.pdf")):
+        seen_targets = set()
+        cleaned_targets = []
+        for d in candidate_dirs:
+            if not d.exists():
+                continue
+            resolved = str(d.resolve())
+            if resolved in seen_targets:
+                continue
+            seen_targets.add(resolved)
+            cleaned_targets.append(resolved)
+
+            # Xóa các file đệm
+            for p in list(d.rglob("*")):
+                if p.is_file() and p.suffix.lower() in (".pdf", ".txt", ".meta", ".bin"):
                     try:
-                        freed_bytes += p.stat().st_size
+                        sz = p.stat().st_size
                         p.unlink()
+                        freed_bytes += sz
                         deleted_count += 1
                     except Exception:
                         pass
+
+            # Xóa thư mục con rỗng
+            try:
+                for sub in sorted(list(d.rglob("*")), key=lambda x: len(x.parts), reverse=True):
+                    if sub.is_dir() and not any(sub.iterdir()):
+                        sub.rmdir()
+            except Exception:
+                pass
 
         logger.info(f"Đã dọn dẹp cache: xóa {deleted_count} file, giải phóng {freed_bytes / (1024*1024):.1f} MB")
         return {
             "deleted_files": deleted_count,
             "freed_mb": round(freed_bytes / (1024 * 1024), 2),
+            "cleaned_dirs": cleaned_targets,
             "current_cache_root": str(self.cache_root),
         }
 
