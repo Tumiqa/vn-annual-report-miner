@@ -435,6 +435,12 @@ class ZenodoDownloader:
         if hf_result:
             return hf_result
 
+        # --- STAGE 1.6: GAP FILLER CLOUD REPO ---
+        # For missing reports not in Zenodo/Supplement, try the gap-filler HF dataset
+        gap_result = self._try_gap_filler_download(ticker, year)
+        if gap_result:
+            return gap_result
+
         # Destination in cache
         period_dir = self.cache_root / archive_period
         cached_pdf = period_dir / relative_path
@@ -520,6 +526,39 @@ class ZenodoDownloader:
                 return Path(local_path)
         except Exception:
             # Silent fallback — HF not available or file not in repo
+            pass
+        return None
+
+    def _try_gap_filler_download(
+        self,
+        ticker: str,
+        year: int,
+    ) -> Optional[Path]:
+        """Try downloading a PDF from the gap-filler HuggingFace dataset.
+
+        This dataset contains reports that are missing from both Zenodo and
+        the primary HF supplement. Returns None silently if unavailable.
+        """
+        try:
+            from huggingface_hub import hf_hub_download
+        except ImportError:
+            return None
+
+        hf_repo = os.environ.get("HF_GAP_FILLER_REPO", "Tumiqa103/vn-bctn-gap-filler")
+        hf_filename = f"pdfs/{ticker}/{ticker}_{year}_BCTN.pdf"
+
+        try:
+            local_path = hf_hub_download(
+                repo_id=hf_repo,
+                filename=hf_filename,
+                repo_type="dataset",
+                cache_dir=str(self.cache_root / "hf_cache"),
+            )
+            if local_path and Path(local_path).exists():
+                logger.info(f"Downloaded from Gap Filler: {hf_filename}")
+                return Path(local_path)
+        except Exception:
+            # Silent fallback — gap filler repo not available or file not uploaded yet
             pass
         return None
 

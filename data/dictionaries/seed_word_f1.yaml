@@ -1,0 +1,438 @@
+name: Seed Word F1
+version: 1.0.0
+categories:
+  lớp 1 - ai core:
+    description: Category lớp 1 - ai core
+    keywords:
+    - keyword: Artificial Intelligence
+      weight: 1.0
+      variants:
+      - AI
+      - Trí tuệ nhân tạo
+      - Tri tue nhan tao
+      - Công nghệ AI
+      - Cong nghe AI
+      language: vi
+    - keyword: Generative AI
+      weight: 1.0
+      variants:
+      - GenAI
+      - Gen AI
+      - AI tạo sinh
+      - AI tao sinh
+      - Trí tuệ nhân tạo tạo sinh
+      language: vi
+    - keyword: Large Language Model
+      weight: 1.0
+      variants:
+      - LLM
+      - LLMs
+      - Mô hình ngôn ngữ lớn
+      - Mo hinh ngon ngu lon
+      - Large Language Models
+      language: vi
+    - keyword: Natural Language Processing
+      weight: 1.0
+      variants:
+      - NLP
+      - Xử lý ngôn ngữ tự nhiên
+      - Xu ly ngon ngu tu nhien
+      language: vi
+    - keyword: Machine Learning
+      weight: 1.0
+      variants:
+      - ML
+      - Học máy
+      - Hoc may
+      - Máy học
+      - May hoc
+      language: vi
+    - keyword: Neural Networks
+      weight: 1.0
+      variants:
+      - Neural Network
+      - Mạng nơ-ron
+      - Mạng nơ ron
+      - Mang no ron
+      - Mạng neuron
+      - Mang neuron
+      - ANN
+      - CNN
+      - RNN
+      language: vi
+    - keyword: Agentic AI
+      weight: 1.0
+      variants:
+      - Agentic
+      - AI tự chủ
+      - AI tu chu
+      language: vi
+    - keyword: AI Agents
+      weight: 1.0
+      variants:
+      - AI Agent
+      - AI đa tác nhân
+      - AI da tac nhan
+      - Tác nhân AI
+      - Tac nhan AI
+      language: vi
+    - keyword: Vietnamese LLM
+      weight: 1.0
+      variants:
+      - LLM tiếng Việt
+      - LLM tieng Viet
+      - LLM bản địa
+      - LLM ban dia
+      - Mô hình ngôn ngữ lớn tiếng Việt
+      language: vi
+    - keyword: Foundation Models
+      weight: 1.0
+      variants:
+      - Foundation Model
+      - Mô hình nền tảng
+      - Mo hinh nen tang
+      language: vi
+    - keyword: Model Fine-tuning
+      weight: 1.0
+      variants:
+      - Model Fine Tuning
+      - Fine-tuning
+      - Fine tuning
+      - Tinh chỉnh mô hình
+      - Tinh chinh mo hinh
+      language: vi
+    - keyword: Open-source AI Models
+      weight: 1.0
+      variants:
+      - Open-source AI
+      - Open Source AI
+      - Open Source AI Models
+      - AI mã nguồn mở
+      - AI ma nguon mo
+      - Mô hình AI mã nguồn mở
+      language: vi
+  lớp 2 - ai applications:
+    description: Category lớp 2 - ai applications
+    keywords:
+    - keyword: AI Camera
+      weight: 1.0
+      variants:
+      - Camera AI
+      - Smart Camera
+      - Camera thông minh
+      - FPT Camera AI
+      language: vi
+    - keyword: AI Camera Agent
+      weight: 1.0
+      variants:
+      - Camera AI Agent
+      - Video Compliance
+      - Giám sát video AI
+      language: vi
+    - keyword: AI Claim
+      weight: 1.0
+      variants:
+      - AI Claim Processing
+      - FPT AI Claim
+      - Xử lý bồi thường AI
+      - Tự động hóa bồi thường
+      language: vi
+    - keyword: AI Voice Agents
+      weight: 1.0
+      variants:
+      - AI Voice Agent
+      - Voicebot
+      - Voice bot
+      - Tổng đài AI
+      - Tong dai AI
+      - Trợ lý giọng nói AI
+      language: vi
+    - keyword: AI Chatbot
+      weight: 1.0
+      variants:
+      - Chatbot
+      - Chat bot
+      - Trợ lý ảo
+      - Tro ly ao
+      - Trợ lý ảo AI
+      - Virtual Assistant
+      - AI Assistant
+      language: vi
+    - keyword: AI Adjust
+      weight: 1.0
+      variants:
+      - FPT AI Adjust
+      - Giám định bồi thường AI
+      language: vi
+    - keyword: xMainframe
+      weight: 1.0
+      variants:
+      - xMainframe GenAI
+      - FPT xMainframe
+      - Chuyển đổi mainframe AI
+      language: vi
+    - keyword: Electronic Identification
+      weight: 1.0
+      variants:
+      - eID
+      - FPT eID
+      - Định danh sinh trắc học
+      - Dinh danh sinh trac hoc
+      - Biometric Identification
+      - eKYC
+      language: vi
+    - keyword: Fraud Detection
+      weight: 1.0
+      variants:
+      - Phát hiện gian lận
+      - Phat hien gian lan
+      - AI Fraud Detection
+      - Chống gian lận
+      language: vi
+    - keyword: Predictive Analytics
+      weight: 1.0
+      variants:
+      - Predictive Analysis
+      - Phân tích dự báo
+      - Phan tich du bao
+      - DeepSearchX
+      - DeepSearch
+      language: vi
+    - keyword: Predictive Maintenance
+      weight: 1.0
+      variants:
+      - Bảo trì dự đoán
+      - Bao tri du doan
+      - Sound Anomaly Detection
+      - Phát hiện âm thanh bất thường
+      - Phat hien am thanh bat thuong
+      language: vi
+  lớp 3 - ai enablers:
+    description: Category lớp 3 - ai enablers
+    keywords:
+    - keyword: AI Factory
+      weight: 1.0
+      variants:
+      - Nhà máy AI
+      - Nha may AI
+      - FPT AI Factory
+      language: vi
+    - keyword: Data Lake
+      weight: 1.0
+      variants:
+      - Data Warehouse
+      - Kho dữ liệu
+      - Kho du lieu
+      - Hồ dữ liệu
+      - Data360X
+      language: vi
+    - keyword: Big Data
+      weight: 1.0
+      variants:
+      - Dữ liệu lớn
+      - Du lieu lon
+      language: vi
+    - keyword: NVIDIA GPU
+      weight: 1.0
+      variants:
+      - NVIDIA
+      - GPU
+      - AI Computing
+      - Hạ tầng GPU
+      - Bộ xử lý đồ họa
+      language: vi
+    - keyword: Cloud Computing
+      weight: 1.0
+      variants:
+      - Điện toán đám mây
+      - Dien toan dam may
+      - FPT Cloud
+      - Đám mây điện toán
+      language: vi
+    - keyword: Data Center
+      weight: 1.0
+      variants:
+      - Datacenter
+      - Trung tâm Dữ liệu
+      - Trung tam du lieu
+      - Fornix
+      - FPT Fornix
+      language: vi
+    - keyword: AgentOps
+      weight: 1.0
+      variants:
+      - Agent Operations
+      - Vận hành tác nhân
+      - Van hanh tac nhan
+      language: vi
+    - keyword: AI Studio
+      weight: 1.0
+      variants:
+      - AI Inferencing
+      - Suy luận AI
+      - Suy luan AI
+      - Inference Platform
+      language: vi
+    - keyword: Cloud Migration
+      weight: 1.0
+      variants:
+      - Cloud Platform
+      - Azure
+      - AWS
+      - Dịch chuyển đám mây
+      - Dich chuyen dam may
+      language: vi
+  lớp 4 - digital non-ai & boundary:
+    description: Category lớp 4 - digital non-ai & boundary
+    keywords:
+    - keyword: Digital Transformation
+      weight: 1.0
+      variants:
+      - Chuyển đổi số
+      - Chuyen doi so
+      - DX
+      language: vi
+    - keyword: Enterprise Resource Planning
+      weight: 1.0
+      variants:
+      - ERP
+      - SAP
+      - Oracle
+      - Base.vn
+      language: vi
+    - keyword: Robotic Process Automation
+      weight: 1.0
+      variants:
+      - RPA
+      - Tự động hóa quy trình
+      - Tu dong hoa quy trinh
+      - akaBot
+      language: vi
+    - keyword: Intelligent Transportation System
+      weight: 1.0
+      variants:
+      - ITS
+      - Giao thông thông minh
+      - Giao thong thong minh
+      - ELCOM ITS
+      language: vi
+    - keyword: Electronic Toll Collection
+      weight: 1.0
+      variants:
+      - ETC
+      - eWIM
+      - iTMON
+      - Thu phí tự động
+      - Thu phi tu dong
+      - Cân tải trọng tự động
+      language: vi
+    - keyword: Telecommunications
+      weight: 1.0
+      variants:
+      - 5G
+      - Viễn thông
+      - Vien thong
+      - DWDM
+      - Viba
+      - Hạ tầng viễn thông
+      language: vi
+    - keyword: Blockchain
+      weight: 1.0
+      variants:
+      - Web3
+      - Chuỗi khối
+      - Chuoi khoi
+      language: vi
+    - keyword: Core Banking
+      weight: 1.0
+      variants:
+      - BSS/OSS
+      - BSS
+      - OSS
+      - E-wallet
+      - Ví điện tử
+      - Vi dien tu
+      language: vi
+    - keyword: Semiconductor
+      weight: 1.0
+      variants:
+      - Chip bán dẫn
+      - Chip ban dan
+      - Chip nguồn
+      - Vi mạch
+      - Semiconductor Chip
+      language: vi
+    - keyword: Unmanned Aerial Vehicle
+      weight: 1.0
+      variants:
+      - UAV
+      - Drone
+      - Thiết bị bay không người lái
+      - Thiet bi bay khong nguoi lai
+      - FPT UAV
+      language: vi
+  lớp 5 - ai governance & risk:
+    description: Category lớp 5 - ai governance & risk
+    keywords:
+    - keyword: AI Policy
+      weight: 1.0
+      variants:
+      - Chính sách AI
+      - Chinh sach AI
+      - Quyết định 1131
+      - Quyet dinh 1131
+      - NQ 57
+      - Nghị quyết 57
+      - Chiến lược AI quốc gia
+      language: vi
+    - keyword: AI Market Trends
+      weight: 1.0
+      variants:
+      - Xu hướng AI
+      - Xu huong AI
+      - McKinsey AI
+      - Gartner AI
+      - Xu hướng AI vĩ mô
+      language: vi
+    - keyword: ISO 42001
+      weight: 1.0
+      variants:
+      - ISO/IEC 42001
+      - ISO/IEC 42001:2023
+      - AIMS
+      - AI Management System
+      - Hệ thống quản lý AI
+      language: vi
+    - keyword: Responsible AI
+      weight: 1.0
+      variants:
+      - Đạo đức AI
+      - Dao duc AI
+      - Quản trị AI có trách nhiệm
+      - Responsible AI Governance
+      - AI Ethics
+      language: vi
+    - keyword: AI Awards
+      weight: 1.0
+      variants:
+      - Giải thưởng AI
+      - Giai thuong AI
+      - Âu Lạc Grand Prize
+      - Au Lac Grand Prize
+      language: vi
+    - keyword: Automation Bias
+      weight: 1.0
+      variants:
+      - Rủi ro phụ thuộc AI
+      - Rui ro phu thuoc AI
+      - AI Risk
+      - Thiên kiến tự động hóa
+      language: vi
+    - keyword: Model Drift
+      weight: 1.0
+      variants:
+      - Prompt Manipulation
+      - Prompt Injection
+      - Lỗ hổng Prompt
+      - Suy giảm mô hình
+      language: vi

@@ -165,6 +165,9 @@ class UnifiedCatalog:
         # 4. Merge supplement catalog (546 records from thầy gửi)
         self._load_supplement_catalog()
 
+        # 5. Merge gap filler catalog (missing reports tracked in gap_manifest.csv)
+        self._load_gap_filler_catalog()
+
     def _load_supplement_catalog(self):
         """Load and merge supplement index — mở rộng Zenodo với dữ liệu bổ sung.
 
@@ -201,6 +204,71 @@ class UnifiedCatalog:
         except Exception as e:
             logger.warning(f"Could not load supplement catalog: {e}")
 
+    def _load_gap_filler_catalog(self):
+        """Load gap filler records from gap_manifest.csv.
+
+        Only records with search_status == 'uploaded' or 'verified' are merged
+        into the catalog so they become searchable and downloadable via the
+        gap-filler HuggingFace dataset (Stage 1.6 in zenodo_downloader).
+        """
+        gap_csv = self.workspace_root / "data" / "gap_manifest.csv"
+        if not gap_csv.exists():
+            return
+
+        try:
+            gap_df = pd.read_csv(gap_csv, encoding="utf-8-sig")
+            # Only include records that have been actually uploaded
+            uploaded = gap_df[gap_df["search_status"].isin(["uploaded", "verified"])]
+            if uploaded.empty:
+                logger.debug(f"UnifiedCatalog: gap_manifest.csv has {len(gap_df)} entries but none uploaded yet")
+                return
+
+            # Build records in Zenodo-compatible schema
+            rows = []
+            for _, r in uploaded.iterrows():
+                ticker = str(r["ticker"]).upper()
+                year = int(r["year"])
+                fname = f"{ticker}_{year}_BCTN.pdf"
+                rows.append({
+                    "record_id": f"GAP_{ticker}_{year}",
+                    "ticker_folder": ticker,
+                    "ticker_file": ticker,
+                    "year_full": year,
+                    "archive_period": "gap_filler",
+                    "document_type": "annual_report",
+                    "file_name": fname,
+                    "relative_path": f"{ticker}/{fname}",
+                    "file_size_bytes": 0,
+                    "file_size_mb": 0.0,
+                    "sha256": "",
+                    "status": "gap_filler",
+                    "notes": str(r.get("source", "")),
+                })
+
+            gap_records = pd.DataFrame(rows)
+
+            if self._zenodo_df is not None:
+                existing_keys = set(
+                    zip(self._zenodo_df["ticker_folder"].str.upper(),
+                        self._zenodo_df["year_full"])
+                )
+                gap_new = gap_records[
+                    ~gap_records.apply(
+                        lambda row: (str(row["ticker_folder"]).upper(), row["year_full"]) in existing_keys,
+                        axis=1
+                    )
+                ]
+                if len(gap_new) > 0:
+                    self._zenodo_df = pd.concat([self._zenodo_df, gap_new], ignore_index=True)
+                    logger.info(
+                        f"UnifiedCatalog: Merged {len(gap_new)} gap-filler records "
+                        f"→ total {len(self._zenodo_df)} records"
+                    )
+            else:
+                self._zenodo_df = gap_records
+                logger.info(f"UnifiedCatalog: Loaded {len(gap_records)} gap-filler records")
+        except Exception as e:
+            logger.warning(f"Could not load gap filler catalog: {e}")
 
     def _build_inverted_indices(self):
         """Build high-speed O(1) in-memory indices and pre-formatted record objects."""
