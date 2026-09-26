@@ -91,10 +91,10 @@ def test_download_reports_multi_stage(tmp_path):
             "relative_path": "FPT_23CN_BCTN.pdf",
         },
         {
-            "ticker": "VNM",
+            "ticker": "TEST_CIRCUIT",
             "year": 2023,
             "archive_period": "2021_2025",
-            "relative_path": "full_data/VNM/VNM_23CN_BCTN.pdf",
+            "relative_path": "full_data/TEST_CIRCUIT/TEST_CIRCUIT_23CN_BCTN.pdf",
         },
     ]
 

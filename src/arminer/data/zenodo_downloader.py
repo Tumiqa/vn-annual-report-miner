@@ -298,12 +298,33 @@ class ZenodoDownloader:
         # Candidates to check in order of priority:
         search_dirs: List[Path] = []
 
-        # 1. Primary cache root
+        # 1. GOOGLE DRIVE FIRST (0ms, Local Mount)
+        gdrive_path = os.environ.get("ARMINER_GDRIVE_PATH")
+        if gdrive_path and Path(gdrive_path).exists():
+            search_dirs.append(Path(gdrive_path))
+        else:
+            for c_cand in [
+                Path("/content/drive/MyDrive/arminer_bctn_gap"),
+                Path("/content/drive/Shareddrives/arminer_bctn_gap"),
+                Path("/content/arminer_bctn_gap"),
+            ]:
+                if c_cand.exists() and c_cand.is_dir():
+                    search_dirs.append(c_cand)
+                    break
+
+            for drive_letter in ("H", "I", "G", "D"):
+                gdrive_dir = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
+                if gdrive_dir.exists():
+                    search_dirs.append(gdrive_dir)
+                    break
+
+        # 2. Primary cache root
         if archive_period:
             search_dirs.append(self.cache_root / archive_period)
         search_dirs.append(self.cache_root)
+        search_dirs.append(self.cache_root / "gap_filler")
 
-        # 2. Local workspace data directories
+        # 3. Local workspace data directories
         cwd = Path.cwd()
         ws_root = Path(__file__).resolve().parent.parent.parent.parent
         for root in (cwd, ws_root):
@@ -315,38 +336,10 @@ class ZenodoDownloader:
                 root / "data" / "bctn_new_extracted",
             ])
 
-        # 3. Environment directory
+        # 4. Environment directory
         env_dir = os.environ.get("ARMINER_REPORTS_DIR")
         if env_dir:
             search_dirs.append(Path(env_dir))
-
-        # 4. Google Drive gap filler (Drive for Desktop / Colab / Custom Cloud)
-        # Chỉ tìm trong kho gap filler nếu báo cáo là gap_filler, local, hoặc không thuộc archive Zenodo
-        is_zenodo_period = archive_period in ("2006_2010", "2011_2015", "2016_2020", "2021_2025")
-        if not is_zenodo_period or archive_period == "gap_filler":
-            gdrive_path = os.environ.get("ARMINER_GDRIVE_PATH")
-            if gdrive_path and Path(gdrive_path).exists():
-                search_dirs.append(Path(gdrive_path))
-            else:
-                # Check Google Colab mount points
-                for c_cand in [
-                    Path("/content/drive/MyDrive/arminer_bctn_gap"),
-                    Path("/content/drive/Shareddrives/arminer_bctn_gap"),
-                    Path("/content/arminer_bctn_gap"),
-                ]:
-                    if c_cand.exists() and c_cand.is_dir():
-                        search_dirs.append(c_cand)
-                        break
-
-                # Auto-detect common Windows Drive for Desktop mount points
-                for drive_letter in ("H", "I", "G"):
-                    gdrive_dir = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
-                    if gdrive_dir.exists():
-                        search_dirs.append(gdrive_dir)
-                        break
-
-            # 5. Gap filler local cache
-            search_dirs.append(self.cache_root / "gap_filler")
 
         # Check direct path first if relative_path is specified
         if relative_path:
@@ -464,10 +457,16 @@ class ZenodoDownloader:
         Stage 2: Check Circuit Breaker for Zenodo availability.
         Stage 3: Stream-extract from remote Zenodo archive with persistent index & retries.
         """
-        # --- STAGE 1: LOCAL FIRST ---
+        # --- STAGE 1: LOCAL & GOOGLE DRIVE FIRST (0ms) ---
         local_found = self._find_local_pdf(ticker, year, archive_period, relative_path)
         if local_found:
             return local_found
+
+        # --- STAGE 1.2: GOOGLE DRIVE CLOUD HTTP STREAM (0.5s) ---
+        # Ưu tiên tải trực tiếp từ Google Drive Cloud qua HTTP nếu có trong drive_index.json
+        gdrive_cloud = self._try_gap_filler_download(ticker, year)
+        if gdrive_cloud and gdrive_cloud.exists():
+            return gdrive_cloud
 
         # --- STAGE 1.5: HUGGING FACE SUPPLEMENT ---
         # For supplement records, try downloading from HF dataset
@@ -475,13 +474,6 @@ class ZenodoDownloader:
             hf_result = self._try_hf_download(ticker, year, relative_path)
             if hf_result:
                 return hf_result
-
-        # --- STAGE 1.6: GAP FILLER CLOUD REPO ---
-        # For missing reports not in Zenodo/Supplement, try the gap-filler HF / Google Drive dataset
-        if archive_period in ("gap_filler", "gap") or "gap" in str(archive_period).lower():
-            gap_result = self._try_gap_filler_download(ticker, year)
-            if gap_result:
-                return gap_result
 
         # Destination in cache
         period_dir = self.cache_root / archive_period

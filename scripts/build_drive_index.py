@@ -71,6 +71,25 @@ def build_drive_index():
                 "direct_url": f"https://drive.google.com/uc?export=download&id={file_id}",
             }
 
+    # Check physical folder for newly added files that are still syncing
+    for dl in ("H", "I", "G"):
+        g_dir = Path(f"{dl}:\\My Drive\\arminer_bctn_gap")
+        if g_dir.exists():
+            for p in g_dir.glob("*/*_BCTN.pdf"):
+                m = pattern.match(p.name)
+                if m:
+                    t = m.group(1).upper()
+                    y = int(m.group(2))
+                    k = f"{t}_{y}"
+                    if k not in mapping:
+                        mapping[k] = {
+                            "file_id": "",
+                            "file_name": p.name,
+                            "file_size": p.stat().st_size,
+                            "direct_url": "",
+                        }
+            break
+
     print(f"  Tổng số bản ghi chuẩn hóa theo (MÃ_NĂM): {len(mapping):,} bản ghi")
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
