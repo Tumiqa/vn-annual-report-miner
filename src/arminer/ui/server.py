@@ -661,6 +661,24 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
                 doc_probe.close()
             except Exception:
                 n_pages = 1
+
+            # Tự động phát hiện và cào bù file chuẩn nếu phát hiện file bị cào nhầm (<= 4 trang)
+            if n_pages <= 4:
+                try:
+                    from arminer.data.pdf_source import PDFSource
+                    from arminer.data.report_healer import ReportHealer
+                    parsed = PDFSource.parse_filename(file_path)
+                    if parsed:
+                        t_heal, y_heal = parsed
+                        if t_heal and y_heal:
+                            healer = ReportHealer()
+                            heal_res = healer.heal_report(t_heal, y_heal)
+                            if heal_res.get("status") == "healed":
+                                logger.info(f"Self-Healing: Đã tự động thay thế file cào lỗi {file_path.name} bằng bản đầy đủ {heal_res['new_pages']} trang!")
+                                text = ocr_engine.extract_text(file_path, ocr_mode="smart")
+                                n_pages = heal_res["new_pages"]
+                except Exception as e_heal:
+                    logger.debug(f"Self-Healing attempt skipped: {e_heal}")
         except Exception as e:
             logger.debug(f"Failed to extract PDF {file_path}: {e}")
             try:

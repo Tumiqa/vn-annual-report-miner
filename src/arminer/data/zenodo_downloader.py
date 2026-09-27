@@ -462,6 +462,22 @@ class ZenodoDownloader:
         # --- STAGE 1: LOCAL & GOOGLE DRIVE FIRST (0ms) ---
         local_found = self._find_local_pdf(ticker, year, archive_period, relative_path)
         if local_found:
+            # Audit check: Nếu phát hiện file cào nhầm (<= 4 trang), tự động cào bù bản chuẩn
+            try:
+                import fitz
+                doc_chk = fitz.open(local_found)
+                p_count = len(doc_chk)
+                doc_chk.close()
+                if p_count <= 4:
+                    from arminer.data.report_healer import ReportHealer
+                    healer = ReportHealer()
+                    heal_res = healer.heal_report(ticker, year)
+                    if heal_res.get("status") == "healed" and healer.gdrive_root:
+                        healed_file = healer.gdrive_root / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
+                        if healed_file.exists():
+                            return healed_file
+            except Exception:
+                pass
             return local_found
 
         # --- STAGE 1.2: GOOGLE DRIVE CLOUD HTTP STREAM (0.5s) ---
