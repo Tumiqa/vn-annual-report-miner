@@ -238,38 +238,85 @@ class OCREngine:
 
         extract_flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_PRESERVE_WHITESPACE
 
-        # Phase 1: Smart Hybrid Page Analysis
+        import unicodedata
+
+        # Phase 1: Smart Hybrid Page Analysis — Xử lý triệt để 100% các trường hợp PDF
         for i, page in enumerate(doc):
             p_text = page.get_text(flags=extract_flags).strip()
+            if p_text:
+                p_text = unicodedata.normalize("NFC", p_text)
 
             if ocr_mode == "fast":
                 pages_text.append(p_text)
                 continue
 
-            # Nếu trang đã có text native đầy đủ (>= 50 ký tự) -> Giữ nguyên 100%
-            if len(p_text) >= 50 and ocr_mode != "force_ocr":
+            if ocr_mode == "force_ocr":
+                scanned_pages.append(i)
                 pages_text.append(p_text)
                 continue
 
-            # Kiểm tra xem trang có ảnh scan toàn trang thực sự không
-            has_scanned_img = False
-            try:
-                for img_info in page.get_images():
-                    xref = img_info[0]
-                    base_img = doc.extract_image(xref)
-                    if base_img:
-                        w, h = base_img.get("width", 0), base_img.get("height", 0)
-                        if w >= 400 and h >= 400:
-                            has_scanned_img = True
-                            break
-            except Exception:
-                pass
+            # Kiểm tra chất lượng text native (phát hiện lỗi CID font / font mã hóa hỏng)
+            alnum_chars = sum(1 for c in p_text if c.isalnum())
+            is_corrupted = (
+                p_text.count("(cid:") >= 5
+                or p_text.count("\ufffd") >= 5
+                or (len(p_text) >= 50 and (alnum_chars / len(p_text)) < 0.25)
+            )
 
-            if has_scanned_img or ocr_mode == "force_ocr":
+            # Phân tích toàn diện hình ảnh trên trang (xử lý cả ảnh đơn lẫn trang ghép từ 4-5 ảnh nhỏ/lát cắt)
+            imgs = page.get_images()
+            total_img_pixels = 0
+            max_img_pixels = 0
+            has_substantial_single_img = False
+
+            if imgs:
+                for img_info in imgs:
+                    try:
+                        base_img = doc.extract_image(img_info[0])
+                        if base_img:
+                            w = base_img.get("width", 0)
+                            h = base_img.get("height", 0)
+                            px = w * h
+                            total_img_pixels += px
+                            if px > max_img_pixels:
+                                max_img_pixels = px
+                            if w >= 300 or h >= 200:
+                                has_substantial_single_img = True
+                    except Exception:
+                        pass
+
+            # TRƯỜNG HỢP 1: Văn bản native dày dặn, chuẩn xác (>= 300 ký tự và không hỏng font)
+            # -> Giữ nguyên 100%, tốc độ < 0.001s, không tốn tài nguyên OCR.
+            if len(p_text) >= 300 and alnum_chars >= 60 and not is_corrupted:
+                pages_text.append(p_text)
+                continue
+
+            # TRƯỜNG HỢP 2: Văn bản native ngắn (50 <= len < 300 ký tự)
+            # Kiểm tra xem đây là trang ngắn thật hay trang scan có đóng dấu số trang/header watermark (CafeF, stamp...)
+            if len(p_text) >= 50 and not is_corrupted:
+                if total_img_pixels >= 400_000:
+                    # Trang scan tài liệu nhưng có header/footer điện tử -> Kích hoạt OCR kết hợp
+                    scanned_pages.append(i)
+                    pages_text.append(p_text)
+                else:
+                    # Trang văn bản ngắn tự nhiên (lời đề tặng, trích dẫn) -> Giữ nguyên
+                    pages_text.append(p_text)
+                continue
+
+            # TRƯỜNG HỢP 3: Văn bản rất ít (< 50 ký tự) hoặc font bị hỏng
+            # Phân biệt giữa "Trang scan/ghép ảnh" vs "Trang trắng/bìa lót"
+            has_scanned_visual = (
+                total_img_pixels >= 50_000
+                or max_img_pixels >= 30_000
+                or (len(imgs) >= 1 and has_substantial_single_img)
+            )
+
+            if has_scanned_visual or is_corrupted:
+                # Trang scan thực sự (bao gồm trang ghép từ 4-5 ảnh lát cắt như AAA 2018, AAA 2019)
                 scanned_pages.append(i)
-                pages_text.append(p_text)  # Giữ text native phụ nếu có
+                pages_text.append(p_text)
             else:
-                # Trang ngắn không có ảnh lớn (trang bìa lót, khoảng trắng) -> không cần OCR
+                # Trang trắng, trang bìa lót không có hình ảnh đáng kể -> Bỏ qua OCR để tiết kiệm tài nguyên
                 pages_text.append(p_text)
 
         # Phase 2: Chạy OCR an toàn cho các trang scan thực sự
@@ -546,14 +593,40 @@ class OCREngine:
         - Whitespace thừa
         - Dòng trống liên tiếp (> 2)
 
-        KHÔNG loại bỏ:
-        - Dòng ngắn (có thể là số trang, mã, dữ liệu ngắn)
-        - Dòng lặp (có thể là header/footer hợp lệ trong bảng)
+        Chuẩn hóa:
+        - Typographic ligatures (fi, fl, ffi, ffl) và soft-hyphens (\\xad)
+        - Unicode NFC
+        - Thống nhất quy chuẩn đặt dấu tiếng Việt (hòa/hoà, hóa/hoá, thủy/thuỷ)
         """
-        # Loại control characters (trừ \n, \t)
+        import unicodedata
+
+        # 1. Khử typographic ligatures, soft-hyphens và zero-width spaces
+        for lig, rep in [
+            ('\ufb01', 'fi'), ('\ufb02', 'fl'), ('\ufb00', 'ff'),
+            ('\ufb03', 'ffi'), ('\ufb04', 'ffl'), ('\ufb05', 'st'), ('\ufb06', 'st'),
+            ('\xad', ''), ('\u200b', ''), ('\u200c', ''), ('\u200d', ''), ('\ufeff', ''),
+            ('\xa0', ' '),
+        ]:
+            text = text.replace(lig, rep)
+
+        # 2. Chuẩn hóa Unicode NFC toàn diện
+        text = unicodedata.normalize("NFC", text)
+
+        # 3. Đồng nhất quy chuẩn dấu tiếng Việt (chuyển kiểu mới hoá/hoà/thuỷ về kiểu chuẩn hóa/hòa/thủy)
+        for modern, trad in [
+            ('oà', 'òa'), ('oá', 'óa'), ('oả', 'ỏa'), ('oã', 'õa'), ('oạ', 'ọa'),
+            ('Oà', 'Òa'), ('Oá', 'Óa'), ('Oả', 'Ỏa'), ('Oã', 'Õa'), ('Oạ', 'Ọa'),
+            ('oè', 'òe'), ('oé', 'óe'), ('oẻ', 'ỏe'), ('oẽ', 'õe'), ('oẹ', 'ọe'),
+            ('Oè', 'Òe'), ('Oé', 'Óe'), ('Oẻ', 'Ỏe'), ('Oẽ', 'Õe'), ('Oẹ', 'Ọe'),
+            ('uỳ', 'ùy'), ('uý', 'úy'), ('uỷ', 'ủy'), ('uỹ', 'ũy'), ('uỵ', 'ụy'),
+            ('Uỳ', 'Ùy'), ('Uý', 'Úy'), ('Uỷ', 'Ủy'), ('Uỹ', 'Ũy'), ('Uỵ', 'Ụy'),
+        ]:
+            text = text.replace(modern, trad)
+
+        # 4. Loại control characters (trừ \n, \t)
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
 
-        # Chuẩn hóa whitespace (giữ nguyên \n)
+        # 5. Chuẩn hóa whitespace (giữ nguyên \n)
         text = re.sub(r'[ \t]+', ' ', text)
         text = re.sub(r'\n{4,}', '\n\n\n', text)
 

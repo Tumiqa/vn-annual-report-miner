@@ -702,8 +702,9 @@ def _process_one_bctn(
     calc: SmartVariableCalculator,
     flex_dict: FlexibleDictionary,
     topic_prefix: str,
+    use_fuzzy: bool = False,
 ) -> Optional[Dict[str, Any]]:
-    """Process a single report file: cached text extraction, fuzzy matching, variable calculation."""
+    """Process a single report file: cached text extraction, keyword matching, variable calculation."""
     p = item["path"]
     text, n_pages = _extract_text_cached(p)
     if not text:
@@ -711,7 +712,7 @@ def _process_one_bctn(
 
     words = text.split()
     total_words = len(words)
-    matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
+    matches = matcher.search(text, use_fuzzy=use_fuzzy) if total_words > 0 else []
 
     vars_r = calc.calculate_all(
         matches, total_words,
@@ -788,6 +789,7 @@ class ScanSelectedRequest(BaseModel):
     topic: Optional[str] = "blockchain"
     keywords: Optional[str] = None
     threshold: int = 85
+    use_fuzzy: bool = False
 
 
 @app.post("/api/scan-selected")
@@ -844,7 +846,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
     workers = min(8, max(2, (os.cpu_count() or 4)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = list(executor.map(
-            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, req.topic or "topic"),
+            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, req.topic or "topic", use_fuzzy=req.use_fuzzy),
             target_items
         ))
 
@@ -933,6 +935,7 @@ def scan_sector_reports(req: ScanSectorRequest):
         topic=req.topic,
         keywords=req.keywords,
         threshold=req.threshold,
+        use_fuzzy=req.use_fuzzy,
     ))
 
 
@@ -1025,7 +1028,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_item = {
-                executor.submit(_process_one_bctn, itm, matcher, calc, flex_dict, req.topic or "topic"): itm
+                executor.submit(_process_one_bctn, itm, matcher, calc, flex_dict, req.topic or "topic", req.use_fuzzy): itm
                 for itm in target_items
             }
 
@@ -1307,10 +1310,10 @@ async def scan_file(
     filepath: Optional[str] = Form(None),
     keywords: Optional[str] = Form(None),
     topic: Optional[str] = Form(None),
-    fuzzy: bool = Form(True),
+    fuzzy: bool = Form(False),
     threshold: int = Form(85),
 ):
-    """Quét 1 file PDF hoặc TXT (qua upload hoặc đường dẫn có sẵn)."""
+    """Quét 1 file PDF hoặc TXT (qua upload hoặc đường dẫn có sẵn) với Smart Hybrid OCR."""
     flex_dict = _resolve_dictionary(topic=topic, keywords=keywords)
 
     filename = "document"
@@ -1321,22 +1324,22 @@ async def scan_file(
         filename = file.filename
         content = await file.read()
         if filename.lower().endswith(".pdf"):
-            doc = fitz.open(stream=content, filetype="pdf")
-            text = "\n".join(page.get_text() for page in doc)
-            n_pages = len(doc)
-            doc.close()
+            # Save uploaded content to temp file to leverage full OCR engine & caching
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_f:
+                tmp_f.write(content)
+                tmp_path = Path(tmp_f.name)
+            try:
+                text, n_pages = _extract_text_cached(tmp_path)
+            finally:
+                if tmp_path.exists():
+                    tmp_path.unlink(missing_ok=True)
         else:
             text = content.decode("utf-8", errors="replace")
     elif filepath and os.path.exists(filepath):
         p = Path(filepath)
         filename = p.name
-        if p.suffix.lower() == ".pdf":
-            doc = fitz.open(p)
-            text = "\n".join(page.get_text() for page in doc)
-            n_pages = len(doc)
-            doc.close()
-        else:
-            text = p.read_text(encoding="utf-8", errors="replace")
+        text, n_pages = _extract_text_cached(p)
     else:
         raise HTTPException(status_code=400, detail="Vui lòng tải lên file hoặc cung cấp đường dẫn hợp lệ.")
 
@@ -1390,7 +1393,7 @@ async def scan_folder(
     folder_path: str = Form(...),
     keywords: Optional[str] = Form(None),
     topic: Optional[str] = Form(None),
-    fuzzy: bool = Form(True),
+    fuzzy: bool = Form(False),
     threshold: int = Form(85),
     limit: Optional[int] = Form(None),
 ):
@@ -1429,7 +1432,7 @@ async def scan_folder(
     workers = min(8, max(2, (os.cpu_count() or 4)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = list(executor.map(
-            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, topic or "topic"),
+            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, topic or "topic", use_fuzzy=fuzzy),
             target_items
         ))
 
@@ -3003,7 +3006,7 @@ async def mine_news_stream(req: NewsMineRequest):
             total_words = len(words)
             text_len = len(text)
 
-            matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
+            matches = matcher.search(text, use_fuzzy=False) if total_words > 0 else []
 
             vars_r = calc.calculate_all(
                 matches, total_words,
@@ -3218,7 +3221,7 @@ def mine_news_text(req: NewsPasteMineRequest):
     total_words = len(words)
     text_len = len(text)
 
-    matches = matcher.search(text, use_fuzzy=True) if total_words > 0 else []
+    matches = matcher.search(text, use_fuzzy=False) if total_words > 0 else []
 
     vars_r = calc.calculate_all(
         matches, total_words,

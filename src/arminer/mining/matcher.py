@@ -11,6 +11,8 @@ Kế thừa thuật toán đã tối ưu 20x-50x từ blockchain_pipeline:
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Dict, List, Optional, Set, Tuple
 
 from Levenshtein import distance as lev_distance, ratio as lev_ratio
@@ -42,13 +44,30 @@ COMMON_GENERAL_WORDS = {
 PUNCT_BREAKS = {",", ";", ":", ".", "!", "?", "\n", "—", "–", ")", "]", "}", "\"", "”"}
 STRIP_CHARS = ".,;:!?()[]{}\"'“”—–/\\"
 
+_VN_TONE_PAIRS = [
+    ('oà', 'òa'), ('oá', 'óa'), ('oả', 'ỏa'), ('oã', 'õa'), ('oạ', 'ọa'),
+    ('Oà', 'Òa'), ('Oá', 'Óa'), ('Oả', 'Ỏa'), ('Oã', 'Õa'), ('Oạ', 'Ọa'),
+    ('oè', 'òe'), ('oé', 'óe'), ('oẻ', 'ỏe'), ('oẽ', 'õe'), ('oẹ', 'ọe'),
+    ('Oè', 'Òe'), ('Oé', 'Óe'), ('Oẻ', 'Ỏe'), ('Oẽ', 'Õe'), ('Oẹ', 'Ọe'),
+    ('uỳ', 'ùy'), ('uý', 'úy'), ('uỷ', 'ủy'), ('uỹ', 'ũy'), ('uỵ', 'ụy'),
+    ('Uỳ', 'Ùy'), ('Uý', 'Úy'), ('Uỷ', 'Ủy'), ('Uỹ', 'Ũy'), ('Uỵ', 'Ụy'),
+]
+
+
+def normalize_vn_term(text: str) -> str:
+    """Chuẩn hóa Unicode NFC và thống nhất quy chuẩn dấu tiếng Việt (hóa/hoá, hòa/hoà)."""
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFC", text)
+    for modern, trad in _VN_TONE_PAIRS:
+        text = text.replace(modern, trad)
+    return text
+
 
 class GenericFuzzyMatcher:
     """
-    Khớp nối mờ từ khóa trong văn bản OCR.
-
-    Sử dụng Dictionary object thay vì hardcode — hoạt động
-    với bất kỳ chủ đề nghiên cứu nào.
+    Khớp nối từ khóa chuẩn xác trong văn bản báo cáo thường niên.
+    Hỗ trợ 100% tiếng Việt đa chuẩn, tiếng Anh chuyên ngành.
     """
 
     def __init__(self, dictionary: Dictionary, threshold: int = 85,
@@ -65,17 +84,28 @@ class GenericFuzzyMatcher:
         self.threshold = threshold
         self.categories = categories
 
-        # Load keywords
-        self.keywords = dictionary.get_flat_list(
+        # Load and normalize keywords (NFC + tone mark harmonization)
+        raw_keywords = dictionary.get_flat_list(
             include_variants=True,
             include_ambiguous=include_ambiguous,
             categories=categories,
         )
-        self.canonical_map = dictionary.get_canonical_map(
+        self.keywords = [normalize_vn_term(kw) for kw in raw_keywords]
+
+        raw_canon = dictionary.get_canonical_map(
             include_ambiguous=include_ambiguous,
             categories=categories,
         )
-        self.category_map = dictionary.get_category_map()
+        self.canonical_map = {
+            normalize_vn_term(k): normalize_vn_term(v)
+            for k, v in raw_canon.items()
+        }
+
+        raw_cat = dictionary.get_category_map()
+        self.category_map = {
+            normalize_vn_term(k): v
+            for k, v in raw_cat.items()
+        }
 
         # Exclusions list
         self.exclusions = set()
@@ -83,7 +113,7 @@ class GenericFuzzyMatcher:
             for exc in dictionary.exclusions:
                 kw = exc.get("keyword") if isinstance(exc, dict) else str(exc)
                 if kw:
-                    self.exclusions.add(kw.strip().lower())
+                    self.exclusions.add(normalize_vn_term(kw.strip().lower()))
 
         # Safety exclusions: Tránh nhầm lẫn phân cấp quản trị doanh nghiệp và từ tiếng Anh thông dụng
         self.exclusions.add("phân quyền")
@@ -91,10 +121,24 @@ class GenericFuzzyMatcher:
         self.exclusions.add("phân cấp")
         self.exclusions.add("together")
 
-        # Pre-index theo word count + char length (tối ưu sliding window)
+        # Precompile high-speed regex patterns for exact match
+        self._exact_patterns: List[Tuple[str, re.Pattern]] = []
+        for kw in self.keywords:
+            if kw.lower() in self.exclusions:
+                continue
+            words = kw.split()
+            if not words:
+                continue
+            if len(words) == 1:
+                pat = re.compile(r'(?<!\w)' + re.escape(words[0]) + r'(?!\w)', re.IGNORECASE)
+            else:
+                pat = re.compile(r'(?<!\w)' + r'\s+'.join(re.escape(w) for w in words) + r'(?!\w)', re.IGNORECASE)
+            self._exact_patterns.append((kw, pat))
+
+        # Pre-index theo word count + char length (tối ưu sliding window cho fuzzy fallback)
         self._kw_by_wc_len: Dict[int, Dict[int, List[str]]] = {}
         for kw in self.keywords:
-            if kw in self.exclusions:
+            if kw.lower() in self.exclusions:
                 continue
             wc = len(kw.split())
             cl = len(kw)
@@ -102,11 +146,11 @@ class GenericFuzzyMatcher:
 
         # Pre-index character sets and max allowed edits for mathematical early rejection
         self._kw_charsets: Dict[str, Set[str]] = {
-            kw: set(kw) for kw in self.keywords if kw not in self.exclusions
+            kw: set(kw) for kw in self.keywords if kw.lower() not in self.exclusions
         }
         self._kw_max_edits: Dict[str, int] = {
             kw: int(len(kw) * (1.0 - threshold / 100.0) + 0.5) + 1
-            for kw in self.keywords if kw not in self.exclusions
+            for kw in self.keywords if kw.lower() not in self.exclusions
         }
 
         logger.info(
@@ -119,56 +163,45 @@ class GenericFuzzyMatcher:
     # =========================================================================
 
     def exact_search(self, text: str) -> List[Dict]:
-        """Tìm kiếm chính xác (nhanh, pass đầu tiên)."""
+        """Tìm kiếm chính xác 100% (Exact match chuẩn khoa học)."""
+        if not text:
+            return []
         results: List[Dict] = []
-        text_lower = text.lower()
+        text_norm = normalize_vn_term(text)
 
-        for keyword in self.keywords:
-            if keyword in self.exclusions:
-                continue
+        for keyword, pat in self._exact_patterns:
+            for m in pat.finditer(text_norm):
+                start = m.start()
+                end = m.end()
+                actual_chunk = text_norm[start:end]
 
-            start = 0
-            while True:
-                pos = text_lower.find(keyword, start)
-                if pos == -1:
-                    break
+                # Guard cho từ viết tắt ngắn (<= 3 ký tự, e.g. 'ico', 'dlt', 'nft', 'evm', 'bnb', 'xrp', 'ai', 'ml'):
+                # Trong báo cáo thường niên, thuật ngữ viết tắt tiếng Anh bắt buộc phải viết HOA (ICO, NFT, DLT, AI, ML).
+                # Chữ thường xuất hiện trong văn bản là từ thông dụng tiếng Việt ("ai", "ml") hoặc nhiễu OCR.
+                if len(keyword) <= 3 and keyword.isascii():
+                    if not actual_chunk.isupper():
+                        continue
 
-                # Word boundary check
-                before_ok = (pos == 0) or (not text_lower[pos - 1].isalnum())
-                end_pos = pos + len(keyword)
-                after_ok = (end_pos >= len(text_lower)) or (not text_lower[end_pos].isalnum())
+                    # OCR noise check: Nếu ngữ cảnh xung quanh chứa nhiều ký tự lỗi OCR, bỏ qua
+                    c_start = max(0, start - 25)
+                    c_end = min(len(text_norm), end + 25)
+                    snippet_context = text_norm[c_start:c_end]
+                    noise_chars = sum(1 for c in snippet_context if c in "@#%^*~`'{}/\\")
+                    if noise_chars >= 3:
+                        continue
 
-                if before_ok and after_ok:
-                    # Guard cho từ viết tắt ngắn (<= 3 ký tự, e.g. 'ico', 'dlt', 'nft', 'evm', 'bnb', 'xrp'):
-                    # Trong báo cáo thường niên, thuật ngữ viết tắt tiếng Anh bắt buộc phải viết HOA (ICO, NFT, DLT).
-                    # Chữ thường xuất hiện trong văn bản OCR quét kém hoặc từ thông dụng là nhiễu.
-                    if len(keyword) <= 3 and keyword.isascii():
-                        actual_chunk = text[pos:end_pos]
-                        if not actual_chunk.isupper():
-                            start = pos + 1
-                            continue
-
-                        # OCR noise check: Nếu ngữ cảnh xung quanh chứa nhiều ký tự lỗi OCR, bỏ qua
-                        c_start = max(0, pos - 25)
-                        c_end = min(len(text), end_pos + 25)
-                        snippet_context = text[c_start:c_end]
-                        noise_chars = sum(1 for c in snippet_context if c in "@#%^*~`'{}/\\")
-                        if noise_chars >= 2:
-                            start = pos + 1
-                            continue
-
-                    canonical = self.canonical_map.get(keyword, keyword)
-                    results.append({
-                        "keyword_found": keyword,
-                        "keyword_canonical": canonical,
-                        "category": self.category_map.get(canonical, "unknown"),
-                        "position": pos,
-                        "match_type": "exact",
-                        "similarity": 100.0,
-                        "levenshtein_distance": 0,
-                    })
-
-                start = pos + 1
+                canonical = self.canonical_map.get(keyword, keyword)
+                cat = self.category_map.get(canonical, self.category_map.get(keyword, "unknown"))
+                results.append({
+                    "keyword_found": actual_chunk,
+                    "keyword_canonical": canonical,
+                    "category": cat,
+                    "position": start,
+                    "end_position": end,
+                    "match_type": "exact",
+                    "similarity": 100.0,
+                    "levenshtein_distance": 0,
+                })
 
         return results
 
@@ -323,8 +356,8 @@ class GenericFuzzyMatcher:
 
         return results
 
-    def search(self, text: str, use_fuzzy: bool = True) -> List[Dict]:
-        """Tìm kiếm kết hợp: Exact + Fuzzy."""
+    def search(self, text: str, use_fuzzy: bool = False) -> List[Dict]:
+        """Tìm kiếm từ khóa: Exact match mặc định (use_fuzzy=False chuẩn nghiên cứu khoa học)."""
         if not text:
             return []
 
@@ -342,21 +375,54 @@ class GenericFuzzyMatcher:
     # =========================================================================
 
     def _deduplicate(self, results: List[Dict]) -> List[Dict]:
-        """Loại trùng: cùng vị trí → giữ exact, hoặc similarity cao nhất."""
+        """
+        Loại bỏ trùng lặp dựa trên khoảng ký tự thực tế [start, end].
+        - Giữ cả 2 từ khóa nếu không đè lên nhau (ví dụ: 'AI/ML' -> cả 'AI' lẫn 'ML' đều được giữ).
+        - Nếu 2 từ khóa chồng lấn lên nhau (ví dụ: 'trí tuệ nhân tạo tạo sinh' và 'trí tuệ nhân tạo'):
+          ưu tiên từ khóa dài hơn, bao quát hơn (longest match).
+        - Nếu cùng độ dài và chồng lấn: ưu tiên exact match hoặc similarity cao hơn.
+        """
         if not results:
             return results
 
-        unique: Dict[int, Dict] = {}
+        # Đảm bảo có end_position cho từng kết quả
         for r in results:
-            key = r["position"] // 5
-            if key not in unique:
-                unique[key] = r
-            elif r["match_type"] == "exact" and unique[key]["match_type"] == "fuzzy":
-                unique[key] = r
-            elif r["similarity"] > unique[key]["similarity"]:
-                unique[key] = r
+            if "end_position" not in r:
+                r["end_position"] = r["position"] + len(r.get("keyword_found", ""))
 
-        return list(unique.values())
+        # Sắp xếp ưu tiên:
+        # 1. Exact match trước fuzzy match
+        # 2. Độ dài từ khóa dài hơn trước (longest match)
+        # 3. Similarity cao hơn
+        sorted_results = sorted(
+            results,
+            key=lambda x: (
+                1 if x.get("match_type") == "exact" else 0,
+                len(x.get("keyword_found", "")),
+                x.get("similarity", 0),
+            ),
+            reverse=True,
+        )
+
+        accepted: List[Dict] = []
+        for cand in sorted_results:
+            cand_start = cand["position"]
+            cand_end = cand["end_position"]
+
+            overlap = False
+            for acc in accepted:
+                acc_start = acc["position"]
+                acc_end = acc["end_position"]
+                # Hai khoảng [cand_start, cand_end) và [acc_start, acc_end) giao nhau khi:
+                if max(cand_start, acc_start) < min(cand_end, acc_end):
+                    overlap = True
+                    break
+
+            if not overlap:
+                accepted.append(cand)
+
+        accepted.sort(key=lambda x: x["position"])
+        return accepted
 
     def get_summary(self, matches: List[Dict]) -> Dict:
         """Thống kê kết quả matching."""

@@ -274,13 +274,17 @@ def _scan_directory(dir_path: Path, flex_dict, topic, fuzzy, threshold, output=N
             n_pages = 1
             if f.suffix.lower() == ".pdf":
                 try:
-                    import fitz
-                    doc = fitz.open(f)
-                    text = "\n".join(page.get_text() for page in doc)
-                    n_pages = len(doc)
-                    doc.close()
-                except Exception as e:
-                    logger.warning(f"Failed reading {f.name}: {e}")
+                    from arminer.ui.server import _extract_text_cached
+                    text, n_pages = _extract_text_cached(f)
+                except Exception:
+                    try:
+                        import fitz
+                        doc = fitz.open(f)
+                        text = "\n".join(page.get_text() for page in doc)
+                        n_pages = len(doc)
+                        doc.close()
+                    except Exception as e:
+                        logger.warning(f"Failed reading {f.name}: {e}")
             else:
                 try:
                     text = f.read_text(encoding="utf-8", errors="replace")
@@ -368,8 +372,8 @@ def _scan_directory(dir_path: Path, flex_dict, topic, fuzzy, threshold, output=N
               help="Built-in topic: blockchain, esg, fintech")
 @click.option("--output", "-o", default=None,
               help="Output file (.xlsx, .csv, .dta, .parquet). Default: scan_results.xlsx")
-@click.option("--fuzzy/--no-fuzzy", default=True,
-              help="Enable fuzzy matching (default: on)")
+@click.option("--fuzzy/--no-fuzzy", default=False,
+              help="Enable fuzzy matching (default: off for exact research standard)")
 @click.option("--threshold", default=85, help="Fuzzy threshold 0-100")
 @click.option("--limit", type=int, default=None, help="Limit number of files to scan")
 def scan(target, keywords, dict_file, topic, output, fuzzy, threshold, limit):
@@ -537,7 +541,7 @@ def _run_mining(project, flex_dict, limit=None):
         task = progress.add_task("Mining...", total=len(text_files))
         for tf in text_files:
             text = tf.read_text(encoding="utf-8", errors="replace")
-            matches = matcher.search(text, use_fuzzy=True)
+            matches = matcher.search(text, use_fuzzy=False)
             total_words = len(text.split())
             variables = calc.calculate_all(
                 matches, total_words,
