@@ -1019,7 +1019,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         yield {"event": "progress", "data": json.dumps({
             "phase": "mining", "current": 0, "total": total, "percent": 0.0,
-            "message": f"Bắt đầu khai phá siêu tốc {total} báo cáo ({workers} luồng song song)...",
+            "message": f"Bắt đầu khai phá {total} báo cáo...",
         }, ensure_ascii=False)}
         await asyncio.sleep(0)
 
