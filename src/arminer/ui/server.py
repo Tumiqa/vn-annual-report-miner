@@ -956,15 +956,38 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         if req.record_ids:
             yield {"event": "progress", "data": json.dumps(
                 {"phase": "download", "current": 0, "total": len(req.record_ids),
-                 "message": f"Đang tải {len(req.record_ids)} báo cáo từ Zenodo..."},
+                 "message": f"Đang chuẩn bị {len(req.record_ids)} báo cáo từ Cloud/Drive..."},
                 ensure_ascii=False)}
 
             records = catalog.lookup_records(req.record_ids)
             if records:
-                downloaded = zenodo_downloader.download_reports(records)
-                for i, r in enumerate(downloaded):
+                loop = asyncio.get_running_loop()
+                dl_queue: asyncio.Queue = asyncio.Queue()
+
+                def _dl_cb(cur: int, tot: int, msg: str):
+                    loop.call_soon_threadsafe(dl_queue.put_nowait, (cur, tot, msg))
+
+                async def _worker():
+                    try:
+                        return await asyncio.to_thread(zenodo_downloader.download_reports, records, _dl_cb)
+                    finally:
+                        await dl_queue.put(None)
+
+                worker_task = asyncio.create_task(_worker())
+
+                while True:
+                    item = await dl_queue.get()
+                    if item is None:
+                        break
+                    cur, tot, msg = item
+                    yield {"event": "progress", "data": json.dumps(
+                        {"phase": "download", "current": cur, "total": tot, "message": msg},
+                        ensure_ascii=False)}
+
+                downloaded = await worker_task
+
+                for r in downloaded:
                     lp = r.get("local_path")
-                    status_flag = r.get("download_status", "unknown")
                     if lp and Path(lp).exists():
                         target_items.append({
                             "path": Path(lp),
@@ -975,16 +998,6 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                             "icb_l1": r.get("icb_l1", "Khác"),
                             "icb_l2": r.get("icb_l2", "Khác"),
                         })
-                        tag = "Sẵn sàng (Local/Cache)" if status_flag == "local_ready" else "Đã tải xong"
-                    else:
-                        tag = "Bỏ qua (Zenodo bận/quá tải)"
-
-                    yield {"event": "progress", "data": json.dumps(
-                        {"phase": "download", "current": i + 1,
-                         "total": len(downloaded),
-                         "message": f"[{tag}] {i + 1}/{len(downloaded)}: {r.get('ticker', '?')} ({r.get('year', '?')})"},
-                        ensure_ascii=False)}
-                    await asyncio.sleep(0)  # Yield control
 
         if req.report_paths:
             for fp in req.report_paths:

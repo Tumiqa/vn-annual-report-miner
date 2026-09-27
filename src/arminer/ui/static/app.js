@@ -1310,19 +1310,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const rows = data.top_rows || [];
     rows.forEach(r => {
       const tr = document.createElement('tr');
-      let freq = 0;
-      let logFreq = 0;
-      let mention = 0;
-      let density = 0;
-      let wordCount = r.Word_Count ?? r.total_words ?? 0;
+      let freq = r.Frequency ?? r.frequency ?? null;
+      let logFreq = r.Log_Frequency ?? r.log_frequency ?? null;
+      let mention = r.Mention ?? r.mention ?? null;
+      let density = r.Density ?? r.density ?? null;
+      let wordCount = r.Word_Count ?? r.word_count ?? r.total_words ?? 0;
 
-      for (const [k, v] of Object.entries(r)) {
-        const kLower = k.toLowerCase();
-        if (kLower.endsWith('_frequency') && !kLower.endsWith('_log_frequency')) freq = v;
-        else if (kLower.endsWith('_log_frequency')) logFreq = v;
-        else if (kLower.endsWith('_mention')) mention = v;
-        else if (kLower.endsWith('_density')) density = v;
+      // Fallback if prefixed with topic name (e.g., blockchain_frequency, culture_log_frequency)
+      if (freq === null || logFreq === null || mention === null || density === null) {
+        for (const [k, v] of Object.entries(r)) {
+          const kLower = k.toLowerCase();
+          if (freq === null && (kLower === 'frequency' || (kLower.endsWith('_frequency') && !kLower.includes('log')))) {
+            freq = v;
+          } else if (logFreq === null && (kLower === 'log_frequency' || kLower.includes('log_freq') || kLower.includes('log'))) {
+            logFreq = v;
+          } else if (mention === null && (kLower === 'mention' || kLower.endsWith('_mention'))) {
+            mention = v;
+          } else if (density === null && (kLower === 'density' || kLower.endsWith('_density'))) {
+            density = v;
+          }
+        }
       }
+      freq = freq ?? 0;
+      logFreq = logFreq ?? 0;
+      mention = mention ?? 0;
+      density = density ?? 0;
 
       tr.innerHTML = `
         <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${r.ticker || '—'}</strong></td>

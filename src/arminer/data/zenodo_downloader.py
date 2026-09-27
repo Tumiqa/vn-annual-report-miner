@@ -306,11 +306,13 @@ class ZenodoDownloader:
             for c_cand in [
                 Path("/content/drive/MyDrive/arminer_bctn_gap"),
                 Path("/content/drive/Shareddrives/arminer_bctn_gap"),
+                Path("/content/drive/MyDrive/BCTN"),
+                Path("/content/drive/MyDrive/data/reports"),
+                Path("/content/drive/MyDrive"),
                 Path("/content/arminer_bctn_gap"),
             ]:
                 if c_cand.exists() and c_cand.is_dir():
                     search_dirs.append(c_cand)
-                    break
 
             for drive_letter in ("H", "I", "G", "D"):
                 gdrive_dir = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
@@ -596,6 +598,8 @@ class ZenodoDownloader:
         file_id = None
         if index:
             entry = index.get(f"{ticker}_{year}")
+            if not entry and ticker in index and isinstance(index[ticker], dict):
+                entry = index[ticker].get(str(year)) or index[ticker].get(year)
             if isinstance(entry, dict):
                 file_id = entry.get("file_id")
             elif isinstance(entry, str):
@@ -605,19 +609,23 @@ class ZenodoDownloader:
             # 1.1 Thử tải trực tiếp siêu tốc qua HTTP stream (không cần đăng nhập, không cần cài đặt gì)
             import urllib.request
             gdrive_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-            headers = {"User-Agent": "Mozilla/5.0"}
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
             try:
                 req = urllib.request.Request(gdrive_url, headers=headers)
                 with urllib.request.urlopen(req, timeout=12) as resp:
                     if resp.status == 200:
-                        cached_pdf.parent.mkdir(parents=True, exist_ok=True)
-                        with open(cached_pdf, "wb") as f_out:
-                            while chunk := resp.read(64 * 1024):
-                                f_out.write(chunk)
+                        first_chunk = resp.read(64 * 1024)
+                        # Check PDF magic bytes (%PDF) to prevent saving Google Drive HTML warning/cookie pages
+                        if first_chunk.startswith(b"%PDF"):
+                            cached_pdf.parent.mkdir(parents=True, exist_ok=True)
+                            with open(cached_pdf, "wb") as f_out:
+                                f_out.write(first_chunk)
+                                while chunk := resp.read(64 * 1024):
+                                    f_out.write(chunk)
 
-                        if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
-                            logger.info(f"Downloaded from Google Drive Cloud HTTP: {ticker} ({year}) -> {cached_pdf.name}")
-                            return cached_pdf
+                            if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
+                                logger.info(f"Downloaded from Google Drive Cloud HTTP: {ticker} ({year}) -> {cached_pdf.name}")
+                                return cached_pdf
             except Exception as e:
                 logger.debug(f"Direct Google Drive HTTP download failed, trying gdown: {e}")
 
@@ -627,8 +635,12 @@ class ZenodoDownloader:
                 cached_pdf.parent.mkdir(parents=True, exist_ok=True)
                 gdown.download(gdrive_url, str(cached_pdf), quiet=True)
                 if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
-                    logger.info(f"Downloaded from Google Drive Cloud (gdown): {ticker} ({year})")
-                    return cached_pdf
+                    with open(cached_pdf, "rb") as f_chk:
+                        if f_chk.read(4).startswith(b"%PDF"):
+                            logger.info(f"Downloaded from Google Drive Cloud (gdown): {ticker} ({year})")
+                            return cached_pdf
+                        else:
+                            cached_pdf.unlink(missing_ok=True)
             except Exception:
                 pass
 
