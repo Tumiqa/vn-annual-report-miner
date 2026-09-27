@@ -173,8 +173,24 @@ class ReportHealer:
                 return None
 
             html = resp.text
-            # Tìm link tới trang Báo cáo thường niên nếu đây là trang chủ IR
             bctn_page_urls = [ir_portal]
+            # Proactively thêm các đường dẫn phổ biến của mục Báo cáo thường niên
+            website = info.get("website") or ""
+            proactive_subpaths = [
+                "/bao-cao-thuong-nien", "/annual-report", "/annual-reports", "/bctn",
+                "/quan-he-co-dong/bao-cao-thuong-nien", "/quan-he-nha-dau-tu/bao-cao-thuong-nien",
+                "/ir/annual-reports", "/ir/annual-report", "/tai-lieu-co-dong",
+            ]
+            for sub in proactive_subpaths:
+                cand = urllib.parse.urljoin(ir_portal.rstrip("/") + "/", sub.lstrip("/"))
+                if cand not in bctn_page_urls:
+                    bctn_page_urls.append(cand)
+                if website:
+                    w_cand = urllib.parse.urljoin(website.rstrip("/") + "/", sub.lstrip("/"))
+                    if w_cand not in bctn_page_urls:
+                        bctn_page_urls.append(w_cand)
+
+            # Tìm thêm link qua thẻ <a> trên trang chủ IR
             try:
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(html, "html.parser")

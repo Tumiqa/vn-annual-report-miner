@@ -32,7 +32,7 @@
     "name": "Công ty Cổ phần Chứng khoán APG",
     "exchange": "HOSE",
     "website": "https://apsi.vn",
-    "ir_portal": "https://apsi.vn/quan-he-co-dongBIDNg",
+    "ir_portal": "https://apsi.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -74,7 +74,7 @@
     "name": "Tập đoàn Bảo Việt",
     "exchange": "HOSE",
     "website": "https://baoviet.com.vn",
-    "ir_portal": "https://baoviet.com.vn/quan-he-co-dongCTGNg",
+    "ir_portal": "https://baoviet.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -130,7 +130,7 @@
     "name": "Công ty Cổ phần Chứng khoán DNSE",
     "exchange": "HOSE",
     "website": "https://dnse.com.vn",
-    "ir_portal": "https://dnse.com.vn/quan-he-co-dongEIBNg",
+    "ir_portal": "https://dnse.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -158,7 +158,7 @@
     "name": "Công ty Cổ phần Chứng khoán FPT",
     "exchange": "HOSE",
     "website": "https://fpts.com.vn",
-    "ir_portal": "https://fpts.com.vn/quan-he-nha-dau-tuHDBNg",
+    "ir_portal": "https://fpts.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -186,7 +186,7 @@
     "name": "Công ty Cổ phần Chứng khoán Thành phố Hồ Chí Minh",
     "exchange": "HOSE",
     "website": "https://hsc.com.vn",
-    "ir_portal": "https://hsc.com.vn/quan-he-nha-dau-tuLPBNg",
+    "ir_portal": "https://hsc.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -214,7 +214,7 @@
     "name": "Ngân hàng Thương mại Cổ phần Quân Đội",
     "exchange": "HOSE",
     "website": "https://mbbank.com.vn",
-    "ir_portal": "https://mbbank.com.vn/quan-he-nha-dau-tuMSBNg",
+    "ir_portal": "https://mbbank.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -228,7 +228,7 @@
     "name": "Ngân hàng Thương mại Cổ phần Hàng Hải Việt Nam",
     "exchange": "HOSE",
     "website": "https://msb.com.vn",
-    "ir_portal": "https://msb.com.vn/quan-he-nha-dau-tuOCBNg",
+    "ir_portal": "https://msb.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -242,7 +242,7 @@
     "name": "Ngân hàng Thương mại Cổ phần Phương Đông",
     "exchange": "HOSE",
     "website": "https://ocb.com.vn",
-    "ir_portal": "https://ocb.com.vn/quan-he-nha-dau-tuSHBNg",
+    "ir_portal": "https://ocb.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -256,7 +256,7 @@
     "name": "Ngân hàng Thương mại Cổ phần Sài Gòn – Hà Nội",
     "exchange": "HOSE",
     "website": "https://shb.com.vn",
-    "ir_portal": "https://shb.com.vn/quan-he-co-dongSSBNg",
+    "ir_portal": "https://shb.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -284,7 +284,7 @@
     "name": "Công ty Cổ phần Chứng khoán SSI",
     "exchange": "HOSE",
     "website": "https://ssi.com.vn",
-    "ir_portal": "https://ssi.com.vn/quan-he-nha-dau-tuSTBNg",
+    "ir_portal": "https://www.ssi.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -298,7 +298,7 @@
     "name": "Ngân hàng thương mại cổ phần Sài Gòn Tài Lộc",
     "exchange": "HOSE",
     "website": "https://sacombank.com.vn",
-    "ir_portal": "https://sacombank.com.vn/quan-he-nha-dau-tuTCBNg",
+    "ir_portal": "https://www.sacombank.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -340,7 +340,7 @@
     "name": "Công ty Cổ phần Chứng khoán Thiên Việt",
     "exchange": "HOSE",
     "website": "https://tvs.vn",
-    "ir_portal": "https://tvs.vn/quan-he-co-dongVCBNg",
+    "ir_portal": "https://tvs.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -382,7 +382,7 @@
     "name": "Công ty Cổ phần Chứng khoán Rồng Việt",
     "exchange": "HOSE",
     "website": "https://vdsc.com.vn",
-    "ir_portal": "https://vdsc.com.vn/quan-he-co-dongVIBNg",
+    "ir_portal": "https://vdsc.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -424,7 +424,7 @@
     "name": "Công ty Cổ phần Chứng khoán VNDIRECT",
     "exchange": "HOSE",
     "website": "https://vndirect.com.vn",
-    "ir_portal": "https://vndirect.com.vn/quan-he-co-dongVPBNg",
+    "ir_portal": "https://vndirect.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -438,7 +438,7 @@
     "name": "Ngân hàng Thương mại Cổ phần Việt Nam Thịnh Vượng",
     "exchange": "HOSE",
     "website": "https://vpbank.com.vn",
-    "ir_portal": "https://vpbank.com.vn/quan-he-nha-dau-tuNh",
+    "ir_portal": "https://vpbank.com.vn/quan-he-nha-dau-tu",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -1056,7 +1056,7 @@
     "name": "Công ty Cổ phần Sữa Việt Nam",
     "exchange": "HOSE",
     "website": "https://vinamilk.com.vn",
-    "ir_portal": "https://vinamilk.com.vn/quan-he-co-dongNh",
+    "ir_portal": "https://vinamilk.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -1364,7 +1364,7 @@
     "name": "Công ty Cổ phần Thủy điện Vĩnh Sơn - Sông Hinh",
     "exchange": "HOSE",
     "website": "https://vshpc.evn.vn",
-    "ir_portal": "https://vshpc.evn.vn/quan-he-co-dongDanh",
+    "ir_portal": "https://vshpc.evn.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -1644,7 +1644,7 @@
     "name": "Công ty cổ phần Than Vàng Danh - Vinacomin",
     "exchange": "HNX",
     "website": "https://thanvangdanh.com.vn",
-    "ir_portal": "https://thanvangdanh.com.vn/quan-he-co-dongNh",
+    "ir_portal": "https://thanvangdanh.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -1938,7 +1938,7 @@
     "name": "Cổ phiếu CTCP ống thép Việt Đức VG PIPE",
     "exchange": "HNX",
     "website": "https://vietductube.com.vn",
-    "ir_portal": "https://vietductube.com.vn/quan-he-co-dongNh",
+    "ir_portal": "https://vietductube.com.vn/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -2148,7 +2148,7 @@
     "name": "CTCP Dược Trung Ương Mediplantex",
     "exchange": "HNX",
     "website": "https://mediplantex.com",
-    "ir_portal": "https://mediplantex.com/quan-he-co-dongNVBNg",
+    "ir_portal": "https://mediplantex.com/quan-he-co-dong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
