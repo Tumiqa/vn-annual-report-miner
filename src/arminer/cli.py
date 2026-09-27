@@ -117,6 +117,14 @@ def _export_dataset(df, output_path: Path, dict_name: str = "Dictionary"):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     ext = output_path.suffix.lower()
 
+    df = df.copy()
+    drop_cols = [c for c in df.columns if c.lower() in ("company_name", "companyname", "exchange")]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
+    for page_col in ["pages", "page", "n_pages"]:
+        if page_col in df.columns:
+            df[page_col] = pd.to_numeric(df[page_col], errors="coerce").fillna(1).round().astype("int64")
+
     if ext in (".xlsx", ".xls"):
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name="Panel_Data", index=False)

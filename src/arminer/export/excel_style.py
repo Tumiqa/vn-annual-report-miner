@@ -139,6 +139,8 @@ def _guess_number_format(col_name: str) -> Optional[str]:
     cl = col_name.lower().strip()
     if cl in ("year", "nam", "published_year"):
         return "0"
+    if cl in ("pages", "page", "so_trang", "total_pages", "n_pages"):
+        return "0"
     if cl in ("mention", "dummy", "substantive"):
         return "0"
     if any(k in cl for k in ("pct", "ratio", "rate", "roa", "roe", "ros", "margin", "ty_le", "bien")):
@@ -393,6 +395,14 @@ def style_worksheet(
             elif cname_lower in ("year", "nam", "published_year"):
                 cell.alignment = CENTER
                 cell.number_format = "0"
+            elif cname_lower in ("pages", "page", "so_trang", "total_pages", "n_pages"):
+                cell.alignment = RIGHT
+                cell.number_format = "0"
+                if isinstance(cell.value, (int, float)):
+                    try:
+                        cell.value = int(round(cell.value))
+                    except Exception:
+                        pass
             elif cname_lower in ("mention", "dummy", "substantive"):
                 cell.alignment = CENTER
                 cell.number_format = "0"

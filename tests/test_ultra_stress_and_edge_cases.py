@@ -32,9 +32,47 @@ from arminer.ocr.engine import OCREngine
 
 @pytest.fixture(scope="module")
 def ai_matcher():
-    flex = FlexibleDictionary.load("data/dictionaries/seed_word_f1.yaml")
-    core_dict = flex.to_core_dictionary()
-    return GenericFuzzyMatcher(dictionary=core_dict)
+    raw_data = {
+        "name": "AI_F1_Dictionary",
+        "version": "1.0.0",
+        "categories": {
+            "lớp_1_ai_core": {
+                "description": "AI Core",
+                "keywords": [
+                    {
+                        "keyword": "Artificial Intelligence",
+                        "variants": ["trí tuệ nhân tạo", "AI"],
+                    },
+                    {
+                        "keyword": "Generative AI",
+                        "variants": ["trí tuệ nhân tạo tạo sinh", "GenAI"],
+                    },
+                    {
+                        "keyword": "Machine Learning",
+                        "variants": ["học máy", "ML"],
+                    },
+                    {
+                        "keyword": "Blockchain",
+                        "variants": ["blockchain", "DLT", "chuỗi khối"],
+                    },
+                    {
+                        "keyword": "Robotic Process Automation",
+                        "variants": ["RPA", "tự động hóa quy trình nghiệp vụ"],
+                    },
+                ],
+            }
+        },
+    }
+    import tempfile, yaml
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False, encoding="utf-8") as f:
+        yaml.dump(raw_data, f, allow_unicode=True)
+        tmp_name = f.name
+    try:
+        flex = FlexibleDictionary.load(tmp_name)
+        core_dict = flex.to_core_dictionary()
+        return GenericFuzzyMatcher(dictionary=core_dict)
+    finally:
+        Path(tmp_name).unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="module")

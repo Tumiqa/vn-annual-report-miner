@@ -724,13 +724,11 @@ def _process_one_bctn(
 
     row = {
         "ticker": item["ticker"],
-        "company_name": item.get("company_name", ""),
-        "exchange": item.get("exchange", ""),
         "year": item["year"],
         "icb_level1": item.get("icb_l1", "Khác"),
         "icb_level2": item.get("icb_l2", "Khác"),
         "file": p.name,
-        "pages": n_pages,
+        "pages": int(n_pages) if n_pages is not None else 1,
         **vars_r,
     }
 
@@ -866,6 +864,13 @@ def scan_selected_reports(req: ScanSelectedRequest):
         raise HTTPException(status_code=400, detail="Không thể trích xuất nội dung từ các file đã chọn.")
 
     df = pd.DataFrame(rows)
+    drop_cols = [c for c in df.columns if c.lower() in ("company_name", "companyname", "exchange")]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
+    for page_col in ["pages", "page", "n_pages"]:
+        if page_col in df.columns:
+            df[page_col] = pd.to_numeric(df[page_col], errors="coerce").fillna(1).round().astype("int64")
+
     core_order = [
         "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
         "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
@@ -1077,8 +1082,15 @@ async def scan_selected_stream(req: ScanSelectedRequest):
             return
 
         df = pd.DataFrame(rows)
+        drop_cols = [c for c in df.columns if c.lower() in ("company_name", "companyname", "exchange")]
+        if drop_cols:
+            df = df.drop(columns=drop_cols)
+        for page_col in ["pages", "page", "n_pages"]:
+            if page_col in df.columns:
+                df[page_col] = pd.to_numeric(df[page_col], errors="coerce").fillna(1).round().astype("int64")
+
         core_order = [
-            "ticker", "company_name", "exchange", "year", "icb_level1", "icb_level2", "file", "pages",
+            "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
             "Unique_Keywords",
         ]
@@ -1450,6 +1462,13 @@ async def scan_folder(
         raise HTTPException(status_code=400, detail="Không xử lý được file nào.")
 
     df = pd.DataFrame(rows)
+    drop_cols = [c for c in df.columns if c.lower() in ("company_name", "companyname", "exchange")]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
+    for page_col in ["pages", "page", "n_pages"]:
+        if page_col in df.columns:
+            df[page_col] = pd.to_numeric(df[page_col], errors="coerce").fillna(1).round().astype("int64")
+
     core_order = [
         "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
         "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",

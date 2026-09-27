@@ -960,19 +960,26 @@ class ResearchOutputGenerator:
         raw_keywords_df: Optional[pd.DataFrame] = None,
         context_snippets_df: Optional[pd.DataFrame] = None,
     ) -> Path:
-        # Sắp xếp thứ tự cột chuẩn xác trong Panel_Data:
-        # 1. Metadata: ticker, year, icb_level1, icb_level2, file, pages
-        # 2. 5 biến mining cốt lõi: Word_Count, Frequency, Log_Frequency, Mention, Density
-        # 3. Biến mở rộng: Substantive, Unique_Keywords, Coverage
-        # 4. Các biến category breakdown và biến khác
+        # Loại bỏ 2 cột company_name và exchange ở sheet Panel_Data theo yêu cầu người dùng
+        drop_cols = [
+            c for c in df.columns
+            if c.lower() in ("company_name", "companyname", "ten_cty", "exchange", "san_gd", "san_giao_dich")
+        ]
+        clean_base_df = df.drop(columns=drop_cols) if drop_cols else df
+
         core_order = [
             "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
             "Unique_Keywords",
         ]
-        ordered_cols = [c for c in core_order if c in df.columns]
-        extra_cols = [c for c in df.columns if c not in ordered_cols]
-        export_df = df[ordered_cols + extra_cols]
+        ordered_cols = [c for c in core_order if c in clean_base_df.columns]
+        extra_cols = [c for c in clean_base_df.columns if c not in ordered_cols]
+        export_df = clean_base_df[ordered_cols + extra_cols].copy()
+
+        # Đảm bảo cột pages/page là số nguyên (integer), không bị tự động thêm thập phân (90 không thành 90.00)
+        for page_col in ["pages", "page", "n_pages", "total_pages", "so_trang"]:
+            if page_col in export_df.columns:
+                export_df[page_col] = pd.to_numeric(export_df[page_col], errors="coerce").fillna(1).round().astype("int64")
 
         p = self.output_dir / f"panel_data.{fmt if fmt in ('csv', 'parquet') else ('xlsx' if fmt == 'excel' else 'dta')}"
         if fmt == "excel":

@@ -237,18 +237,37 @@ def test_5_research_panel_generation_with_company_metadata(cat: UnifiedCatalog):
         assert out_files["panel_csv"].exists(), "File CSV panel_data.csv không tồn tại"
         assert out_files["panel_stata"].exists(), "File Stata panel_data.dta không tồn tại"
 
-        # Kiểm tra nội dung Excel
+        # Kiểm tra nội dung Excel sheet Panel_Data: đã xóa company_name và exchange theo chuẩn kinh tế lượng
         df_read = pd.read_excel(out_files["panel_excel"], sheet_name="Panel_Data")
-        assert "company_name" in df_read.columns, "Cột company_name thiếu trong Excel sheet Panel_Data"
-        assert "exchange" in df_read.columns, "Cột exchange thiếu trong Excel sheet Panel_Data"
+        assert "company_name" not in df_read.columns, "Cột company_name vẫn còn trong Excel sheet Panel_Data"
+        assert "exchange" not in df_read.columns, "Cột exchange vẫn còn trong Excel sheet Panel_Data"
+        assert "pages" in df_read.columns, "Cột pages phải có trong sheet Panel_Data"
+        assert pd.api.types.is_integer_dtype(df_read["pages"]), f"Cột pages phải là số nguyên, nhận: {df_read['pages'].dtype}"
+
+        # Kiểm tra trực tiếp cell formatting trong openpyxl (số trang không bị tự động thêm thập phân 90.00)
+        import openpyxl
+        wb_check = openpyxl.load_workbook(out_files["panel_excel"])
+        ws_panel = wb_check["Panel_Data"]
+        pages_col_idx = None
+        for col_idx in range(1, ws_panel.max_column + 1):
+            if str(ws_panel.cell(row=1, column=col_idx).value or "").lower() == "pages":
+                pages_col_idx = col_idx
+                break
+        assert pages_col_idx is not None, "Không tìm thấy cột pages trong sheet Panel_Data"
+        page_cell = ws_panel.cell(row=2, column=pages_col_idx)
+        assert isinstance(page_cell.value, int), f"Giá trị cell pages phải là int, nhận: {type(page_cell.value)}"
+        assert page_cell.number_format == "0", f"Number format cell pages phải là '0', nhận: {page_cell.number_format}"
+        wb_check.close()
 
         # Kiểm tra nội dung Stata
         df_stata = pd.read_stata(out_files["panel_stata"])
         assert "ticker" in df_stata.columns
         assert "year" in df_stata.columns
+        assert "company_name" not in df_stata.columns
+        assert "exchange" not in df_stata.columns
 
         print(f"  ✅ Đã tạo đầy đủ bộ 3 file panel nghiên cứu:")
-        print(f"      - Excel: {out_files['panel_excel'].name} (Chứa cột company_name & exchange)")
+        print(f"      - Excel: {out_files['panel_excel'].name} (Đã loại bỏ company_name & exchange, pages là số nguyên chuẩn)")
         print(f"      - CSV:   {out_files['panel_csv'].name}")
         print(f"      - Stata: {out_files['panel_stata'].name}")
 

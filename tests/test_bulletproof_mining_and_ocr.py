@@ -25,8 +25,46 @@ from arminer.mining.matcher import GenericFuzzyMatcher
 from arminer.ocr.engine import OCREngine
 
 
+def make_ai_flex_dict():
+    raw_data = {
+        "name": "AI_F1_Dictionary",
+        "version": "1.0.0",
+        "categories": {
+            "lớp_1_ai_core": {
+                "description": "AI Core",
+                "keywords": [
+                    {
+                        "keyword": "Artificial Intelligence",
+                        "variants": ["trí tuệ nhân tạo", "AI"],
+                    },
+                    {
+                        "keyword": "Generative AI",
+                        "variants": ["trí tuệ nhân tạo tạo sinh", "GenAI"],
+                    },
+                    {
+                        "keyword": "Machine Learning",
+                        "variants": ["học máy", "ML"],
+                    },
+                    {
+                        "keyword": "Blockchain",
+                        "variants": ["blockchain", "DLT", "chuỗi khối"],
+                    },
+                ],
+            }
+        },
+    }
+    import tempfile, yaml
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False, encoding="utf-8") as f:
+        yaml.dump(raw_data, f, allow_unicode=True)
+        tmp_name = f.name
+    try:
+        return FlexibleDictionary.load(tmp_name)
+    finally:
+        Path(tmp_name).unlink(missing_ok=True)
+
+
 def test_exact_matcher_acronym_and_vietnamese():
-    flex = FlexibleDictionary.load("data/dictionaries/seed_word_f1.yaml")
+    flex = make_ai_flex_dict()
     core_dict = flex.to_core_dictionary()
     matcher = GenericFuzzyMatcher(dictionary=core_dict)
 
@@ -58,7 +96,7 @@ def test_exact_matcher_acronym_and_vietnamese():
 
 
 def test_no_bucket_collision_preserves_adjacent_keywords():
-    flex = FlexibleDictionary.load("data/dictionaries/seed_word_f1.yaml")
+    flex = make_ai_flex_dict()
     core_dict = flex.to_core_dictionary()
     matcher = GenericFuzzyMatcher(dictionary=core_dict)
 
@@ -72,7 +110,7 @@ def test_no_bucket_collision_preserves_adjacent_keywords():
 
 
 def test_longest_match_precedence():
-    flex = FlexibleDictionary.load("data/dictionaries/seed_word_f1.yaml")
+    flex = make_ai_flex_dict()
     core_dict = flex.to_core_dictionary()
     matcher = GenericFuzzyMatcher(dictionary=core_dict)
 
@@ -84,7 +122,7 @@ def test_longest_match_precedence():
 
 
 def test_category_frequency_calculation():
-    flex = FlexibleDictionary.load("data/dictionaries/seed_word_f1.yaml")
+    flex = make_ai_flex_dict()
     core_dict = flex.to_core_dictionary()
     matcher = GenericFuzzyMatcher(dictionary=core_dict)
     calc = SmartVariableCalculator()
@@ -145,3 +183,100 @@ def test_sliced_image_page_detection_for_ocr():
     has_scanned = (total_px >= 50_000)
     assert has_scanned is True
     doc.close()
+
+
+def test_panel_data_no_company_name_exchange_and_integer_pages(tmp_path):
+    """
+    Verify:
+    1. 'company_name' and 'exchange' are deleted from sheet 'Panel_Data' (Excel, CSV, Stata, Parquet).
+    2. 'pages' is formatted strictly as an integer (e.g., 90, not 90.00).
+    """
+    import pandas as pd
+    import openpyxl
+    from arminer.core.smart_mode import ResearchOutputGenerator
+
+    df = pd.DataFrame([
+        {
+            "ticker": "AAA",
+            "company_name": "CTCP Nhựa An Phát Xanh",
+            "exchange": "HOSE",
+            "year": 2024,
+            "icb_level1": "Nguyên vật liệu",
+            "icb_level2": "Hóa chất",
+            "file": "AAA_2024_BCTN.pdf",
+            "pages": 90,  # Specific test case: 90 must stay 90, not 90.00
+            "Word_Count": 35000,
+            "Frequency": 5,
+            "Log_Frequency": 1.7918,
+            "Mention": 1,
+            "Density": 0.0143,
+            "Unique_Keywords": 2,
+        },
+        {
+            "ticker": "BID",
+            "company_name": "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam",
+            "exchange": "HOSE",
+            "year": 2023,
+            "icb_level1": "Tài chính",
+            "icb_level2": "Ngân hàng",
+            "file": "BID_2023_BCTN.pdf",
+            "pages": 45.0,  # Even if float in source, must be converted to int
+            "Word_Count": 42000,
+            "Frequency": 8,
+            "Log_Frequency": 2.1972,
+            "Mention": 1,
+            "Density": 0.0190,
+            "Unique_Keywords": 3,
+        },
+    ])
+
+    generator = ResearchOutputGenerator(tmp_path)
+    outputs = generator.generate_all(df)
+
+    xlsx_path = outputs["panel_excel"]
+    csv_path = outputs["panel_csv"]
+    stata_path = outputs["panel_stata"]
+
+    # 1. Check Excel sheet 'Panel_Data'
+    df_excel = pd.read_excel(xlsx_path, sheet_name="Panel_Data")
+    assert "company_name" not in df_excel.columns, "company_name must be omitted from sheet Panel_Data"
+    assert "exchange" not in df_excel.columns, "exchange must be omitted from sheet Panel_Data"
+    assert "pages" in df_excel.columns
+    assert pd.api.types.is_integer_dtype(df_excel["pages"])
+    assert list(df_excel["pages"]) == [90, 45]
+
+    # Check openpyxl cell value and number formatting (no .00)
+    wb = openpyxl.load_workbook(xlsx_path)
+    ws = wb["Panel_Data"]
+    col_names = [str(ws.cell(1, col).value) for col in range(1, ws.max_column + 1)]
+    assert "company_name" not in col_names
+    assert "exchange" not in col_names
+
+    pages_idx = col_names.index("pages") + 1
+    cell_row2 = ws.cell(row=2, column=pages_idx)
+    assert isinstance(cell_row2.value, int)
+    assert cell_row2.value == 90
+    assert cell_row2.number_format == "0", f"Format must be '0', got {cell_row2.number_format}"
+
+    cell_row3 = ws.cell(row=3, column=pages_idx)
+    assert isinstance(cell_row3.value, int)
+    assert cell_row3.value == 45
+    assert cell_row3.number_format == "0"
+    wb.close()
+
+    # 2. Check CSV export
+    df_csv = pd.read_csv(csv_path)
+    assert "company_name" not in df_csv.columns
+    assert "exchange" not in df_csv.columns
+    assert list(df_csv["pages"]) == [90, 45]
+
+    # Verify raw CSV text does NOT contain '90.0' or '90.00' for pages
+    raw_csv = csv_path.read_text(encoding="utf-8")
+    assert ",90," in raw_csv or raw_csv.endswith(",90\n") or raw_csv.endswith(",90\r\n")
+
+    # 3. Check Stata export
+    df_stata = pd.read_stata(stata_path)
+    assert "company_name" not in df_stata.columns
+    assert "exchange" not in df_stata.columns
+    assert list(df_stata["pages"]) == [90, 45]
+
