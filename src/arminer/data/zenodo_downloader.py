@@ -392,7 +392,8 @@ class ZenodoDownloader:
 
         zip_name = ARCHIVE_ZIP_MAP.get(archive_period)
         if not zip_name:
-            logger.error(f"Unknown archive_period: {archive_period}")
+            if archive_period != "gap_filler":
+                logger.error(f"Unknown archive_period: {archive_period}")
             return None
 
         url = f"{ZENODO_BASE_URL}/{zip_name}/content"
@@ -485,6 +486,11 @@ class ZenodoDownloader:
         gdrive_cloud = self._try_gap_filler_download(ticker, year)
         if gdrive_cloud and gdrive_cloud.exists():
             return gdrive_cloud
+
+        # If this is a gap_filler record and Cloud download did not find it, do not attempt Zenodo ZIP
+        if archive_period == "gap_filler":
+            logger.debug(f"Gap-filler document not found in Cloud storage: {ticker} ({year})")
+            return None
 
         # --- STAGE 1.5: HUGGING FACE SUPPLEMENT ---
         # For supplement records, try downloading from HF dataset
