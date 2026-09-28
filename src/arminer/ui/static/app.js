@@ -578,49 +578,73 @@ document.addEventListener('DOMContentLoaded', () => {
         const decoder = new TextDecoder();
         let buffer = '';
         let finalData = null;
+        let streamError = null;
+
+        const processSseLine = (line) => {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) return;
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr) return;
+
+          try {
+            // Convert unquoted NaN / Infinity to null to ensure RFC 8259 JSON compliance
+            const sanitizedJson = jsonStr
+              .replace(/:\s*NaN\b/g, ': null')
+              .replace(/:\s*Infinity\b/g, ': null')
+              .replace(/:\s*-Infinity\b/g, ': null');
+
+            const eventData = JSON.parse(sanitizedJson);
+
+            if (eventData.detail || eventData.error) {
+              streamError = eventData.detail || eventData.error;
+              throw new Error(streamError);
+            }
+
+            if (eventData.total_files !== undefined) {
+              finalData = eventData;
+            } else if (eventData.phase) {
+              const pct = eventData.total > 0
+                ? Math.round((eventData.current / eventData.total) * 100)
+                : 0;
+
+              const phaseLabels = {
+                download: 'Tải báo cáo từ Zenodo/Local',
+                mining: isLaborOnly ? 'Trích xuất biến định lượng (Labor 31/12)' : 'Khai phá từ khóa & Biến định lượng',
+                export: 'Tạo file kết quả nghiên cứu (Excel, Stata, CSV)',
+              };
+
+              progressBar.style.width = pct + '%';
+              progressPct.textContent = pct + '%';
+              progressPhase.textContent = phaseLabels[eventData.phase] || eventData.phase;
+              progressMsg.textContent = eventData.message || '';
+              progressCount.textContent = `${eventData.current}/${eventData.total}`;
+            }
+          } catch (parseErr) {
+            if (streamError) throw parseErr;
+            console.warn('Cảnh báo giải mã gói tin SSE:', parseErr, jsonStr.slice(0, 100));
+          }
+        };
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            // Flush remaining buffer and final decoder chunk
+            buffer += decoder.decode();
+            if (buffer.trim()) {
+              const remainingLines = buffer.split('\n');
+              for (const line of remainingLines) {
+                processSseLine(line);
+              }
+            }
+            break;
+          }
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
 
           for (const line of lines) {
-            if (line.startsWith('data:')) {
-              const jsonStr = line.slice(5).trim();
-              if (!jsonStr) continue;
-
-              try {
-                const eventData = JSON.parse(jsonStr);
-
-                // Detect event type from the raw SSE
-                if (eventData.total_files !== undefined) {
-                  finalData = eventData;
-                } else if (eventData.detail) {
-                  throw new Error(eventData.detail);
-                } else if (eventData.phase) {
-                  const pct = eventData.total > 0
-                    ? Math.round((eventData.current / eventData.total) * 100)
-                    : 0;
-
-                  const phaseLabels = {
-                    download: 'Tải báo cáo từ Zenodo/Local',
-                    mining: isLaborOnly ? 'Trích xuất biến định lượng (Labor 31/12)' : 'Khai phá từ khóa & Biến định lượng',
-                    export: 'Tạo file kết quả nghiên cứu (Excel, Stata, CSV)',
-                  };
-
-                  progressBar.style.width = pct + '%';
-                  progressPct.textContent = pct + '%';
-                  progressPhase.textContent = phaseLabels[eventData.phase] || eventData.phase;
-                  progressMsg.textContent = eventData.message || '';
-                  progressCount.textContent = `${eventData.current}/${eventData.total}`;
-                }
-              } catch (parseErr) {
-                if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
-              }
-            }
+            processSseLine(line);
           }
         }
 
@@ -644,8 +668,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             progressContainer.style.display = 'none';
           }, 1200);
+        } else if (streamError) {
+          throw new Error(streamError);
         } else {
-          throw new Error('Không nhận được kết quả từ server.');
+          throw new Error('Máy chủ ngắt kết nối trước khi hoàn tất hoặc không trả về dữ liệu.');
         }
       } catch (err) {
         progressContainer.style.display = 'none';

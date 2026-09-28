@@ -986,7 +986,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
         "total_files": len(df),
         "files_with_hits": firms_with_hits,
         "total_mentions": total_mentions,
-        "top_rows": df.head(50).to_dict(orient="records"),
+        "top_rows": json.loads(df.head(50).to_json(orient="records")),
         "snippets": all_snippets[:200],
         "excel_download": "/api/download/panel_data.xlsx",
         "stata_download": "/api/download/panel_data.dta",
@@ -1038,7 +1038,7 @@ def scan_sector_reports(req: ScanSectorRequest):
 async def scan_selected_stream(req: ScanSelectedRequest):
     """Khai phá báo cáo với progress streaming qua SSE."""
 
-    async def event_generator():
+    async def _stream_worker():
         # --- Phase 1: Resolve target items ---
         target_items: List[Dict[str, Any]] = []
 
@@ -1240,12 +1240,22 @@ async def scan_selected_stream(req: ScanSelectedRequest):
             "files_with_hits": firms_with_hits,
             "total_mentions": total_mentions,
             "total_labor_extracted": labor_extracted_count,
-            "top_rows": df.head(50).to_dict(orient="records"),
+            "top_rows": json.loads(df.head(50).to_json(orient="records")),
             "snippets": all_snippets[:200],
             "excel_download": "/api/download/panel_data.xlsx",
             "stata_download": "/api/download/panel_data.dta",
             "csv_download": "/api/download/panel_data.csv",
         }, ensure_ascii=False, default=str)}
+
+    async def event_generator():
+        try:
+            async for evt in _stream_worker():
+                yield evt
+        except Exception as exc:
+            logger.error(f"Lỗi scan_selected_stream: {exc}", exc_info=True)
+            yield {"event": "error", "data": json.dumps({
+                "detail": f"Lỗi hệ thống trong quá trình khai phá: {str(exc)}"
+            }, ensure_ascii=False)}
 
     return EventSourceResponse(event_generator())
 
