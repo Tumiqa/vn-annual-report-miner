@@ -184,21 +184,30 @@
             </button>
           </div>
 
-          <!-- Zone 2: Primary Mining Execution -->
-          <div class="action-zone action-zone-primary">
-            <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; cursor: pointer; background: rgba(99,102,241,0.08); padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(99,102,241,0.25);" title="Trích xuất tự động biến Tổng số lao động (Labor) cuối năm tài chính 31/12">
-              <input type="checkbox" id="chkExtractLabor" class="custom-chk" checked>
-              <span style="color: var(--brand-primary);">Biến Lao Động (Labor)</span>
-            </label>
+          <!-- Zone 2: Primary Mining & Standalone Labor Execution -->
+          <div class="action-zone action-zone-primary" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- Nút chạy ĐỘC LẬP: Chỉ lấy biến Lao Động (Labor) -->
+            <button id="btnExecuteLaborOnly" class="btn btn-success" disabled style="padding: 7px 16px; font-weight: 600; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; border: none; border-radius: 6px; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Chạy ĐỘC LẬP: Trích xuất biến Tổng số lao động (Labor) 31/12 cho các báo cáo đã chọn mà không cần quét từ điển">
+              <span style="font-size: 15px;">👥</span>
+              <span id="btnLaborOnlyText">Trích Xuất Labor Riêng</span>
+            </button>
+
+            <!-- Vạch phân cách -->
+            <span style="color: var(--border-color, #cbd5e1); font-size: 16px; margin: 0 2px; user-select: none;">|</span>
+
+            <!-- Cụm khai phá theo Từ Điển -->
             <span style="font-size: 13px; font-weight: 500; color: var(--text-primary);">Từ điển:</span>
             <select id="catTopicSelect" class="form-select" style="padding: 6px 10px; font-size: 13px; font-weight: 500;">
               <option value="blockchain">Blockchain &amp; Web3 (55 từ)</option>
               <option value="esg">ESG &amp; Phát triển bền vững (36 từ)</option>
               <option value="fintech">Fintech &amp; Ngân hàng số (29 từ)</option>
-              <option value="none">-- Không quét từ điển (Chỉ lấy Labor) --</option>
             </select>
+            <label style="font-size: 12px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2);" title="Tích chọn để vừa khai phá từ khóa từ điển vừa trích xuất biến Labor">
+              <input type="checkbox" id="chkExtractLabor" class="custom-chk" checked>
+              <span style="color: var(--brand-primary); font-weight: 600;">+ Kèm Labor</span>
+            </label>
             <button id="btnExecuteSelectedScan" class="btn btn-primary" disabled style="padding: 7px 16px; font-weight: 600;">
-              <span id="btnScanText">Khai Phá Báo Cáo Đã Chọn</span>
+              <span id="btnScanText">Khai Phá Theo Từ Điển</span>
             </button>
           </div>
         </div>
