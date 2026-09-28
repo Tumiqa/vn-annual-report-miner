@@ -90,62 +90,83 @@ class LaborExtractor:
         # Units for employees (Vietnamese + English + unaccented variations)
         self.unit_re = (
             r"(?:người|lao\s*động|nhân\s*viên|cb\s*[-–]\s*cnv|cbcnv|cbnv|cán\s*bộ|cán\s*bộ\s*nhân\s*viên|"
-            r"người\s*lao\s*động|lao\s*dng|nhan\s*vien|can\s*b[oộ]?|employees?|workforce|staff|personnel|people|cá\s*nhân)"
+            r"người\s*lao\s*động|nhân\s*sự|lao\s*dng|nhan\s*vien|can\s*b[oộ]?|employees?|workforce|staff|personnel|people|headcount)"
+        )
+        unit_opt = rf"(?:\s*(?P<unit>{self.unit_re}))?"
+        unit_req = rf"\s*(?P<unit>{self.unit_re})"
+
+        # Numbers: 1.750, 54,646, 1072, 2152, 48
+        num_re = r"(?P<val>\d{1,3}(?:[.,]\d{3})+|\d{4,6}|\d{1,3})"
+
+        date_anchor = (
+            r"(?:(?:tại|vào|đến|tính\s+đến|ghi\s+nhận\s+tại|thời\s+điểm|ở)?\s*"
+            r"(?:thời\s+điểm|ngày)?\s*31[/.\s-]*(?:12|tháng\s*12|december)[/.\s-]*(?:năm\s+)?(?P<date_yr>201\d|202\d)|"
+            r"(?:thời\s+điểm\s+)?cuối\s+năm\s+(?P<date_yr2>201\d|202\d)|"
+            r"(?:năm\s+tài\s+chính|kết\s+thúc\s+năm)\s+(?P<date_yr3>201\d|202\d))"
         )
 
-        # 1. BCTC Note Pattern: "Số lượng nhân viên tại/vào ngày 31 tháng 12 năm 2021 là 2.445 người"
-        self.re_bctc_note = re.compile(
-            r"(?:số\s+lượng\s+(?:nhân\s*viên|lao\s*động|người\s*lao\s*động)|number\s+of\s+employees)\b"
-            r"(?!\s+(?:thôi\s*việc|nghỉ\s*việc|thuê\s*mới|tuyển\s*dụng|tuyển\s*mới|nữ|nam))"
-            r"[^0-9\n]{0,120}?"
-            r"(?:(?:tại|vào|đến|tính\s+đến)\s+ngày\s+31[/.\s-]*(?:12|tháng\s*12|december)[/.\s-]*(?:năm\s+)?(?P<year>201\d|202\d))"
-            r"[^0-9\n]{0,50}?"
-            r"(?:là|was|đạt|có|:|=|\s+)\s*"
-            r"(?P<val>\d{1,3}(?:[.,]\d{3})*)\b"
-            r"(?!\s*%)"
-            r"(?:\s*(?P<unit>" + self.unit_re + r"))?",
+        lead_re = (
+            r"(?P<lead>(?:tổng\s+số|tổng\s+lượng|tổng\s+cộng|quy\s+mô|lực\s+lượng|đội\s+ngũ|số\s+lượng)\s+"
+            r"(?:cán\s*bộ\s*,?\s*)?(?:công\s*nhân\s*)?(?:viên|nhân\s*viên|lao\s*động|người\s*lao\s*động|nhân\s*sự|cbcnv|cbnv)|"
+            r"lực\s+lượng\s+cbcnv|lực\s+lượng\s+lao\s+động|đội\s+ngũ\s+nhân\s+sự|tổng\s+nhân\s+sự|tổng\s+lao\s+động|tổng\s+nhân\s+viên|"
+            r"total\s+number\s+of\s+employees|total\s+employees|number\s+of\s+employees)"
+        )
+
+        verb_re = r"(?:là|was|đạt|có|ở\s+mức|quy\s+mô|bình\s+quân|:|=|\s+)\s*"
+
+        # 1. Date First: "Tại ngày 31 tháng 12 năm 2024 số lượng nhân viên công ty mẹ và các công ty con là 4.765 người"
+        self.re_date_first = re.compile(
+            rf"{date_anchor}[^.\n]{{0,120}}?{lead_re}[^0-9\n]{{0,60}}?{verb_re}{num_re}{unit_opt}",
             re.IGNORECASE,
         )
 
-        # 2. Strict Narrative:
-        # "Tính đến ngày 31/12/2024, tổng số ... là 48 người"
-        # "Tính đến cuối năm 2023 tổng số CB-CNV là 879 người"
-        self.re_date_total_sentence = re.compile(
-            r"(?:(?:tính\s+đến|ghi\s+nhận\s+tại|tại|đến|vào)\s+(?:ngày\s+)?31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(?:năm\s+)?(?P<year>201\d|202\d)|"
-            r"(?:tính\s+đến|đến|tại)?\s*(?:thời\s+điểm\s+)?cuối\s+năm\s+(?P<year2>201\d|202\d))[^.\n]{0,120}?"
-            r"(?P<total>tổng\s+số|tổng\s+lượng|quy\s+mô\s+nhân\s*sự|toàn\s+hệ\s*thống|toàn\s+tập\s*đoàn|toàn\s+công\s*ty|tập\s*đoàn|công\s*ty|cb\s*[-–]\s*cnv|cbcnv|cbnv|nhân\s*viên)"
-            r"[^0-9\n]{0,60}?"
-            r"(?:là|đạt|có|được|ở\s+mức|:|=|\s+)\s*"
-            r"(?P<val>\d{1,3}(?:[.,]\d{3})*)\b"
-            r"(?!\s*%)"
-            r"\s*(?P<unit>" + self.unit_re + r")",
+        # 2. Lead First: "Số lượng nhân sự tại công ty mẹ AAA thời điểm 31/12/2021 là 1.750 người"
+        #    "Tổng số lao động của Công ty tại ngày 31/12/2012 là 1072 người"
+        self.re_lead_first = re.compile(
+            rf"{lead_re}[^.\n]{{0,100}}?{date_anchor}[^0-9\n]{{0,60}}?{verb_re}{num_re}{unit_opt}",
             re.IGNORECASE,
         )
 
-        # 3. Direct Total:
-        # "Tổng số lao động: 1.255 người", "Số lượng lao động năm 2022 là: 27 người",
-        # "Tổng số nhân sự trung bình năm 2021 là 1.224 người", "2.3 Số lượng cán bộ, nhân viên: 2.800 lao động",
-        # "Số lượng cán bộ, nhân viên tính đến ngày 31/12/2018: 48 người."
-        self.re_direct_total = re.compile(
-            r"(?:(?P<lead>tổng\s+số|tổng\s+cộng|quy\s+mô|số\s+lượng)\s+(?:lượng\s+)?(?:cán\s*bộ\s*,?\s*)?(?:công\s*nhân\s*)?(?:viên|nhân\s*viên|lao\s*động|người\s*lao\s*động|nhân\s*sự|cbcnv|cbnv|can\s*b|nhan\s*vien)\b)"
-            r"(?:[^0-9\n]{0,80}?(?:(?:năm|năm\s+tài\s+chính|ngày\s+31[/.\s-]*12(?:[/.\s-]*tháng\s*12)?)[/.\s-]*(?:năm\s+)?(?P<year>201\d|202\d)))?"
-            r"[^0-9\n]{0,50}?"
-            r"(?:là|đạt|có|được|ở\s+mức|quy\s+mô|bình\s+quân|:|=|\s+)\s*"
-            r"(?P<val>\d{1,3}(?:[.,]\d{3})*)\b"
-            r"(?!\s*[/%\d])"
-            r"(?:\s*(?P<unit>" + self.unit_re + r"))?",
+        # 3. General Lead with Mandatory Unit: "Tổng số lao động: 1.255 người", "Lực lượng CBCNV là 1.097 người"
+        self.re_general_lead = re.compile(
+            rf"{lead_re}[^.\n]{{0,80}}?{verb_re}{num_re}\s*{unit_req}",
             re.IGNORECASE,
         )
 
-        # 4. English pattern: "had 54,646 employees as at 31/12/2024" or "total number of employees was 1,255"
+        # 4. Comparison in Parentheses: "(tại ngày 31/12/2023 là 2.928 người)"
+        self.re_parenthesis = re.compile(
+            rf"(?:tại|vào|đến|tính\s+đến|năm)?\s*(?:thời\s+điểm|ngày)?\s*31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(?:năm\s+)?(?P<comp_yr>201\d|202\d)[^0-9\n]{{0,40}}?{verb_re}{num_re}\s*{unit_req}",
+            re.IGNORECASE,
+        )
+
+        # 5. English Total
         self.re_en_total = re.compile(
             r"(?:total\s+(?:number\s+of\s+)?(?:employees|workforce|staff|personnel)|had)\s*"
             r"(?:as\s+(?:of|at)\s+31\s+december\s+(?P<year1>201\d|202\d))?"
             r"\s*(?:was|is|reached|:|\s+)\s*"
-            r"(?P<val>\d{1,3}(?:[.,]\d{3})*)\b"
-            r"(?!\s*%)"
+            rf"{num_re}\b(?!\s*%)"
             r"\s*(?:employees|people|staff|headcount)?"
             r"(?:\s*as\s+(?:of|at)\s+31[/.\s-]*(?:12|december)[/.\s-]*(?P<year2>201\d|202\d))?",
+            re.IGNORECASE,
+        )
+
+        # 6. Corrupted Font Table (e.g. AAA 2016 style: S0luqng lao tlQng 1737)
+        self.re_corrupted_font = re.compile(
+            r"(?:S[0oOô]lu[qg]ng\s+lao\s+tlQng|Ngudn\s+nhin\s+lgc)\s*\n?\s*(?P<val>\d{3,5})",
+            re.IGNORECASE,
+        )
+
+        # 7. BCTC Note Pattern
+        self.re_bctc_note = re.compile(
+            r"(?:số\s+lượng\s+(?:nhân\s*viên|lao\s*động|người\s*lao\s*động|nhân\s*sự)|number\s+of\s+employees)\b"
+            r"(?!\s+(?:thôi\s*việc|nghỉ\s*việc|thuê\s*mới|tuyển\s*dụng|tuyển\s*mới|nữ|nam))"
+            r"[^0-9\n]{0,120}?"
+            r"(?:(?:tại|vào|đến|tính\s+đến|thời\s+điểm)\s+(?:ngày\s+)?31[/.\s-]*(?:12|tháng\s*12|december)[/.\s-]*(?:năm\s+)?(?P<year>201\d|202\d))"
+            r"[^0-9\n]{0,50}?"
+            r"(?:là|was|đạt|có|:|=|\s+)\s*"
+            rf"{num_re}\b"
+            r"(?!\s*%)"
+            rf"{unit_opt}",
             re.IGNORECASE,
         )
 
@@ -209,6 +230,10 @@ class LaborExtractor:
             cands_bctc = self._extract_bctc_notes_candidates(text, page_num, year)
             candidates.extend(cands_bctc)
 
+            # 5. Plan vs Actual Metric Table Strategy (e.g. HVN)
+            cands_plan_actual = self._extract_plan_actual_metric_candidates(text, page_num, year)
+            candidates.extend(cands_plan_actual)
+
         return self._select_best_candidate(candidates, ticker, year)
 
     def extract_from_text(self, full_text: str, ticker: str, year: int) -> LaborExtractionResult:
@@ -260,8 +285,10 @@ class LaborExtractor:
                 "tổng số lao động", "tổng số nhân viên", "tổng số cbcnv",
                 "tổng số cán bộ", "tổng số người lao động", "quy mô nhân sự",
                 "tổng số nhân sự", "nhân sự trung bình", "nguồn nhân lực",
-                "số lượng cán bộ", "số lượng lao động", "cơ cấu lao động",
-                "tình hình nhân sự", "chính sách nhân sự", "tổ chức và nhân sự",
+                "số lượng cán bộ", "số lượng lao động", "số lượng nhân sự",
+                "số lượng nhân viên", "lực lượng lao động", "lực lượng cbcnv",
+                "cơ cấu lao động", "tình hình nhân sự", "chính sách nhân sự",
+                "tổ chức và nhân sự", "thông tin về công ty", "báo cáo tài chính",
                 "total employees", "total number of employees", "total workforce",
                 "headcount", "number of employees", "can bo, nhan vien",
             ]:
@@ -281,6 +308,10 @@ class LaborExtractor:
             if "31/12" in text or "cuối năm" in low:
                 score += 5
 
+            # Font-corrupted / legacy encoding labor indicators (e.g. AAA 2016)
+            if any(w in low for w in ["ngudn nhin lgc", "s0luqng lao", "lao tlqng", "c6ng nhdn", "nhdn sp", "nhdn vi6n", "can bq"]):
+                score += 30
+
             if score >= 10:
                 scored_pages.append((score, page_num, text))
 
@@ -296,99 +327,82 @@ class LaborExtractor:
 
         # Normalize text to bridge line wraps in sentences
         norm_text = re.sub(r"[ \t]*\n[ \t]*", " ", text)
+        CURRENCY_REJECTS = ["đồng", "tỷ", "triệu", "vnd", "usd", "ca mắc", "%", "cổ phần", "cổ phiếu"]
 
-        # 1. Date + Total Sentence pattern
-        for m in self.re_date_total_sentence.finditer(norm_text):
-            found_year = m.group("year") or m.group("year2")
+        patterns = [
+            (self.re_date_first, "narrative_date_total", 0.98),
+            (self.re_lead_first, "narrative_date_total", 0.98),
+            (self.re_general_lead, "narrative_direct_total", 0.94),
+            (self.re_parenthesis, "narrative_comparison", 0.92),
+            (self.re_en_total, "narrative_english", 0.96),
+        ]
+
+        for pat, strat, base_conf in patterns:
+            for m in pat.finditer(norm_text):
+                val_raw = m.group("val")
+                val = normalize_number(val_raw)
+                if not self._is_valid_headcount(val) or self._is_year_like(val):
+                    continue
+
+                end_pos = m.end()
+                trailing = norm_text[end_pos : min(len(norm_text), end_pos + 20)].lower()
+                if any(c in trailing for c in CURRENCY_REJECTS):
+                    continue
+
+                start_pos = max(0, m.start() - 50)
+                end_snippet = min(len(norm_text), end_pos + 100)
+                snippet = norm_text[start_pos:end_snippet].strip()
+                if self._has_exclusion(snippet):
+                    continue
+
+                matched_yr = None
+                groups = m.groupdict()
+                for yk in ["date_yr", "date_yr2", "date_yr3", "comp_yr", "year1", "year2"]:
+                    if yk in groups and groups[yk]:
+                        matched_yr = groups[yk]
+                        break
+
+                target_year_matched = False
+                conf = base_conf
+                if matched_yr:
+                    if matched_yr == year_str:
+                        target_year_matched = True
+                    else:
+                        conf = 0.50
+                elif year_str in snippet:
+                    target_year_matched = True
+
+                is_group = any(g in snippet.lower() for g in ["công ty con", "tập đoàn", "toàn hệ thống", "toàn bộ", "hợp nhất"])
+
+                cand = LaborCandidate(
+                    value=val,
+                    raw_snippet=snippet,
+                    page=page_num,
+                    target_year_matched=target_year_matched,
+                    is_total_signal=True,
+                    strategy=strat,
+                    confidence=conf + (0.01 if is_group else 0.0),
+                    reason=f"{strat} matched (yr={matched_yr or year_str})",
+                )
+                results.append(cand)
+
+        # Corrupted font table check (e.g. AAA 2016)
+        for m in self.re_corrupted_font.finditer(text):
             val_raw = m.group("val")
             val = normalize_number(val_raw)
-            if not self._is_valid_headcount(val) or self._is_year_like(val):
-                continue
-
-            start = max(0, m.start() - 50)
-            end = min(len(norm_text), m.end() + 50)
-            snippet = norm_text[start:end].strip()
-            if self._has_exclusion(snippet):
-                continue
-
-            cand = LaborCandidate(
-                value=val,
-                raw_snippet=snippet,
-                page=page_num,
-                target_year_matched=(found_year == year_str),
-                is_total_signal=True,
-                strategy="narrative_date_total",
-                confidence=0.98 if found_year == year_str else 0.70,
-                reason=f"Date 31/12/{found_year} + Total phrase",
-            )
-            results.append(cand)
-
-        # 2. Direct Total pattern
-        for m in self.re_direct_total.finditer(norm_text):
-            val_raw = m.group("val")
-            val = normalize_number(val_raw)
-            if not self._is_valid_headcount(val) or self._is_year_like(val):
-                continue
-
-            found_year = m.group("year")
-            start = max(0, m.start() - 50)
-            end = min(len(norm_text), m.end() + 50)
-            snippet = norm_text[start:end].strip()
-
-            if self._has_exclusion(snippet):
-                continue
-
-            matched_year = False
-            conf = 0.85
-            if found_year:
-                if found_year == year_str:
-                    matched_year = True
-                    conf = 0.98
-                else:
-                    conf = 0.55
-            elif year_str in snippet:
-                matched_year = True
-                conf = 0.94
-
-            cand = LaborCandidate(
-                value=val,
-                raw_snippet=snippet,
-                page=page_num,
-                target_year_matched=matched_year,
-                is_total_signal=True,
-                strategy="narrative_direct_total",
-                confidence=conf,
-                reason="Direct total/headcount disclosure",
-            )
-            results.append(cand)
-
-        # 3. English pattern
-        for m in self.re_en_total.finditer(norm_text):
-            val_raw = m.group("val")
-            val = normalize_number(val_raw)
-            if not self._is_valid_headcount(val) or self._is_year_like(val):
-                continue
-
-            y = m.group("year1") or m.group("year2")
-            start = max(0, m.start() - 50)
-            end = min(len(norm_text), m.end() + 50)
-            snippet = norm_text[start:end].strip()
-
-            if self._has_exclusion(snippet):
-                continue
-
-            matched_year = (y == year_str) or (year_str in snippet)
-            cand = LaborCandidate(
-                value=val,
-                raw_snippet=snippet,
-                page=page_num,
-                target_year_matched=matched_year,
-                is_total_signal=True,
-                strategy="narrative_english",
-                confidence=0.96 if matched_year else 0.80,
-                reason="English total workforce/employees sentence",
-            )
-            results.append(cand)
+            if self._is_valid_headcount(val) and not self._is_year_like(val):
+                snippet = text[max(0, m.start() - 20) : min(len(text), m.end() + 40)].replace("\n", " ").strip()
+                cand = LaborCandidate(
+                    value=val,
+                    raw_snippet=snippet,
+                    page=page_num,
+                    target_year_matched=True,
+                    is_total_signal=True,
+                    strategy="corrupted_font_table",
+                    confidence=0.95,
+                    reason="Corrupted font labor table header",
+                )
+                results.append(cand)
 
         return results
 
@@ -418,6 +432,9 @@ class LaborExtractor:
             "lao động bình quân",
             "số lao động",
             "quy mô nhân sự",
+            "quy mô lao động",
+            "nguồn nhân lực",
+            "nhân sự giai đoạn",
             "theo trình độ lao động",
             "cơ cấu lao động",
         ]
@@ -488,6 +505,12 @@ class LaborExtractor:
 
             horiz_years: List[Tuple[int, int]] = []
             for w_line in window:
+                # Exclude period titles like 'Giai đoạn 2015 - 2018' or 'GIAI DOAN 2015 - 2019' from being treated as column headers
+                w_low = w_line.lower()
+                if any(p in w_low for p in ["giai đoạn", "giai doan", "thời kỳ", "thoi ky", "kế hoạch", "ke hoach", "gđ", "gd"]):
+                    continue
+                if re.search(r"\b201\d\s*[-–—]\s*20[12]\d\b", w_line):
+                    continue
                 matched_yrs = re.findall(r"\b(201\d|202\d)\b", w_line)
                 if len(matched_yrs) >= 2:
                     for col_idx, yr in enumerate(matched_yrs):
@@ -503,11 +526,19 @@ class LaborExtractor:
 
                 if target_col is not None:
                     for w_line in window:
-                        nums = re.findall(r"\b\d{1,3}(?:[.,]\d{3})*\b", w_line)
-                        if len(nums) == len(horiz_years):
+                        w_low = w_line.lower()
+                        # Strictly reject lines with currency, income, rate, delta, age, gender, qualification
+                        if any(b in w_low for b in ["%", "tỷ lệ", "tỷ trọng", "thu nhập", "lương", "triệu đồng", "tỷ đồng", "vnd", "usd", "tuổi", "độ tuổi", "trình độ", "giới tính", "nữ", "nam"]):
+                            continue
+                        clean_w = re.sub(r"^\s*\d+\s*[=.-]\s*", "", w_line)
+                        clean_w = re.sub(r"\d+([.,]\d+)?\s*%", "", clean_w)
+                        nums = re.findall(r"\b(?:\d{1,3}(?:[.,]\d{3})+|\d{4,6}|\d{1,3})\b", clean_w)
+                        # Ensure row does not just repeat the year headers
+                        if len(nums) == len(horiz_years) and not any(int(n) in [y[0] for y in horiz_years] for n in nums if n.isdigit()):
                             try:
                                 target_val = normalize_number(nums[target_col])
-                                if self._is_valid_headcount(target_val) and not self._is_year_like(target_val):
+                                has_u = any(u in clean_w.lower() for u in ["người", "nhân viên", "lao động", "cbcnv"])
+                                if self._is_valid_headcount(target_val, has_unit=has_u) and not self._is_year_like(target_val):
                                     cand = LaborCandidate(
                                         value=target_val,
                                         raw_snippet=snippet,
@@ -515,33 +546,38 @@ class LaborExtractor:
                                         target_year_matched=True,
                                         is_total_signal=True,
                                         strategy="table_multiyear",
-                                        confidence=0.97,
+                                        confidence=0.75,
                                         reason=f"Horizontal multi-year table column {year_str}",
                                     )
                                     results.append(cand)
                             except Exception:
                                 pass
 
-            # Direct line: "Năm 2022 là: 27 người"
-            direct_match = re.search(
-                rf"(?:năm\s+)?{year_str}[^0-9\n]{{0,30}}?(?P<val>\d{{1,3}}(?:[.,]\d{{3}})*)\s*(?:người|lao\s*động|nhân\s*viên)?\b",
-                line,
-                re.IGNORECASE,
-            )
-            if direct_match and not direct_match.group(0).endswith("%"):
-                val = normalize_number(direct_match.group("val"))
-                if self._is_valid_headcount(val) and not self._is_year_like(val) and not self._has_exclusion(line):
-                    cand = LaborCandidate(
-                        value=val,
-                        raw_snippet=line,
-                        page=page_num,
-                        target_year_matched=True,
-                        is_total_signal=True,
-                        strategy="table_multiyear_row",
-                        confidence=0.94,
-                        reason=f"Line explicitly pairing {year_str} with headcount",
-                    )
-                    results.append(cand)
+            # Direct lines within the labor section window: e.g. "2018 2152" or "Năm 2022 là: 27 người"
+            for w_line in window:
+                w_low = w_line.lower()
+                if any(b in w_low for b in ["%", "tỷ lệ", "tỷ trọng", "thu nhập", "lương", "triệu đồng", "tỷ đồng", "vnd", "usd", "tuổi", "độ tuổi"]):
+                    continue
+                direct_match = re.search(
+                    rf"(?:năm\s+)?{year_str}[^0-9\n]{{0,30}}?(?P<val>\d{{1,3}}(?:[.,]\d{{3}})+|\d{{4,6}}|\d{{1,3}})\s*(?:người|lao\s*động|nhân\s*viên)?\b",
+                    w_line,
+                    re.IGNORECASE,
+                )
+                if direct_match and not direct_match.group(0).endswith("%"):
+                    val = normalize_number(direct_match.group("val"))
+                    has_u = any(u in w_line.lower() for u in ["người", "nhân viên", "lao động", "cbcnv"])
+                    if self._is_valid_headcount(val, has_unit=has_u) and not self._is_year_like(val) and not self._has_exclusion(w_line):
+                        cand = LaborCandidate(
+                            value=val,
+                            raw_snippet=f"{line} // {w_line}",
+                            page=page_num,
+                            target_year_matched=True,
+                            is_total_signal=True,
+                            strategy="table_multiyear_row",
+                            confidence=0.94,
+                            reason=f"Line explicitly pairing {year_str} with headcount in labor section",
+                        )
+                        results.append(cand)
 
         return results
 
@@ -679,6 +715,74 @@ class LaborExtractor:
 
         return results
 
+    def _extract_plan_actual_metric_candidates(
+        self, text: str, page_num: int, year: int
+    ) -> List[LaborCandidate]:
+        """
+        Strategy 5: Plan vs Actual / Single-Year Metric Table row.
+        E.g. HVN:
+            Tổng số lao động
+            người
+            10,211 (KH)
+            10,095 (Thực hiện)
+            98.9%
+        """
+        results: List[LaborCandidate] = []
+        year_str = str(year)
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+
+        METRIC_ROWS = [
+            "tổng số lao động", "tổng số nhân viên", "tổng số cán bộ", "tổng số cbcnv",
+            "số lượng lao động", "số lượng nhân sự", "số lượng nhân viên", "lao động bình quân",
+            "nhân sự bình quân", "quy mô nhân sự",
+        ]
+
+        for i, line in enumerate(lines):
+            low = line.lower()
+            if not any(k == low or low.startswith(k) or low.endswith(k) for k in METRIC_ROWS):
+                continue
+
+            forward = lines[i + 1 : min(len(lines), i + 8)]
+            if not forward:
+                continue
+
+            combined_context = f"{line} " + " ".join(forward[:3]).lower()
+            has_unit = any(u in combined_context for u in ["người", "lao động", "nhân viên", "cbcnv", "cbnv"])
+
+            nums = []
+            for fl in forward:
+                # Row ends upon encountering percentage column (e.g. 98.9%)
+                if "%" in fl:
+                    break
+                if any(bad in fl.lower() for bad in ["triệu", "tỷ", "đồng", "vnd", "usd", "lương", "thu nhập"]):
+                    continue
+                clean = re.sub(r"^\s*\d+\s*[=.-]\s*", "", fl)
+                clean = clean.replace(".", "").replace(",", "").strip()
+                if clean.isdigit():
+                    int_val = int(clean)
+                    if self._is_valid_headcount(int_val, has_unit=has_unit) and not self._is_year_like(int_val):
+                        nums.append(int_val)
+                elif len(nums) > 0:
+                    break
+
+            if nums:
+                # If multiple numbers (e.g. Plan vs Actual), actual realized is the last column
+                val = nums[-1] if len(nums) >= 2 else nums[0]
+                snippet = f"{line} -> " + " // ".join(str(n) for n in nums)
+                cand = LaborCandidate(
+                    value=val,
+                    raw_snippet=snippet,
+                    page=page_num,
+                    target_year_matched=(year_str in text or f"31/12/{year_str}" in text),
+                    is_total_signal=True,
+                    strategy="table_plan_actual_metric",
+                    confidence=0.96,
+                    reason=f"Plan vs Actual table metric row '{line}'",
+                )
+                results.append(cand)
+
+        return results
+
     # =========================================================================
     # Disambiguation & Best Candidate Selection
     # =========================================================================
@@ -710,8 +814,12 @@ class LaborExtractor:
             elif year_str in c.raw_snippet:
                 score += 0.20
 
-            # Bonus for explicit total indicators
+            # Bonus for group / consolidated total
             snippet_low = c.raw_snippet.lower()
+            if any(w in snippet_low for w in ["công ty con", "tập đoàn", "toàn hệ thống", "hợp nhất"]):
+                score += 0.20
+
+            # Bonus for explicit total indicators
             if any(
                 w in snippet_low
                 for w in [
@@ -735,8 +843,12 @@ class LaborExtractor:
             if c.value in [year, year - 1, year - 2, 31, 30, 12, 1, 2, 3]:
                 score -= 0.60
 
+            # Heavy penalty for small numbers (< 20) without explicit labor unit
+            if c.value < 20 and not any(u in snippet_low for u in ["người", "nhân viên", "lao động", "cbcnv"]):
+                score -= 0.80
+
             # Penalty for financial terms nearby
-            if any(w in snippet_low for w in ["tỷ đồng", "triệu đồng", "đồng/người", "vnd", "usd"]):
+            if any(w in snippet_low for w in ["tỷ đồng", "triệu đồng", "đồng/người", "vnd", "usd", "lương", "thu nhập"]):
                 score -= 0.50
 
             # Penalty for resolution or shareholder terms
@@ -744,10 +856,12 @@ class LaborExtractor:
                 score -= 0.60
 
             # Bonus for high-specificity aligned strategies
-            if c.strategy in ["table_vertical_multiyear", "table_multiyear"]:
+            if c.strategy in ["narrative_date_total", "bctc_notes"]:
                 score += 0.35
-            elif c.strategy in ["narrative_date_total", "bctc_notes"]:
+            elif c.strategy in ["narrative_direct_total", "narrative_comparison", "narrative_english", "corrupted_font_table", "table_plan_actual_metric"]:
                 score += 0.25
+            elif c.strategy in ["table_vertical_multiyear", "table_multiyear"]:
+                score += 0.05
 
             scored.append((score, c))
 
@@ -792,9 +906,13 @@ class LaborExtractor:
             metadata={"strategy": best_cand.strategy, "reason": best_cand.reason},
         )
 
-    def _is_valid_headcount(self, val: int) -> bool:
+    def _is_valid_headcount(self, val: int, has_unit: bool = True) -> bool:
         """Check if number is plausible corporate headcount."""
-        return self.MIN_HEADCOUNT <= val <= self.MAX_HEADCOUNT
+        if val < self.MIN_HEADCOUNT or val > self.MAX_HEADCOUNT:
+            return False
+        if val < 20 and not has_unit:
+            return False
+        return True
 
     def _is_year_like(self, val: int) -> bool:
         """Reject numbers that look like years (2010..2030) or date days (30, 31)."""

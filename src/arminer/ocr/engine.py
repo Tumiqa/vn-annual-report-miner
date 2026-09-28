@@ -115,7 +115,7 @@ class OCREngine:
         tesseract_config: str = "--oem 3 --psm 6",
         easyocr_langs: Optional[List[str]] = None,
         min_text_per_page: int = 400,
-        dpi: int = 300,
+        dpi: int = 200,
         use_gpu: Optional[bool] = None,
         preprocess: bool = True,
     ):
@@ -534,7 +534,7 @@ class OCREngine:
                     img,
                     lang=self.tesseract_lang,
                     config=self.tesseract_config,
-                    timeout=15,
+                    timeout=45,
                 )
                 text = self._postprocess_vietnamese(text.strip())
                 results.append(text)

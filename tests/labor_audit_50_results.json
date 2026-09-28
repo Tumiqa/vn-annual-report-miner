@@ -9,7 +9,7 @@
     "confidence": 0.99,
     "status": "SUCCESS",
     "strategy": "narrative_date_total",
-    "snippet": "HẦN ĐẦU TƯ VÀ XÂY DỰNG HUD1  | 41 TỔ CHỨC NHÂN SỰ Ghi nhận tại ngày 31/12/2022, tổng số lượng cán bộ nhân viên của Công ty là  77 người . TÌNH HÌNH ĐẦU TƯ THỰC HIỆN DỰ ÁN Chính sách đối",
+    "snippet": "HẦN ĐẦU TƯ VÀ XÂY DỰNG HUD1  | 41 TỔ CHỨC NHÂN SỰ Ghi nhận tại ngày 31/12/2022, tổng số lượng cán bộ nhân viên của Công ty là  77 người . TÌNH HÌNH ĐẦU TƯ THỰC HIỆN DỰ ÁN Chính sách đối với người lao động Chính sách lương thưởng, nhân",
     "file": "HU1_2022_BCTN.pdf"
   },
   {
@@ -47,8 +47,8 @@
     "source_page": 18,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "có 6.6. Chính sách liên quan đến người lao động - Số lượng lao động, mức lương trung bình đối với người lao động + Số lượng lao động năm 2022 là: 27 người + Mức lương trung bình đối với người lao động: 15",
+    "strategy": "table_multiyear_row",
+    "snippet": "+ Số lượng lao động năm 2022 là: 27 người // + Số lượng lao động năm 2022 là: 27 người",
     "file": "ICG_2022_BCTN.pdf"
   },
   {
@@ -57,11 +57,11 @@
     "year": 2023,
     "pages": 80,
     "labor": 96,
-    "source_page": 29,
+    "source_page": 36,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "g, mức lương trung bình đối với người lao động: » Tổng số người lao động: 96 người (tính tới 31/12/2023). » Mức tiền lương bình quân",
+    "strategy": "narrative_date_total",
+    "snippet": "I TIẾN VỀ CƠ CẤU TỔ CHỨC, CHÍNH SÁCH, QUẢN LÝ 6 • Tổng số CBCNV trong danh sách thường xuyên của Công ty tính đến 31/12/2023 là: 96 người, trong đó nữ: 38 người. Trong năm 2023, Công ty đã thực hiện đầy đủ kịp thời công tác lao động",
     "file": "ICN_2023_BCTN.pdf"
   },
   {
@@ -86,8 +86,8 @@
     "source_page": 70,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "hiểu, Phường Võ Thị Sáu, Quận 3, TP. Hồ Chí Minh. Tổng số lao động của Tổng công ty và các Công ty con tại ngày 31/12/2022 là 1.396 người (tại ngày 31/12/2021: 1.450 người). 138 22 Báo cá",
+    "strategy": "narrative_date_total",
+    "snippet": "hiểu, Phường Võ Thị Sáu, Quận 3, TP. Hồ Chí Minh. Tổng số lao động của Tổng công ty và các Công ty con tại ngày 31/12/2022 là 1.396 người (tại ngày 31/12/2021: 1.450 người). 138 22 Báo cáo thường niên 139 138 22 Báo cáo thường niên 139 Q",
     "file": "IDC_2022_BCTN.pdf"
   },
   {
@@ -95,12 +95,12 @@
     "ticker": "ILA",
     "year": 2024,
     "pages": 35,
-    "labor": 42,
-    "source_page": 14,
-    "confidence": 1.0,
-    "status": "SUCCESS",
-    "strategy": "narrative_english",
-    "snippet": "100% Average income Indicator 2020 2021 2022 2024 Total Number of Employees    42 Average Income (VND/person/month)    16.366.000 Hu",
+    "labor": null,
+    "source_page": null,
+    "confidence": 0.0,
+    "status": "NOT_FOUND",
+    "strategy": "",
+    "snippet": "",
     "file": "ILA_2024_BCTN.pdf"
   },
   {
@@ -121,12 +121,12 @@
     "ticker": "IMP",
     "year": 2021,
     "pages": 81,
-    "labor": 1224,
-    "source_page": 51,
+    "labor": 1203,
+    "source_page": 65,
     "confidence": 1.0,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "ó với Công ty trong một năm thật nhiều chông gai. Tổng số nhân sự trung bình năm 2021 là 1.224 người thấp hơn 46 người so với năm 2020. Số nhân sự ngh",
+    "strategy": "narrative_comparison",
+    "snippet": "uôn dược phẩm Thành phố Hồ Chí Minh 26,00% 26,00% Tại ngày 31 tháng 12 năm 2021, Công ty có 1.203 nhân viên (tại ngày 31 tháng 12 năm 2020: 1.246 nhân viên). 2 CÁC CHÍNH SÁCH KẾ TOÁN CHỦ YẾU 2.1 Cơ sở của vi",
     "file": "IMP_2021_BCTN.pdf"
   },
   {
@@ -147,12 +147,12 @@
     "ticker": "ISH",
     "year": 2024,
     "pages": 31,
-    "labor": 64,
+    "labor": 58,
     "source_page": 10,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "table_breakdown_100pct",
-    "snippet": "(%) // I // Theo trình độ lao động // 64 // 100% // 58 // 100% // 1",
+    "strategy": "narrative_date_total",
+    "snippet": "với ông Trương Thanh Bình từ ngày 15/5/2024. 2.3. Số lượng cán bộ, nhân viên và chính sách đối với người lao động: - Số lượng cán bộ nhân viên tại ngày 31/12/2024 là: 58 người. STT Tính chất phân loại Năm 2023 Năm 2024 Số lượng (người) Tỷ trọng (%) Số lượng (người) Tỷ trọng",
     "file": "ISH_2024_BCTN.pdf"
   },
   {
@@ -239,11 +239,11 @@
     "year": 2020,
     "pages": 89,
     "labor": 322,
-    "source_page": 72,
-    "confidence": 1.0,
+    "source_page": 35,
+    "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "bctc_notes",
-    "snippet": "ận 1, Thành phố Hồ Chí Minh, Việt Nam.  Số lượng nhân viên của Nhóm Công ty vào ngày 31 tháng 12 năm 2020 là 322 (ngày 31 tháng 12 năm 2019: 327). 1.\t THÔNG TIN CÔNG TY (tiếp theo) Cơ cấu tổ c",
+    "strategy": "narrative_direct_total",
+    "snippet": "Covid-19, Khang Điền đã phấn đấu duy trì ổn định lực lượng lao động trong năm 2020, với tổng số người lao động (tại Công ty mẹ và các Công ty con) là 322 người, thay đổi không đáng kể so với năm 2019. Hiện nay, lực lượng lao động của Công ty khá đa dạng về độ",
     "file": "KDH_2020_BCTN.pdf"
   },
   {
@@ -295,7 +295,7 @@
     "confidence": 0.99,
     "status": "SUCCESS",
     "strategy": "narrative_date_total",
-    "snippet": "ên hàng đầu trong chiến lược phát triển của mình. Tính đến ngày 31/12/2022, số lượng cán bộ nhân viên chính thức của Công ty là 67 người. STT I 1 2 3 II 1 2 III 1 2 3 Cơ cấu nhân sự Phân",
+    "snippet": "ên hàng đầu trong chiến lược phát triển của mình. Tính đến ngày 31/12/2022, số lượng cán bộ nhân viên chính thức của Công ty là 67 người. STT I 1 2 3 II 1 2 III 1 2 3 Cơ cấu nhân sự Phân loại theo loại hợp đồng Hợp đồng không xác định t",
     "file": "KOS_2022_BCTN.pdf"
   },
   {
@@ -307,8 +307,8 @@
     "source_page": 39,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "HOẠT ĐỘNG SẢN XUẤT KINH DOANH VÀ ĐẦU TƯ NĂM 2022 Tổng số lao động của KSB tại thời điểm cuối năm 2022 đạt 310 người, trong đó lao động có trình độ Đại học và trên Đạ",
+    "strategy": "narrative_date_total",
+    "snippet": "HOẠT ĐỘNG SẢN XUẤT KINH DOANH VÀ ĐẦU TƯ NĂM 2022 Tổng số lao động của KSB tại thời điểm cuối năm 2022 đạt 310 người, trong đó lao động có trình độ Đại học và trên Đại học chiếm đến 33%, Cao đẳng - Trung cấp chiếm 10",
     "file": "KSB_2022_BCTN.pdf"
   },
   {
@@ -320,8 +320,8 @@
     "source_page": 9,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "nh tế 2.2 Những thay đổi trong ban điều hành: -   Số lượng cán bộ, nhân viên: Tổng số lao động của Công ty tính đến ngày 31/12/2024 là 03 cán bộ nhân viên. - Các chính sách lương, thưởng, trợ cấ",
+    "strategy": "table_multiyear_row",
+    "snippet": "-   Số lượng cán bộ, nhân viên: Tổng số lao động của Công ty tính đến ngày 31/12/2024 là 03 cán bộ // -   Số lượng cán bộ, nhân viên: Tổng số lao động của Công ty tính đến ngày 31/12/2024 là 03 cán bộ",
     "file": "KSH_2024_BCTN.pdf"
   },
   {
@@ -383,10 +383,10 @@
     "pages": 49,
     "labor": 47,
     "source_page": 21,
-    "confidence": 1.0,
+    "confidence": 0.95,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": ".com.vn 40 IDICO-LINCO BÁO CÁO THƯỜNG NIÊN 202340 Số lượng cán bộ, nhân viên TT Số lượng (người) Tính chất phân loại Tỷ lệ % A 47 Theo trình độ 100% 1 6 Trên đại học 12,77 % 2 31",
+    "strategy": "table_breakdown_100pct",
+    "snippet": "Tỷ lệ % // A // 47 // Theo trình độ // 100% // 1 // 6 // Trên đại học",
     "file": "LAI_2023_BCTN.pdf"
   },
   {
@@ -433,12 +433,12 @@
     "ticker": "LHC",
     "year": 2022,
     "pages": 85,
-    "labor": 57,
+    "labor": 53,
     "source_page": 18,
-    "confidence": 0.99,
+    "confidence": 1.0,
     "status": "SUCCESS",
-    "strategy": "table_vertical_multiyear",
-    "snippet": "Theo trình độ lao động -> 2021: 55 // 2022: 57",
+    "strategy": "table_breakdown_100pct",
+    "snippet": "53 // 92,98% // Tổng cộng // 55 // 100,00% // 57 // 100,00% // TỔ CHỨC VÀ NHÂN SỰ",
     "file": "LHC_2022_BCTN.pdf"
   },
   {
@@ -490,7 +490,7 @@
     "confidence": 0.99,
     "status": "SUCCESS",
     "strategy": "narrative_direct_total",
-    "snippet": "ộng, mức lương trung bình đối với người lao động: Số lượng lao động bình quân 10 người. b) Chính sách lao động nhằm đảm bảo sức khỏe, an",
+    "snippet": "g 6.5. Chính sách liên quan đến người lao động a) Số lượng lao động, mức lương trung bình đối với người lao động: Số lượng lao động bình quân 10 người. b) Chính sách lao động nhằm đảm bảo sức khỏe, an toàn và phúc lợi của người lao động: Công ty thực",
     "file": "LTC_2022_BCTN.pdf"
   },
   {
@@ -500,10 +500,10 @@
     "pages": 18,
     "labor": 48,
     "source_page": 8,
-    "confidence": 1.0,
+    "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "narrative_direct_total",
-    "snippet": "ủy quyền CBTT của Công ty kể từ ngày 08/04/2019. Số lượng cán bộ, nhân viên tính đến ngày 31/12/2018: 48 người. 3. Tình hình đầu tư thực hiện các dự án a) Các d",
+    "strategy": "narrative_date_total",
+    "snippet": "ủy quyền CBTT của Công ty kể từ ngày 08/04/2019. Số lượng cán bộ, nhân viên tính đến ngày 31/12/2018: 48 người. 3. Tình hình đầu tư thực hiện các dự án a) Các dự án tham gia đầu tư: không có b) Các công ty con,",
     "file": "LUT_2018_BCTN.pdf"
   },
   {
@@ -526,10 +526,10 @@
     "pages": 16,
     "labor": 2354,
     "source_page": 12,
-    "confidence": 1.0,
+    "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "table_multiyear_row",
-    "snippet": "a. Số lượng lao động đến thời điểm 31/12/2023 là 2.354 lao động đang làm việc",
+    "strategy": "narrative_date_total",
+    "snippet": "ng 6. Chính sách liên quan đến người lao động: a. Số lượng lao động đến thời điểm 31/12/2023 là 2.354 lao động đang làm việc tăng 47 lao động so với năm 2022 do tăng lao động phục vụ hoạt động hỗ trợ nghiệp vụ",
     "file": "MFS_2023_BCTN.pdf"
   },
   {
@@ -542,7 +542,7 @@
     "confidence": 0.99,
     "status": "SUCCESS",
     "strategy": "narrative_direct_total",
-    "snippet": "đến bảo vệ môi trường. Tình hình lao động Công ty Tổng số cán bộ công nhân viên Công ty đến thời điểm hiện tại là 70 người bao gồm: • Người quản lý: 04 người. • Lao động qu",
+    "snippet": "đến bảo vệ môi trường. Tình hình lao động Công ty Tổng số cán bộ công nhân viên Công ty đến thời điểm hiện tại là 70 người bao gồm: • Người quản lý: 04 người. • Lao động quản lý: 07 người. • Người lao động: 59 người. Tiền",
     "file": "MH3_2023_BCTN.pdf"
   },
   {
@@ -565,10 +565,10 @@
     "pages": 26,
     "labor": 108,
     "source_page": 9,
-    "confidence": 1.0,
+    "confidence": 0.99,
     "status": "SUCCESS",
     "strategy": "narrative_direct_total",
-    "snippet": "đốc  Bà Phan Nguyễn Thanh Huyền  Phó Giám đốc 2.2 Số lượng cán bộ, nhân viên năm 2022: 108 người  a/ Cơ cấu lao động:  Cơ cấu    Số lao động thực",
+    "snippet": "đốc  Bà Phan Nguyễn Thanh Huyền  Phó Giám đốc 2.2 Số lượng cán bộ, nhân viên năm 2022: 108 người  a/ Cơ cấu lao động:  Cơ cấu    Số lao động thực tế tại thời điểm 31/12/2022  Ban Giám đốc    2 ngư",
     "file": "MKV_2022_BCTN.pdf"
   },
   {
@@ -590,11 +590,11 @@
     "year": 2020,
     "pages": 104,
     "labor": 37285,
-    "source_page": 25,
-    "confidence": 0.99,
+    "source_page": 60,
+    "confidence": 1.0,
     "status": "SUCCESS",
-    "strategy": "narrative_date_total",
-    "snippet": "hế cho việc kinh doanh bền vững trong dài hạn.  ■ Tính đến ngày 31 tháng 12 năm 2020, Masan Group và các công ty thành viên có tổng cộng 37.285 nhân viên, trong đó 55% là nữ giới. Nguồn nhân lực của chún",
+    "strategy": "narrative_comparison",
+    "snippet": "ày là công ty liên kết sở hữu gián tiếp của MHT.  Tại ngày 31 tháng 12 năm 2020, Tập đoàn có 37.285 nhân viên (1/1/2020: 40.610 nhân viên). (c). Chu kỳ sản xuất kinh doanh thông thường Chu kỳ sản xuất kinh doa",
     "file": "MSN_2020_BCTN.pdf"
   },
   {
@@ -606,8 +606,8 @@
     "source_page": 38,
     "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "table_multiyear",
-    "snippet": "Cổ phiếu của Công ty được chấp thuận giao dịch trên Sàn UpCOM từ ngày 25/6/2015 với mã giao // dịch là MTG. // Trụ sở chính của Công ty được đặt tại: Lô 1, Ấp Thuận Đạo, Thị Trấn Bến Lức, Huyện Bến Lức, Tỉnh // Long An. // Tổng số nhân viên của Công ty tại ngày 31/12/2023 là 25 người (tại ngày 31/12/2022 là 15 người). // 1.2 // Ngành nghề kinh doanh và hoạt động chính // Ngành nghề kinh doanh của Công ty theo Giấy chứng nhận đăng ký doanh nghiệp bao gồm: // • // Xây dựng công trình kỹ thuật dân dụng khác; // •",
+    "strategy": "narrative_date_total",
+    "snippet": ", Thị Trấn Bến Lức, Huyện Bến Lức, Tỉnh Long An.  Tổng số nhân viên của Công ty tại ngày 31/12/2023 là 25 người (tại ngày 31/12/2022 là 15 người).  1.2 Ngành nghề kinh doanh và hoạt động chính   Ngành nghề kinh",
     "file": "MTG_2023_BCTN.pdf"
   },
   {
@@ -643,10 +643,10 @@
     "pages": 64,
     "labor": 2445,
     "source_page": 45,
-    "confidence": 1.0,
+    "confidence": 0.99,
     "status": "SUCCESS",
-    "strategy": "bctc_notes",
-    "snippet": "Chí Minh cấp ngày 13 tháng 3 năm 2019. Số lượng nhân viên của Công ty và các công ty con tại ngày 31 tháng 12 năm 2021 là 2.445 người (tại ngày 31 tháng  12 năm 2020: 2.171 người). III. LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘN",
+    "strategy": "narrative_date_total",
+    "snippet": "ành phố Hồ Chí Minh cấp ngày 13 tháng 3 năm 2019. Số lượng nhân viên của Công ty và các công ty con tại ngày 31 tháng 12 năm 2021 là 2.445 người (tại ngày 31 tháng 12 năm 2020: 2.171 người). III. LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG TÀI CHÍNH  Tiền thu",
     "file": "TN1_2021_BCTN.pdf"
   }
 ]

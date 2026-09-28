@@ -123,10 +123,11 @@ SUBSET_SIGNALS_EN: List[str] = [
 
 EXCLUSION_PATTERNS: List[str] = [
     "giờ đào tạo", "giờ/nhân viên", "giờ/người",
-    "triệu đồng/người", "triệu đồng/nhân viên",
+    "triệu đồng/người", "triệu đồng/nhân viên", "triệu đồng", "tỷ đồng", "nghìn đồng", "ngàn đồng",
+    "vnd", "usd", "ca mắc", "cổ phần", "cổ phiếu",
     "doanh thu/nhân viên", "lợi nhuận/nhân viên",
     "năng suất lao động", "năng suất nhân viên",
-    "thu nhập bình quân",
+    "thu nhập bình quân", "lương bình quân", "thu nhập",
     "per employee", "per capita", "per head",
     "training hours", "hours per",
     "productivity", "compensation per",
@@ -144,10 +145,12 @@ YEAR_END_PATTERNS_VI: List[str] = [
     r"31/12/\d{4}",
     r"31\.12\.\d{4}",
     r"ngày 31 tháng 12",
+    r"thời\s+điểm\s+31[/.\s-]*(?:12|tháng\s*12)",
     r"cuối năm",
     r"cuối kỳ",
     r"tính đến",
     r"tại thời điểm",
+    r"vào thời điểm",
     r"đến ngày",
     r"đến thời điểm",
     r"tại ngày",
@@ -171,8 +174,8 @@ YEAR_END_PATTERNS_EN: List[str] = [
 
 # Đơn vị nhân viên tiếng Việt
 _UNIT_VI = (
-    r"(?:nhân\s*viên|người\s*lao\s*động|lao\s*động|CBCNV|CBNV|"
-    r"cán\s*bộ\s*(?:,?\s*)?(?:công\s*nhân\s*)?viên|nhân\s*sự|người)"
+    r"(?:nhân\s*viên|người\s*lao\s*động|lao\s*động|CBCNV|CBNV|CB\s*[-–]\s*CNV|"
+    r"cán\s*bộ\s*(?:,?\s*)?(?:công\s*nhân\s*)?viên|nhân\s*sự|người|lao\s*dng)"
 )
 
 # Đơn vị nhân viên tiếng Anh
@@ -180,12 +183,13 @@ _UNIT_EN = (
     r"(?:employees?|personnel|staff|workers?|people|persons?|headcount|FTEs?)"
 )
 
-# Pattern 1: SỐ + ĐƠN VỊ  →  "9.960 nhân viên", "54,646 employees"
-#   Với tiếng Việt, dấu . là phân cách hàng nghìn: 9.960 = 9960
-#   Với tiếng Anh, dấu , là phân cách hàng nghìn: 54,646 = 54646
+# Pattern số: 1.750, 54,646 (có phân cách) hoặc 1072, 2152 (4-6 chữ số liền nhau) hoặc 1-999
+_NUM_PATTERN = r"(?:\d{1,3}(?:[.,]\d{3})+|\d{4,6}|\d{1,3})"
+
+# Pattern 1: SỐ + ĐƠN VỊ  →  "9.960 nhân viên", "1072 người", "54,646 employees"
 RE_NUMBER_THEN_UNIT = re.compile(
     r"(?<!\d[.,])"                    # Không nằm trong số thập phân
-    r"(?P<number>\d{1,3}(?:[.,]\d{3})*)"  # Số: 9.960 hoặc 54,646
+    r"(?P<number>" + _NUM_PATTERN + r")"
     r"\s*"
     r"(?P<unit>" + _UNIT_VI + r"|" + _UNIT_EN + r")",
     re.IGNORECASE | re.UNICODE,
@@ -195,14 +199,14 @@ RE_NUMBER_THEN_UNIT = re.compile(
 RE_UNIT_THEN_NUMBER = re.compile(
     r"(?P<unit>" + _UNIT_VI + r"|" + _UNIT_EN + r")"
     r"\s*(?:là|:|\s+)\s*"
-    r"(?P<number>\d{1,3}(?:[.,]\d{3})*)",
+    r"(?P<number>" + _NUM_PATTERN + r")",
     re.IGNORECASE | re.UNICODE,
 )
 
 # Pattern 3: "had/have/has/với/có NUMBER employees/nhân viên"
 RE_HAD_NUMBER = re.compile(
     r"(?:had|have|has|với|có)\s+"
-    r"(?P<number>\d{1,3}(?:[.,]\d{3})*)"
+    r"(?P<number>" + _NUM_PATTERN + r")"
     r"\s*"
     r"(?P<unit>" + _UNIT_VI + r"|" + _UNIT_EN + r")",
     re.IGNORECASE | re.UNICODE,
@@ -216,7 +220,7 @@ RE_YEAR = re.compile(r"(?:20[12]\d)")
 
 # Pattern 6: Trích ngày 31/12/YYYY
 RE_DATE_31_12 = re.compile(
-    r"31[/.\s-]*(?:12|december|tháng\s*12)[/.\s-]*(\d{4})",
+    r"(?:31[/.\s-]*(?:12|december|tháng\s*12)[/.\s-]*(\d{4})|thời\s+điểm\s+31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(\d{4}))",
     re.IGNORECASE,
 )
 
