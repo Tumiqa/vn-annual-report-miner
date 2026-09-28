@@ -156,59 +156,91 @@
 
 
         <!-- Sticky Action Bar for Selected Reports -->
-        <div class="action-banner">
-          <!-- Zone 1: Selection & File Tools -->
-          <div class="action-zone">
-            <label style="display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;">
-              <input type="checkbox" id="chkSelectAll" class="custom-chk">
-              <span>Chọn tất cả hiển thị</span>
-            </label>
-            <span style="color: var(--text-muted);">|</span>
-            <span id="selectedCountLabel" style="font-weight: 600; color: var(--brand-primary);">Đã chọn: 0 báo cáo</span>
-            <span style="color: var(--text-muted);">|</span>
+        <div class="action-banner" style="display: flex; flex-direction: column; gap: 12px; align-items: stretch;">
+          <!-- Row 1: Selection & File Tools -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; width: 100%;">
+            <div class="action-zone">
+              <label style="display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer;">
+                <input type="checkbox" id="chkSelectAll" class="custom-chk">
+                <span>Chọn tất cả hiển thị</span>
+              </label>
+              <span style="color: var(--text-muted);">|</span>
+              <span id="selectedCountLabel" style="font-weight: 600; color: var(--brand-primary);">Đã chọn: 0 báo cáo</span>
+            </div>
             <!-- ZIP export tools -->
-            <select id="catZipStructure" class="form-select" style="padding: 5px 8px; font-size: 12px;" title="Cấu trúc phân cấp thư mục trong file ZIP">
-              <option value="ticker">Thư mục: Mã CK</option>
-              <option value="sector">Thư mục: Phân Ngành</option>
-              <option value="year">Thư mục: Năm</option>
-            </select>
-            <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Tự động xóa file PDF đệm sau khi nén ZIP để tiết kiệm ổ đĩa">
-              <input type="checkbox" id="chkZipCleanupCache">
-              <span>Xóa file đệm</span>
-            </label>
-            <button id="btnDownloadSelectedZip" class="btn btn-secondary btn-sm" disabled title="Tải về file PDF gốc đã chọn dạng file nén .zip">
-              <span id="btnZipText">Tải ZIP</span>
-            </button>
-            <button id="btnClearZenodoCache" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 7px;" title="Xóa toàn bộ file PDF đệm trong zenodo_cache để giải phóng dung lượng ổ đĩa">
-              Dọn Cache
-            </button>
+            <div class="action-zone">
+              <select id="catZipStructure" class="form-select" style="padding: 5px 8px; font-size: 12px;" title="Cấu trúc phân cấp thư mục trong file ZIP">
+                <option value="ticker">Thư mục: Mã CK</option>
+                <option value="sector">Thư mục: Phân Ngành</option>
+                <option value="year">Thư mục: Năm</option>
+              </select>
+              <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Tự động xóa file PDF đệm sau khi nén ZIP để tiết kiệm ổ đĩa">
+                <input type="checkbox" id="chkZipCleanupCache">
+                <span>Xóa file đệm</span>
+              </label>
+              <button id="btnDownloadSelectedZip" class="btn btn-secondary btn-sm" disabled title="Tải về file PDF gốc đã chọn dạng file nén .zip">
+                <span id="btnZipText">Tải ZIP</span>
+              </button>
+              <button id="btnClearZenodoCache" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 7px;" title="Xóa toàn bộ file PDF đệm trong zenodo_cache để giải phóng dung lượng ổ đĩa">
+                Dọn Cache
+              </button>
+            </div>
           </div>
 
-          <!-- Zone 2: Primary Mining & Standalone Labor Execution -->
-          <div class="action-zone action-zone-primary" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <!-- Nút chạy ĐỘC LẬP: Chỉ lấy biến Lao Động (Labor) -->
-            <button id="btnExecuteLaborOnly" class="btn btn-success" disabled style="padding: 7px 16px; font-weight: 600; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; border: none; border-radius: 6px; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Chạy ĐỘC LẬP: Trích xuất biến Tổng số lao động (Labor) 31/12 cho các báo cáo đã chọn mà không cần quét từ điển">
-              <span style="font-size: 15px;">👥</span>
-              <span id="btnLaborOnlyText">Trích Xuất Labor Riêng</span>
-            </button>
+          <!-- Divider -->
+          <div style="height: 1px; background: var(--border-subtle); width: 100%;"></div>
 
-            <!-- Vạch phân cách -->
-            <span style="color: var(--border-color, #cbd5e1); font-size: 16px; margin: 0 2px; user-select: none;">|</span>
+          <!-- Row 2: BCTN Research Operations (Two Dedicated Modes) -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%;">
+            <!-- Mode Switcher -->
+            <div class="bctn-mode-tabs">
+              <button type="button" id="btnModeMiningTab" class="bctn-mode-tab active">Khai Phá Theo Từ Điển</button>
+              <button type="button" id="btnModeVariablesTab" class="bctn-mode-tab">Trích Xuất Biến Định Lượng</button>
+            </div>
 
-            <!-- Cụm khai phá theo Từ Điển -->
-            <span style="font-size: 13px; font-weight: 500; color: var(--text-primary);">Từ điển:</span>
-            <select id="catTopicSelect" class="form-select" style="padding: 6px 10px; font-size: 13px; font-weight: 500;">
-              <option value="blockchain">Blockchain &amp; Web3 (55 từ)</option>
-              <option value="esg">ESG &amp; Phát triển bền vững (36 từ)</option>
-              <option value="fintech">Fintech &amp; Ngân hàng số (29 từ)</option>
-            </select>
-            <label style="font-size: 12px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2);" title="Tích chọn để vừa khai phá từ khóa từ điển vừa trích xuất biến Labor">
-              <input type="checkbox" id="chkExtractLabor" class="custom-chk" checked>
-              <span style="color: var(--brand-primary); font-weight: 600;">+ Kèm Labor</span>
-            </label>
-            <button id="btnExecuteSelectedScan" class="btn btn-primary" disabled style="padding: 7px 16px; font-weight: 600;">
-              <span id="btnScanText">Khai Phá Theo Từ Điển</span>
-            </button>
+            <!-- Panel 1: Dictionary Mining -->
+            <div id="bctnModeMiningPanel" class="action-zone action-zone-primary" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-size: 13px; font-weight: 500; color: var(--text-primary);">Từ điển:</span>
+              <select id="catTopicSelect" class="form-select" style="padding: 6px 10px; font-size: 13px; font-weight: 500;">
+                <option value="blockchain">Blockchain &amp; Web3 (55 từ)</option>
+                <option value="esg">ESG &amp; Phát triển bền vững (36 từ)</option>
+                <option value="fintech">Fintech &amp; Ngân hàng số (29 từ)</option>
+              </select>
+              <label style="font-size: 12px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 4px 8px; border-radius: 4px; background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2);" title="Tích chọn để vừa khai phá từ khóa từ điển vừa trích xuất biến định lượng">
+                <input type="checkbox" id="chkExtractLabor" class="custom-chk" checked>
+                <span style="color: var(--brand-primary); font-weight: 600;">+ Kèm biến định lượng</span>
+              </label>
+              <button id="btnExecuteSelectedScan" class="btn btn-primary" disabled style="padding: 7px 16px; font-weight: 600;">
+                <span id="btnScanText">Khai Phá Theo Từ Điển</span>
+              </button>
+            </div>
+
+            <!-- Panel 2: Quantitative Variables Extractor -->
+            <div id="bctnModeVariablesPanel" class="action-zone action-zone-primary" style="display: none; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Biến số:</span>
+              <label class="variable-chip" title="Tổng số lao động (headcount) tại thời điểm kết thúc năm tài chính 31/12">
+                <input type="checkbox" id="chkVarLabor" class="custom-chk" checked>
+                <span style="font-weight: 600;">Lao Động (31/12)</span>
+              </label>
+              <label class="variable-chip disabled" title="Kế hoạch phát triển: Giờ đào tạo, chi phí đào tạo nhân sự">
+                <input type="checkbox" class="custom-chk" disabled>
+                <span>Vốn Con Người</span>
+                <span class="chip-badge">Sắp ra mắt</span>
+              </label>
+              <label class="variable-chip disabled" title="Kế hoạch phát triển: Thù lao HĐQT, Ban kiểm soát và thu nhập BĐH">
+                <input type="checkbox" class="custom-chk" disabled>
+                <span>Thù Lao HĐQT</span>
+                <span class="chip-badge">Sắp ra mắt</span>
+              </label>
+              <label class="variable-chip disabled" title="Kế hoạch phát triển: Số lượng thành viên HĐQT, thành viên độc lập">
+                <input type="checkbox" class="custom-chk" disabled>
+                <span>Quy Mô HĐQT</span>
+                <span class="chip-badge">Sắp ra mắt</span>
+              </label>
+              <button id="btnExecuteVariables" class="btn btn-primary" disabled style="padding: 7px 16px; font-weight: 600;">
+                <span id="btnVariablesText">Trích Xuất Biến Định Lượng</span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -91,7 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const chkSelectAll = document.getElementById('chkSelectAll');
   const selectedCountLabel = document.getElementById('selectedCountLabel');
   const btnExecuteSelectedScan = document.getElementById('btnExecuteSelectedScan');
-  const btnExecuteLaborOnly = document.getElementById('btnExecuteLaborOnly');
+  const btnExecuteVariables = document.getElementById('btnExecuteVariables') || document.getElementById('btnExecuteLaborOnly');
+  const btnExecuteLaborOnly = btnExecuteVariables;
+  const btnModeMiningTab = document.getElementById('btnModeMiningTab');
+  const btnModeVariablesTab = document.getElementById('btnModeVariablesTab');
+  const bctnModeMiningPanel = document.getElementById('bctnModeMiningPanel');
+  const bctnModeVariablesPanel = document.getElementById('bctnModeVariablesPanel');
   const catTopicSelect = document.getElementById('catTopicSelect');
   const btnQuickSelect20 = document.getElementById('btnQuickSelect20');
   const btnSelectAllVisible = document.getElementById('btnSelectAllVisible');
@@ -113,6 +118,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   loadTickerExchangesMap();
+
+  // BCTN Mode Switcher (Khai Phá Từ Điển vs Trích Xuất Biến Định Lượng)
+  if (btnModeMiningTab && btnModeVariablesTab && bctnModeMiningPanel && bctnModeVariablesPanel) {
+    btnModeMiningTab.addEventListener('click', () => {
+      btnModeMiningTab.classList.add('active');
+      btnModeVariablesTab.classList.remove('active');
+      bctnModeMiningPanel.style.display = 'flex';
+      bctnModeVariablesPanel.style.display = 'none';
+    });
+
+    btnModeVariablesTab.addEventListener('click', () => {
+      btnModeVariablesTab.classList.add('active');
+      btnModeMiningTab.classList.remove('active');
+      bctnModeMiningPanel.style.display = 'none';
+      bctnModeVariablesPanel.style.display = 'flex';
+    });
+  }
 
   function setupExchangePillHandlers() {
     document.querySelectorAll('.exchange-pill-chk').forEach(pill => {
@@ -398,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnExecuteSelectedScan.disabled = count === 0;
-    if (btnExecuteLaborOnly) btnExecuteLaborOnly.disabled = count === 0;
+    if (btnExecuteVariables) btnExecuteVariables.disabled = count === 0;
     const btnZip = document.getElementById('btnDownloadSelectedZip');
     if (btnZip) btnZip.disabled = count === 0;
 
@@ -517,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Scan Selected Execution — SSE streaming with progress bar
-  async function runScanWorkflow({ isLaborOnly = false }) {
+  async function runScanWorkflow({ isVariablesOnly = false }) {
     const recordIds = Array.from(selectedReports.keys());
     if (recordIds.length === 0) {
       alert('Vui lòng chọn ít nhất một báo cáo để thực hiện.');
@@ -525,25 +547,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const totalSelected = recordIds.length;
-    const topic = isLaborOnly ? 'none' : (catTopicSelect ? catTopicSelect.value : 'blockchain');
-    const chkLabor = document.getElementById('chkExtractLabor');
-    const extractLabor = isLaborOnly ? true : (chkLabor ? chkLabor.checked : false);
+    const topic = isVariablesOnly ? 'none' : (catTopicSelect ? catTopicSelect.value : 'blockchain');
+    const chkLabor = document.getElementById('chkVarLabor') || document.getElementById('chkExtractLabor');
+    const extractLabor = isVariablesOnly
+      ? (chkLabor ? chkLabor.checked : true)
+      : (document.getElementById('chkExtractLabor') ? document.getElementById('chkExtractLabor').checked : false);
+
+    if (isVariablesOnly && !extractLabor) {
+      alert('Vui lòng chọn ít nhất một biến số định lượng để trích xuất.');
+      return;
+    }
 
     const btnScanEl = document.getElementById('btnExecuteSelectedScan');
-    const btnLaborEl = document.getElementById('btnExecuteLaborOnly');
+    const btnVarEl = document.getElementById('btnExecuteVariables') || document.getElementById('btnExecuteLaborOnly');
     const scanTextEl = document.getElementById('btnScanText');
-    const laborTextEl = document.getElementById('btnLaborOnlyText');
+    const varTextEl = document.getElementById('btnVariablesText') || document.getElementById('btnLaborOnlyText');
 
     const origScanText = scanTextEl ? scanTextEl.textContent : 'Khai Phá Theo Từ Điển';
-    const origLaborText = laborTextEl ? laborTextEl.textContent : 'Trích Xuất Labor Riêng';
+    const origVarText = varTextEl ? varTextEl.textContent : 'Trích Xuất Biến Định Lượng';
 
     if (btnScanEl) btnScanEl.disabled = true;
-    if (btnLaborEl) btnLaborEl.disabled = true;
+    if (btnVarEl) btnVarEl.disabled = true;
 
-    if (isLaborOnly) {
-      if (laborTextEl) laborTextEl.textContent = `Đang trích xuất ${totalSelected} báo cáo...`;
+    if (isVariablesOnly) {
+      if (varTextEl) varTextEl.textContent = `Đang trích xuất (${totalSelected} báo cáo)...`;
     } else {
-      if (scanTextEl) scanTextEl.textContent = `Đang khai phá ${totalSelected} báo cáo...`;
+      if (scanTextEl) scanTextEl.textContent = `Đang khai phá (${totalSelected} báo cáo)...`;
     }
 
     // Show progress bar
@@ -557,8 +586,8 @@ document.addEventListener('DOMContentLoaded', () => {
     progressContainer.style.display = 'block';
     progressBar.style.width = '0%';
     progressPct.textContent = '0%';
-    progressPhase.textContent = isLaborOnly ? 'Chuẩn bị trích xuất Labor...' : 'Đang chuẩn bị...';
-    progressMsg.textContent = isLaborOnly ? 'Đang kết nối & nạp báo cáo để bóc tách quy mô nhân sự 31/12...' : 'Đang khởi tạo kết nối...';
+    progressPhase.textContent = isVariablesOnly ? 'Chuẩn bị trích xuất biến định lượng...' : 'Đang chuẩn bị...';
+    progressMsg.textContent = isVariablesOnly ? 'Đang kết nối & nạp báo cáo để bóc tách biến nghiên cứu...' : 'Đang khởi tạo kết nối...';
     progressCount.textContent = '';
 
     const body = JSON.stringify({
@@ -616,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const phaseLabels = {
                   download: 'Tải báo cáo từ Zenodo',
-                  mining: isLaborOnly ? 'Trích xuất quy mô Lao Động (Labor 31/12)' : 'Khai phá từ khóa & Labor',
+                  mining: isVariablesOnly ? 'Trích xuất biến định lượng (Labor 31/12)' : 'Khai phá từ khóa & Biến định lượng',
                   export: 'Tạo file kết quả nghiên cứu (Excel, Stata, CSV)',
                 };
 
@@ -638,10 +667,10 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBar.style.width = '100%';
         progressPct.textContent = '100%';
         progressPhase.textContent = 'Hoàn tất!';
-        if (isLaborOnly) {
-          progressMsg.textContent = `Đã trích xuất thành công ${finalData.total_labor_extracted || 0}/${finalData.total_files} báo cáo có biến Labor`;
+        if (isVariablesOnly) {
+          progressMsg.textContent = `Đã trích xuất thành công ${finalData.total_labor_extracted || 0}/${finalData.total_files} báo cáo có biến định lượng`;
         } else {
-          progressMsg.textContent = `Đã khai phá ${finalData.total_files} báo cáo, tìm thấy ${finalData.total_mentions} từ khóa` + (finalData.total_labor_extracted ? `, ${finalData.total_labor_extracted} DN có Labor` : '');
+          progressMsg.textContent = `Đã khai phá ${finalData.total_files} báo cáo, tìm thấy ${finalData.total_mentions} từ khóa` + (finalData.total_labor_extracted ? `, ${finalData.total_labor_extracted} DN có biến Labor` : '');
         }
         progressCount.textContent = '';
 
@@ -662,17 +691,17 @@ document.addEventListener('DOMContentLoaded', () => {
       alert(`Lỗi thực hiện: ${err.message}`);
     } finally {
       if (btnScanEl) btnScanEl.disabled = selectedReports.size === 0;
-      if (btnLaborEl) btnLaborEl.disabled = selectedReports.size === 0;
+      if (btnVarEl) btnVarEl.disabled = selectedReports.size === 0;
       if (scanTextEl) scanTextEl.textContent = origScanText;
-      if (laborTextEl) laborTextEl.textContent = origLaborText;
+      if (varTextEl) varTextEl.textContent = origVarText;
     }
   }
 
   if (btnExecuteSelectedScan) {
-    btnExecuteSelectedScan.addEventListener('click', () => runScanWorkflow({ isLaborOnly: false }));
+    btnExecuteSelectedScan.addEventListener('click', () => runScanWorkflow({ isVariablesOnly: false }));
   }
-  if (btnExecuteLaborOnly) {
-    btnExecuteLaborOnly.addEventListener('click', () => runScanWorkflow({ isLaborOnly: true }));
+  if (btnExecuteVariables) {
+    btnExecuteVariables.addEventListener('click', () => runScanWorkflow({ isVariablesOnly: true }));
   }
 
   // Download Selected Reports as ZIP archive
