@@ -170,6 +170,15 @@ class LaborExtractor:
             re.IGNORECASE,
         )
 
+        # 8. Direct Colon Disclosure (e.g. ICF 2015: "Nhu cầu lao động: + Tổng số : 550 người")
+        self.re_direct_colon = re.compile(
+            r"(?:(?:nhu\s+cầu|kế\s+hoạch|tình\s+hình)\s+lao\s+động[^.\n]{0,80}?)?"
+            r"(?:(?:\+|-|\*|\d+[/.])\s*)?"
+            r"(?:tổng\s+số|tổng\s+cộng)\s*[:=]\s*"
+            rf"{num_re}\s*{unit_req}",
+            re.IGNORECASE,
+        )
+
     def extract_from_pdf(self, pdf_path: Union[str, Path], ticker: str, year: int) -> LaborExtractionResult:
         """Extract total labor directly from a PDF file."""
         path = Path(pdf_path)
@@ -333,6 +342,7 @@ class LaborExtractor:
             (self.re_date_first, "narrative_date_total", 0.98),
             (self.re_lead_first, "narrative_date_total", 0.98),
             (self.re_general_lead, "narrative_direct_total", 0.94),
+            (self.re_direct_colon, "narrative_direct_total", 0.94),
             (self.re_parenthesis, "narrative_comparison", 0.92),
             (self.re_en_total, "narrative_english", 0.96),
         ]
@@ -369,7 +379,7 @@ class LaborExtractor:
                         target_year_matched = True
                     else:
                         conf = 0.50
-                elif year_str in snippet:
+                elif year_str in snippet or year_str in norm_text:
                     target_year_matched = True
 
                 is_group = any(g in snippet.lower() for g in ["công ty con", "tập đoàn", "toàn hệ thống", "toàn bộ", "hợp nhất"])
@@ -739,10 +749,12 @@ class LaborExtractor:
 
         for i, line in enumerate(lines):
             low = line.lower()
-            if not any(k == low or low.startswith(k) or low.endswith(k) for k in METRIC_ROWS):
+            if len(line) > 60 or any(v in low for v in [" là ", " đạt ", " người", " nhân viên"]):
+                continue
+            if not any(k in low for k in METRIC_ROWS):
                 continue
 
-            forward = lines[i + 1 : min(len(lines), i + 8)]
+            forward = lines[i + 1 : min(len(lines), i + 10)]
             if not forward:
                 continue
 
@@ -754,29 +766,33 @@ class LaborExtractor:
                 # Row ends upon encountering percentage column (e.g. 98.9%)
                 if "%" in fl:
                     break
-                if any(bad in fl.lower() for bad in ["triệu", "tỷ", "đồng", "vnd", "usd", "lương", "thu nhập"]):
+                fl_low = fl.lower()
+                if any(bad in fl_low for bad in ["triệu", "tỷ", "đồng", "vnd", "usd", "lương", "thu nhập"]) or fl_low.endswith("đ"):
                     continue
-                clean = re.sub(r"^\s*\d+\s*[=.-]\s*", "", fl)
-                clean = clean.replace(".", "").replace(",", "").strip()
-                if clean.isdigit():
-                    int_val = int(clean)
-                    if self._is_valid_headcount(int_val, has_unit=has_unit) and not self._is_year_like(int_val):
-                        nums.append(int_val)
-                elif len(nums) > 0:
-                    break
+                m_num = re.search(r"\b(\d{1,3}(?:[.,]\d{3})*|\d{2,6})\b", fl)
+                if m_num:
+                    clean = m_num.group(1).replace(".", "").replace(",", "")
+                    if clean.isdigit():
+                        int_val = int(clean)
+                        fl_has_unit = has_unit or any(u in fl_low for u in ["người", "lao động", "nhân sự", "nhân viên", "cbcnv", "cbnv"])
+                        if self._is_valid_headcount(int_val, has_unit=fl_has_unit) and not self._is_year_like(int_val):
+                            nums.append(int_val)
 
             if nums:
                 # If multiple numbers (e.g. Plan vs Actual), actual realized is the last column
                 val = nums[-1] if len(nums) >= 2 else nums[0]
                 snippet = f"{line} -> " + " // ".join(str(n) for n in nums)
+                lookback = lines[max(0, i - 8) : i]
+                header_str = " ".join(lookback).lower()
+                is_target = (year_str in header_str or f"31/12/{year_str}" in header_str)
                 cand = LaborCandidate(
                     value=val,
                     raw_snippet=snippet,
                     page=page_num,
-                    target_year_matched=(year_str in text or f"31/12/{year_str}" in text),
+                    target_year_matched=is_target,
                     is_total_signal=True,
                     strategy="table_plan_actual_metric",
-                    confidence=0.96,
+                    confidence=0.96 if is_target else 0.72,
                     reason=f"Plan vs Actual table metric row '{line}'",
                 )
                 results.append(cand)
@@ -847,9 +863,10 @@ class LaborExtractor:
             if c.value < 20 and not any(u in snippet_low for u in ["người", "nhân viên", "lao động", "cbcnv"]):
                 score -= 0.80
 
-            # Penalty for financial terms nearby
-            if any(w in snippet_low for w in ["tỷ đồng", "triệu đồng", "đồng/người", "vnd", "usd", "lương", "thu nhập"]):
-                score -= 0.50
+            # Penalty for financial terms nearby (only if no explicit labor unit)
+            if any(w in snippet_low for w in ["tỷ đồng", "triệu đồng", "đồng/người", "vnd", "usd"]):
+                if not any(u in snippet_low for u in ["người", "nhân viên", "lao động", "cbcnv", "cbnv", "cán bộ"]):
+                    score -= 0.50
 
             # Penalty for resolution or shareholder terms
             if any(w in snippet_low for w in ["nghị quyết", "biểu quyết", "cổ đông", "cổ phần"]):

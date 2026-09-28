@@ -134,7 +134,7 @@ EXCLUSION_PATTERNS: List[str] = [
     "revenue per", "profit per", "income per",
     "tuyển dụng thêm", "tuyển mới", "nghỉ việc", "thôi việc",
     "turnover rate", "attrition", "hiring",
-    "tăng thêm", "giảm",  # "tăng thêm 83 nhân viên" → delta, not total
+    "tăng thêm", "giảm bớt", "giảm đi",  # delta exclusions, avoid broad 'giảm'
 ]
 
 # =========================================================================
