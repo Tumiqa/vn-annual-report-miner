@@ -91,12 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const chkSelectAll = document.getElementById('chkSelectAll');
   const selectedCountLabel = document.getElementById('selectedCountLabel');
   const btnExecuteSelectedScan = document.getElementById('btnExecuteSelectedScan');
-  const btnExecuteVariables = document.getElementById('btnExecuteVariables') || document.getElementById('btnExecuteLaborOnly');
-  const btnExecuteLaborOnly = btnExecuteVariables;
-  const btnModeMiningTab = document.getElementById('btnModeMiningTab');
-  const btnModeVariablesTab = document.getElementById('btnModeVariablesTab');
-  const bctnModeMiningPanel = document.getElementById('bctnModeMiningPanel');
-  const bctnModeVariablesPanel = document.getElementById('bctnModeVariablesPanel');
   const catTopicSelect = document.getElementById('catTopicSelect');
   const btnQuickSelect20 = document.getElementById('btnQuickSelect20');
   const btnSelectAllVisible = document.getElementById('btnSelectAllVisible');
@@ -119,22 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadTickerExchangesMap();
 
-  // BCTN Mode Switcher (Khai Phá Từ Điển vs Trích Xuất Biến Định Lượng)
-  if (btnModeMiningTab && btnModeVariablesTab && bctnModeMiningPanel && bctnModeVariablesPanel) {
-    btnModeMiningTab.addEventListener('click', () => {
-      btnModeMiningTab.classList.add('active');
-      btnModeVariablesTab.classList.remove('active');
-      bctnModeMiningPanel.style.display = 'flex';
-      bctnModeVariablesPanel.style.display = 'none';
-    });
 
-    btnModeVariablesTab.addEventListener('click', () => {
-      btnModeVariablesTab.classList.add('active');
-      btnModeMiningTab.classList.remove('active');
-      bctnModeMiningPanel.style.display = 'none';
-      bctnModeVariablesPanel.style.display = 'flex';
-    });
-  }
 
   function setupExchangePillHandlers() {
     document.querySelectorAll('.exchange-pill-chk').forEach(pill => {
@@ -420,7 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnExecuteSelectedScan.disabled = count === 0;
-    if (btnExecuteVariables) btnExecuteVariables.disabled = count === 0;
     const btnZip = document.getElementById('btnDownloadSelectedZip');
     if (btnZip) btnZip.disabled = count === 0;
 
@@ -538,170 +516,145 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Scan Selected Execution — SSE streaming with progress bar
-  async function runScanWorkflow({ isVariablesOnly = false }) {
-    const recordIds = Array.from(selectedReports.keys());
-    if (recordIds.length === 0) {
-      alert('Vui lòng chọn ít nhất một báo cáo để thực hiện.');
-      return;
-    }
-
-    const totalSelected = recordIds.length;
-    const topic = isVariablesOnly ? 'none' : (catTopicSelect ? catTopicSelect.value : 'blockchain');
-    const chkLabor = document.getElementById('chkVarLabor') || document.getElementById('chkExtractLabor');
-    const extractLabor = isVariablesOnly
-      ? (chkLabor ? chkLabor.checked : true)
-      : (document.getElementById('chkExtractLabor') ? document.getElementById('chkExtractLabor').checked : false);
-
-    if (isVariablesOnly && !extractLabor) {
-      alert('Vui lòng chọn ít nhất một biến số định lượng để trích xuất.');
-      return;
-    }
-
-    const btnScanEl = document.getElementById('btnExecuteSelectedScan');
-    const btnVarEl = document.getElementById('btnExecuteVariables') || document.getElementById('btnExecuteLaborOnly');
-    const scanTextEl = document.getElementById('btnScanText');
-    const varTextEl = document.getElementById('btnVariablesText') || document.getElementById('btnLaborOnlyText');
-
-    const origScanText = scanTextEl ? scanTextEl.textContent : 'Khai Phá Theo Từ Điển';
-    const origVarText = varTextEl ? varTextEl.textContent : 'Trích Xuất Biến Định Lượng';
-
-    if (btnScanEl) btnScanEl.disabled = true;
-    if (btnVarEl) btnVarEl.disabled = true;
-
-    if (isVariablesOnly) {
-      if (varTextEl) varTextEl.textContent = `Đang trích xuất (${totalSelected} báo cáo)...`;
-    } else {
-      if (scanTextEl) scanTextEl.textContent = `Đang khai phá (${totalSelected} báo cáo)...`;
-    }
-
-    // Show progress bar
-    const progressContainer = document.getElementById('miningProgressContainer');
-    const progressBar = document.getElementById('miningProgressBar');
-    const progressPct = document.getElementById('miningProgressPct');
-    const progressPhase = document.getElementById('miningProgressPhase');
-    const progressMsg = document.getElementById('miningProgressMsg');
-    const progressCount = document.getElementById('miningProgressCount');
-
-    progressContainer.style.display = 'block';
-    progressBar.style.width = '0%';
-    progressPct.textContent = '0%';
-    progressPhase.textContent = isVariablesOnly ? 'Chuẩn bị trích xuất biến định lượng...' : 'Đang chuẩn bị...';
-    progressMsg.textContent = isVariablesOnly ? 'Đang kết nối & nạp báo cáo để bóc tách biến nghiên cứu...' : 'Đang khởi tạo kết nối...';
-    progressCount.textContent = '';
-
-    const body = JSON.stringify({
-      record_ids: recordIds,
-      topic: topic,
-      threshold: 85,
-      extract_labor: extractLabor,
-    });
-
-    try {
-      const response = await fetch('/api/scan-selected-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: body,
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || `Lỗi HTTP ${response.status}`);
+  // Scan Selected Execution — Unified Mining Configuration
+  if (btnExecuteSelectedScan) {
+    btnExecuteSelectedScan.addEventListener('click', async () => {
+      const recordIds = Array.from(selectedReports.keys());
+      if (recordIds.length === 0) {
+        alert('Vui lòng chọn ít nhất một báo cáo để khai phá.');
+        return;
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let finalData = null;
+      const totalSelected = recordIds.length;
+      const topic = catTopicSelect ? catTopicSelect.value : 'blockchain';
+      const chkVarLabor = document.getElementById('chkVarLabor');
+      const extractLabor = chkVarLabor ? chkVarLabor.checked : false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      if (topic === 'none' && !extractLabor) {
+        alert('Vui lòng chọn một bộ từ điển hoặc tích chọn ít nhất một biến định lượng (ví dụ: Lao Động) để tiến hành khai phá.');
+        return;
+      }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+      const isLaborOnly = (topic === 'none' && extractLabor);
+      btnExecuteSelectedScan.disabled = true;
+      const originalText = document.getElementById('btnScanText').textContent;
+      document.getElementById('btnScanText').textContent = `Đang khai phá ${totalSelected} báo cáo...`;
 
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const jsonStr = line.slice(5).trim();
-            if (!jsonStr) continue;
+      // Show progress bar
+      const progressContainer = document.getElementById('miningProgressContainer');
+      const progressBar = document.getElementById('miningProgressBar');
+      const progressPct = document.getElementById('miningProgressPct');
+      const progressPhase = document.getElementById('miningProgressPhase');
+      const progressMsg = document.getElementById('miningProgressMsg');
+      const progressCount = document.getElementById('miningProgressCount');
 
-            try {
-              const eventData = JSON.parse(jsonStr);
+      progressContainer.style.display = 'block';
+      progressBar.style.width = '0%';
+      progressPct.textContent = '0%';
+      progressPhase.textContent = isLaborOnly ? 'Trích xuất biến định lượng (Labor)...' : 'Đang chuẩn bị khai phá...';
+      progressMsg.textContent = isLaborOnly ? 'Đang kết nối & nạp báo cáo để bóc tách quy mô nhân sự 31/12...' : 'Đang khởi tạo kết nối khai phá...';
+      progressCount.textContent = '';
 
-              // Detect event type from the raw SSE
-              if (eventData.total_files !== undefined) {
-                // This is the "complete" event
-                finalData = eventData;
-              } else if (eventData.detail) {
-                // Error event
-                throw new Error(eventData.detail);
-              } else if (eventData.phase) {
-                // Progress event
-                const pct = eventData.total > 0
-                  ? Math.round((eventData.current / eventData.total) * 100)
-                  : 0;
+      const body = JSON.stringify({
+        record_ids: recordIds,
+        topic: topic,
+        threshold: 85,
+        extract_labor: extractLabor,
+      });
 
-                const phaseLabels = {
-                  download: 'Tải báo cáo từ Zenodo',
-                  mining: isVariablesOnly ? 'Trích xuất biến định lượng (Labor 31/12)' : 'Khai phá từ khóa & Biến định lượng',
-                  export: 'Tạo file kết quả nghiên cứu (Excel, Stata, CSV)',
-                };
+      try {
+        const response = await fetch('/api/scan-selected-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: body,
+        });
 
-                progressBar.style.width = pct + '%';
-                progressPct.textContent = pct + '%';
-                progressPhase.textContent = phaseLabels[eventData.phase] || eventData.phase;
-                progressMsg.textContent = eventData.message || '';
-                progressCount.textContent = `${eventData.current}/${eventData.total}`;
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `Lỗi HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalData = null;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const jsonStr = line.slice(5).trim();
+              if (!jsonStr) continue;
+
+              try {
+                const eventData = JSON.parse(jsonStr);
+
+                // Detect event type from the raw SSE
+                if (eventData.total_files !== undefined) {
+                  finalData = eventData;
+                } else if (eventData.detail) {
+                  throw new Error(eventData.detail);
+                } else if (eventData.phase) {
+                  const pct = eventData.total > 0
+                    ? Math.round((eventData.current / eventData.total) * 100)
+                    : 0;
+
+                  const phaseLabels = {
+                    download: 'Tải báo cáo từ Zenodo/Local',
+                    mining: isLaborOnly ? 'Trích xuất biến định lượng (Labor 31/12)' : 'Khai phá từ khóa & Biến định lượng',
+                    export: 'Tạo file kết quả nghiên cứu (Excel, Stata, CSV)',
+                  };
+
+                  progressBar.style.width = pct + '%';
+                  progressPct.textContent = pct + '%';
+                  progressPhase.textContent = phaseLabels[eventData.phase] || eventData.phase;
+                  progressMsg.textContent = eventData.message || '';
+                  progressCount.textContent = `${eventData.current}/${eventData.total}`;
+                }
+              } catch (parseErr) {
+                if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
               }
-            } catch (parseErr) {
-              if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
             }
           }
         }
-      }
 
-      if (finalData) {
-        // Animate to 100%
-        progressBar.style.width = '100%';
-        progressPct.textContent = '100%';
-        progressPhase.textContent = 'Hoàn tất!';
-        if (isVariablesOnly) {
-          progressMsg.textContent = `Đã trích xuất thành công ${finalData.total_labor_extracted || 0}/${finalData.total_files} báo cáo có biến định lượng`;
-        } else {
-          progressMsg.textContent = `Đã khai phá ${finalData.total_files} báo cáo, tìm thấy ${finalData.total_mentions} từ khóa` + (finalData.total_labor_extracted ? `, ${finalData.total_labor_extracted} DN có biến Labor` : '');
-        }
-        progressCount.textContent = '';
-
-        setTimeout(() => {
-          renderResearchResults(finalData);
-          const catalogResults = document.getElementById('catalogResultsCard');
-          if (catalogResults) {
-            catalogResults.style.display = 'block';
-            catalogResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (finalData) {
+          progressBar.style.width = '100%';
+          progressPct.textContent = '100%';
+          progressPhase.textContent = 'Hoàn tất!';
+          if (isLaborOnly) {
+            progressMsg.textContent = `Đã trích xuất thành công ${finalData.total_labor_extracted || 0}/${finalData.total_files} báo cáo có biến Labor`;
+          } else {
+            progressMsg.textContent = `Đã khai phá ${finalData.total_files} báo cáo, tìm thấy ${finalData.total_mentions} từ khóa` + (finalData.total_labor_extracted ? `, ${finalData.total_labor_extracted} DN có Labor` : '');
           }
-          progressContainer.style.display = 'none';
-        }, 1200);
-      } else {
-        throw new Error('Không nhận được kết quả từ server.');
-      }
-    } catch (err) {
-      progressContainer.style.display = 'none';
-      alert(`Lỗi thực hiện: ${err.message}`);
-    } finally {
-      if (btnScanEl) btnScanEl.disabled = selectedReports.size === 0;
-      if (btnVarEl) btnVarEl.disabled = selectedReports.size === 0;
-      if (scanTextEl) scanTextEl.textContent = origScanText;
-      if (varTextEl) varTextEl.textContent = origVarText;
-    }
-  }
+          progressCount.textContent = '';
 
-  if (btnExecuteSelectedScan) {
-    btnExecuteSelectedScan.addEventListener('click', () => runScanWorkflow({ isVariablesOnly: false }));
-  }
-  if (btnExecuteVariables) {
-    btnExecuteVariables.addEventListener('click', () => runScanWorkflow({ isVariablesOnly: true }));
+          setTimeout(() => {
+            renderResearchResults(finalData);
+            const catalogResults = document.getElementById('catalogResultsCard');
+            if (catalogResults) {
+              catalogResults.style.display = 'block';
+              catalogResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            progressContainer.style.display = 'none';
+          }, 1200);
+        } else {
+          throw new Error('Không nhận được kết quả từ server.');
+        }
+      } catch (err) {
+        progressContainer.style.display = 'none';
+        alert(`Lỗi thực hiện: ${err.message}`);
+      } finally {
+        btnExecuteSelectedScan.disabled = selectedReports.size === 0;
+        document.getElementById('btnScanText').textContent = originalText;
+      }
+    });
   }
 
   // Download Selected Reports as ZIP archive
@@ -890,7 +843,13 @@ document.addEventListener('DOMContentLoaded', () => {
           opt.textContent = `${d.name} (${d.total_keywords} từ)`;
           sel.appendChild(opt);
         });
-        if (currentVal && list.some(d => d.id === currentVal)) {
+        if (sel === catTopicSelect) {
+          const optNone = document.createElement('option');
+          optNone.value = 'none';
+          optNone.textContent = '-- Không quét từ điển --';
+          sel.appendChild(optNone);
+        }
+        if (currentVal && (list.some(d => d.id === currentVal) || currentVal === 'none')) {
           sel.value = currentVal;
         }
       });

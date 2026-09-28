@@ -637,38 +637,7 @@ body {
   border-radius: var(--radius-md);
 }
 
-/* BCTN Feature Control Panel & Sub-Tabs */
-.bctn-mode-tabs {
-  display: inline-flex;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  gap: 4px;
-}
-
-.bctn-mode-tab {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.bctn-mode-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-surface-hover);
-}
-
-.bctn-mode-tab.active {
-  background: var(--brand-primary);
-  color: #ffffff;
-  font-weight: 600;
-}
+/* Variable Chips for Quantitative Mining */
 
 .variable-chip {
   display: inline-flex;
