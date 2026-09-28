@@ -139,6 +139,7 @@ from arminer.data.news_scraper import (
     UniversalNewsExtractor,
     MultiSourceNewsAggregator,
 )
+from arminer.mining.labor_extractor import LaborExtractor
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "data" / "fixtures"
 if not FIXTURES_DIR.exists():
@@ -182,6 +183,7 @@ def _get_safe_export_path(directory: Path, base_name: str, ext: str) -> Path:
 zenodo_downloader = ZenodoDownloader()
 news_resolver = CompanyWebsiteResolver()
 news_aggregator = MultiSourceNewsAggregator(resolver=news_resolver)
+labor_extractor = LaborExtractor()
 
 app = FastAPI(title="arminer Web Studio", description="Enterprise Annual Report Miner", version="0.2.0")
 
@@ -716,13 +718,14 @@ _snippet_extractor = SnippetExtractor(context_chars=500)
 
 def _process_one_bctn(
     item: Dict[str, Any],
-    matcher: GenericFuzzyMatcher,
-    calc: SmartVariableCalculator,
-    flex_dict: FlexibleDictionary,
+    matcher: Optional[GenericFuzzyMatcher],
+    calc: Optional[SmartVariableCalculator],
+    flex_dict: Optional[FlexibleDictionary],
     topic_prefix: str,
     use_fuzzy: bool = False,
+    extract_labor: bool = False,
 ) -> Optional[Dict[str, Any]]:
-    """Process a single report file: cached text extraction, keyword matching, variable calculation."""
+    """Process a single report file: cached text extraction, keyword matching, variable calculation, and labor extraction."""
     p = item["path"]
     text, n_pages = _extract_text_cached(p)
     if not text:
@@ -730,14 +733,25 @@ def _process_one_bctn(
 
     words = text.split()
     total_words = len(words)
-    matches = matcher.search(text, use_fuzzy=use_fuzzy) if total_words > 0 else []
+    matches = (matcher.search(text, use_fuzzy=use_fuzzy) if (matcher and total_words > 0) else [])
 
-    vars_r = calc.calculate_all(
-        matches, total_words,
-        category_names=flex_dict.categories,
-        topic_prefix=topic_prefix or "topic",
-        total_dict_keywords=len(flex_dict.entries),
-        classification_rules=flex_dict.classification_rules,
+    vars_r = (
+        calc.calculate_all(
+            matches, total_words,
+            category_names=flex_dict.categories if flex_dict else [],
+            topic_prefix=topic_prefix or "topic",
+            total_dict_keywords=len(flex_dict.entries) if flex_dict else 0,
+            classification_rules=flex_dict.classification_rules if flex_dict else None,
+        )
+        if calc and flex_dict
+        else {
+            "Word_Count": total_words,
+            "Frequency": 0,
+            "Log_Frequency": 0.0,
+            "Mention": 0,
+            "Density": 0.0,
+            "Unique_Keywords": 0,
+        }
     )
 
     row = {
@@ -749,6 +763,36 @@ def _process_one_bctn(
         "pages": int(n_pages) if n_pages is not None else 1,
         **vars_r,
     }
+
+    # Extract Labor / Headcount if requested
+    labor_audit = None
+    labor_res = None
+    if extract_labor:
+        try:
+            yr = int(item["year"]) if item.get("year") else 0
+            if p.exists() and p.suffix.lower() == ".pdf":
+                labor_res = labor_extractor.extract_from_pdf(p, item["ticker"], yr)
+            else:
+                labor_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
+
+            row["Labor"] = labor_res.labor
+            row["Labor_Page"] = labor_res.source_page
+            row["Labor_Confidence"] = round(labor_res.confidence, 3)
+
+            labor_audit = {
+                "STT": 0,
+                "Ticker": item["ticker"],
+                "Year": item.get("year"),
+                "Labor": labor_res.labor,
+                "Page": labor_res.source_page,
+                "Confidence": round(labor_res.confidence, 3),
+                "Status": labor_res.status,
+                "Strategy": labor_res.metadata.get("strategy", ""),
+                "Snippet": labor_res.raw_text,
+                "File": p.name,
+            }
+        except Exception as exc:
+            logger.warning(f"Labor extraction failed for {item.get('ticker')}: {exc}")
 
     kw_counts = {}
     for m in matches:
@@ -781,6 +825,16 @@ def _process_one_bctn(
             "context": snippet,
         })
 
+    # If in labor mode and labor snippet found, include in snippets preview
+    if extract_labor and labor_res and labor_res.raw_text:
+        item_snippets.append({
+            "ticker": row["ticker"],
+            "year": row["year"],
+            "keyword": f"Labor: {labor_res.labor}" if labor_res.labor is not None else "Labor: N/A",
+            "category": "labor_headcount",
+            "context": f"[Trang {labor_res.source_page or '-'}] {labor_res.raw_text}",
+        })
+
     # Full sentence-boundary context snippets (for Excel sheet "Context")
     context_snippets = _snippet_extractor.extract_all_with_context(
         text, matches,
@@ -796,6 +850,7 @@ def _process_one_bctn(
         "matches_count": len(matches),
         "ticker": item["ticker"],
         "year": item["year"],
+        "labor_audit": labor_audit,
     }
 
 
@@ -806,6 +861,7 @@ class ScanSelectedRequest(BaseModel):
     keywords: Optional[str] = None
     threshold: int = 85
     use_fuzzy: bool = False
+    extract_labor: bool = False
 
 
 @app.post("/api/scan-selected")
@@ -853,16 +909,19 @@ def scan_selected_reports(req: ScanSelectedRequest):
         err_msg += " Bạn có thể đặt file PDF vào thư mục 'data/reports/' để quét offline siêu tốc không phụ thuộc mạng."
         raise HTTPException(status_code=400, detail=err_msg)
 
-    flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
-    core_dict = flex_dict.to_core_dictionary()
-    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
-    calc = SmartVariableCalculator()
+    is_pure_labor = (req.topic in ("none", "", None)) and req.extract_labor
+    flex_dict = None if is_pure_labor else _resolve_dictionary(topic=req.topic, keywords=req.keywords)
+    core_dict = flex_dict.to_core_dictionary() if flex_dict else None
+    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold) if core_dict else None
+    calc = SmartVariableCalculator() if flex_dict else None
 
     # Parallel report mining across available CPU cores
     workers = min(8, max(2, (os.cpu_count() or 4)))
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = list(executor.map(
-            lambda itm: _process_one_bctn(itm, matcher, calc, flex_dict, req.topic or "topic", use_fuzzy=req.use_fuzzy),
+            lambda itm: _process_one_bctn(
+                itm, matcher, calc, flex_dict, req.topic or "topic", use_fuzzy=req.use_fuzzy, extract_labor=req.extract_labor
+            ),
             target_items
         ))
 
@@ -870,6 +929,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
     all_snippets = []
     all_raw_keywords = []
     all_context_snippets = []
+    all_labor_audits = []
 
     for res in results:
         if res:
@@ -877,6 +937,8 @@ def scan_selected_reports(req: ScanSelectedRequest):
             all_raw_keywords.extend(res["raw_keywords"])
             all_snippets.extend(res["snippets"])
             all_context_snippets.extend(res.get("context_snippets", []))
+            if res.get("labor_audit"):
+                all_labor_audits.append(res["labor_audit"])
 
     if not rows:
         raise HTTPException(status_code=400, detail="Không thể trích xuất nội dung từ các file đã chọn.")
@@ -891,6 +953,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
 
     core_order = [
         "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+        "Labor", "Labor_Page", "Labor_Confidence",
         "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
         "Unique_Keywords",
     ]
@@ -898,11 +961,19 @@ def scan_selected_reports(req: ScanSelectedRequest):
     other_cols = [c for c in df.columns if c not in first_cols]
     df = df[first_cols + other_cols]
 
-    # Generate research pack (including Context sheet)
+    # Generate research pack (including Context & Labor_Audit sheets)
     raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
     context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
+    for idx, item in enumerate(all_labor_audits, 1):
+        item["STT"] = idx
+    labor_audit_df = pd.DataFrame(all_labor_audits) if all_labor_audits else None
     generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-    generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
+    generator.generate_all(
+        df,
+        raw_keywords_df=raw_df,
+        context_snippets_df=context_df,
+        labor_audit_df=labor_audit_df,
+    )
 
     p_name = (req.topic or "topic").lower()
     freq_col = "Frequency" if "Frequency" in df.columns else (
@@ -1044,15 +1115,17 @@ async def scan_selected_stream(req: ScanSelectedRequest):
             return
 
         # --- Phase 2: Mining (Parallel + Cached) ---
-        flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
-        core_dict = flex_dict.to_core_dictionary()
-        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
-        calc = SmartVariableCalculator()
+        is_pure_labor = (req.topic in ("none", "", None)) and req.extract_labor
+        flex_dict = None if is_pure_labor else _resolve_dictionary(topic=req.topic, keywords=req.keywords)
+        core_dict = flex_dict.to_core_dictionary() if flex_dict else None
+        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold) if core_dict else None
+        calc = SmartVariableCalculator() if flex_dict else None
 
         rows = []
         all_snippets = []
         all_raw_keywords = []
         all_context_snippets = []
+        all_labor_audits = []
         total = len(target_items)
         workers = min(8, max(2, (os.cpu_count() or 4)))
 
@@ -1064,7 +1137,10 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_item = {
-                executor.submit(_process_one_bctn, itm, matcher, calc, flex_dict, req.topic or "topic", req.use_fuzzy): itm
+                executor.submit(
+                    _process_one_bctn,
+                    itm, matcher, calc, flex_dict, req.topic or "topic", req.use_fuzzy, extract_labor=req.extract_labor
+                ): itm
                 for itm in target_items
             }
 
@@ -1082,7 +1158,15 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                         all_raw_keywords.extend(res["raw_keywords"])
                         all_snippets.extend(res["snippets"])
                         all_context_snippets.extend(res.get("context_snippets", []))
-                        hit_info = f"({res['matches_count']} từ khóa)" if res['matches_count'] > 0 else ""
+                        if res.get("labor_audit"):
+                            all_labor_audits.append(res["labor_audit"])
+
+                        hit_parts = []
+                        if res['matches_count'] > 0:
+                            hit_parts.append(f"{res['matches_count']} từ khóa")
+                        if req.extract_labor and res["row"].get("Labor") is not None:
+                            hit_parts.append(f"Labor: {res['row']['Labor']:,}")
+                        hit_info = f"({', '.join(hit_parts)})" if hit_parts else ""
                     else:
                         hit_info = "(bỏ qua)"
                 except Exception as exc:
@@ -1122,6 +1206,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         core_order = [
             "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+            "Labor", "Labor_Page", "Labor_Confidence",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
             "Unique_Keywords",
         ]
@@ -1131,8 +1216,16 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
         raw_df = pd.DataFrame(all_raw_keywords) if all_raw_keywords else None
         context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
+        for idx, item in enumerate(all_labor_audits, 1):
+            item["STT"] = idx
+        labor_audit_df = pd.DataFrame(all_labor_audits) if all_labor_audits else None
         generator = ResearchOutputGenerator(DOWNLOAD_DIR)
-        generator.generate_all(df, raw_keywords_df=raw_df, context_snippets_df=context_df)
+        generator.generate_all(
+            df,
+            raw_keywords_df=raw_df,
+            context_snippets_df=context_df,
+            labor_audit_df=labor_audit_df,
+        )
 
         p_name = (req.topic or "topic").lower()
         freq_col = "Frequency" if "Frequency" in df.columns else (
@@ -1140,11 +1233,13 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         )
         total_mentions = int(df[freq_col].sum()) if freq_col in df.columns else 0
         firms_with_hits = int((df[freq_col] > 0).sum()) if freq_col in df.columns else 0
+        labor_extracted_count = int(df["Labor"].notna().sum()) if "Labor" in df.columns else 0
 
         yield {"event": "complete", "data": json.dumps({
             "total_files": len(df),
             "files_with_hits": firms_with_hits,
             "total_mentions": total_mentions,
+            "total_labor_extracted": labor_extracted_count,
             "top_rows": df.head(50).to_dict(orient="records"),
             "snippets": all_snippets[:200],
             "excel_download": "/api/download/panel_data.xlsx",

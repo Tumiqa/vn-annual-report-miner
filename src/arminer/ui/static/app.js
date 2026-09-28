@@ -544,10 +544,14 @@ document.addEventListener('DOMContentLoaded', () => {
       progressMsg.textContent = 'Đang khởi tạo kết nối...';
       progressCount.textContent = '';
 
+      const chkLabor = document.getElementById('chkExtractLabor');
+      const extractLabor = chkLabor ? chkLabor.checked : false;
+
       const body = JSON.stringify({
         record_ids: recordIds,
         topic: topic,
         threshold: 85,
+        extract_labor: extractLabor,
       });
 
       try {
@@ -1294,6 +1298,10 @@ document.addEventListener('DOMContentLoaded', () => {
     statObsCount.textContent = data.total_files || 0;
     statHitsCount.textContent = data.files_with_hits || 0;
     statMentionsCount.textContent = (data.total_mentions || 0).toLocaleString();
+    const statLaborCount = document.getElementById('statLaborCount');
+    if (statLaborCount) {
+      statLaborCount.textContent = (data.total_labor_extracted || 0).toLocaleString();
+    }
 
     const resultsTabBadge = document.getElementById('resultsTabBadge');
     if (resultsTabBadge) {
@@ -1336,6 +1344,19 @@ document.addEventListener('DOMContentLoaded', () => {
       mention = mention ?? 0;
       density = density ?? 0;
 
+      // Labor column formatting
+      let laborVal = r.Labor ?? r.labor ?? null;
+      let laborPage = r.Labor_Page ?? r.labor_page ?? null;
+      let laborConf = r.Labor_Confidence ?? r.labor_confidence ?? null;
+
+      let laborCell = '<span style="color: var(--text-muted);">—</span>';
+      if (laborVal !== null && laborVal !== undefined && !isNaN(laborVal)) {
+        const confStr = typeof laborConf === 'number' ? `Độ tin cậy: ${(laborConf * 100).toFixed(0)}%` : '';
+        const pageStr = laborPage ? `Trang ${laborPage}` : '';
+        const titleTooltip = [pageStr, confStr].filter(Boolean).join(' • ');
+        laborCell = `<span class="badge" style="background: rgba(16,185,129,0.12); color: #059669; font-weight: 700; font-family: var(--font-mono); font-size: 0.85rem;" title="${escapeHtml(titleTooltip)}">${Number(laborVal).toLocaleString()}</span>`;
+      }
+
       tr.innerHTML = `
         <td><strong style="color: var(--text-primary); font-family: var(--font-mono);">${r.ticker || '—'}</strong></td>
         <td class="tabular">${r.year || '—'}</td>
@@ -1348,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td style="text-align: right; font-weight: 700; color: #3b82f6;" class="tabular">${typeof logFreq === 'number' ? logFreq.toFixed(4) : logFreq}</td>
         <td style="text-align: center;">${mention > 0 ? '<span style="color: var(--color-success); font-weight: 700;">1</span>' : '<span style="color: var(--text-muted);">0</span>'}</td>
         <td style="text-align: right;" class="tabular">${typeof density === 'number' ? density.toFixed(4) : density}%</td>
+        <td style="text-align: right;" class="tabular">${laborCell}</td>
       `;
       panelDataTableBody.appendChild(tr);
     });

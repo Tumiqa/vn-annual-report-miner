@@ -673,6 +673,22 @@ def auto_generate_codebook(df: pd.DataFrame) -> List[Dict[str, str]]:
             vtype = "Đếm số lần (Count)"
             formula = "Σ keyword occurrences trong nhóm category"
             ref = "Fang et al. (2024)"
+        # === Labor / Human Capital variables ===
+        elif c_lower == "labor":
+            desc = "Tổng số lao động của doanh nghiệp tại ngày kết thúc năm tài chính (31/12)"
+            vtype = "Biến quy mô lao động (Headcount / Labor)"
+            formula = "Trích xuất từ Báo cáo thường niên (BCTN) / Thuyết minh BCTC"
+            ref = "Thông tư 96/2020/TT-BTC, chuẩn mực công bố BCTN"
+        elif c_lower == "labor_page":
+            desc = "Số trang trong báo cáo phát hiện số lượng lao động"
+            vtype = "Trường kiểm chứng (Audit Page)"
+            formula = "Page index trong file PDF BCTN"
+            ref = ""
+        elif c_lower == "labor_confidence":
+            desc = "Độ tin cậy của thuật toán trích xuất biến Labor (0.00 - 1.00)"
+            vtype = "Chỉ số tin cậy (Confidence Score)"
+            formula = "Đánh giá đa tầng: câu văn khẳng định, bảng đối chiếu nhiều năm, thuyết minh BCTC"
+            ref = ""
         # === Financial ratios ===
         elif c_lower == "roa":
             desc = "Tỷ suất sinh lời trên tổng tài sản (Return on Assets)"
@@ -911,6 +927,7 @@ class ResearchOutputGenerator:
         variable_info: Optional[List[Dict]] = None,
         raw_keywords_df: Optional[pd.DataFrame] = None,
         context_snippets_df: Optional[pd.DataFrame] = None,
+        labor_audit_df: Optional[pd.DataFrame] = None,
     ) -> Dict[str, Path]:
         outputs = {}
 
@@ -929,11 +946,17 @@ class ResearchOutputGenerator:
             context_snippets_df.to_csv(ctx_csv, index=False, encoding="utf-8-sig")
             outputs["context_snippets_csv"] = ctx_csv
 
+        # Labor audit CSV if available
+        if labor_audit_df is not None and not labor_audit_df.empty:
+            lab_csv = self.output_dir / "labor_audit.csv"
+            labor_audit_df.to_csv(lab_csv, index=False, encoding="utf-8-sig")
+            outputs["labor_audit_csv"] = lab_csv
+
         # Panel data (Excel with all research sheets, CSV, Parquet, Stata)
         for fmt in ("excel", "csv", "parquet", "stata"):
             try:
                 outputs[f"panel_{fmt}"] = self._export(
-                    panel_df, fmt, variable_info, raw_keywords_df, context_snippets_df
+                    panel_df, fmt, variable_info, raw_keywords_df, context_snippets_df, labor_audit_df
                 )
             except Exception as e:
                 logger.warning(f"Failed exporting format {fmt}: {e}")
@@ -959,6 +982,7 @@ class ResearchOutputGenerator:
         variable_info: Optional[List[Dict]] = None,
         raw_keywords_df: Optional[pd.DataFrame] = None,
         context_snippets_df: Optional[pd.DataFrame] = None,
+        labor_audit_df: Optional[pd.DataFrame] = None,
     ) -> Path:
         # Loại bỏ 2 cột company_name và exchange ở sheet Panel_Data theo yêu cầu người dùng
         drop_cols = [
@@ -969,6 +993,7 @@ class ResearchOutputGenerator:
 
         core_order = [
             "ticker", "year", "icb_level1", "icb_level2", "file", "pages",
+            "Labor", "Labor_Page", "Labor_Confidence",
             "Word_Count", "Frequency", "Log_Frequency", "Mention", "Density",
             "Unique_Keywords",
         ]
@@ -1005,6 +1030,7 @@ class ResearchOutputGenerator:
             export_df_clean = sanitize(export_df)
             context_clean = sanitize(context_snippets_df)
             raw_clean = sanitize(raw_keywords_df)
+            labor_clean = sanitize(labor_audit_df)
 
             with pd.ExcelWriter(p, engine="openpyxl") as writer:
                 # Sheet 1: Panel_Data (Main econometric panel regression variables)
@@ -1033,11 +1059,15 @@ class ResearchOutputGenerator:
                         writer, sheet_name="Raw_Keywords", index=False
                     )
 
-                # Sheet 4: Codebook (Variable explanations & citations)
+                # Sheet 4: Labor_Audit (Audit evidence of extracted total headcount)
+                if labor_clean is not None and not labor_clean.empty:
+                    labor_clean.to_excel(writer, sheet_name="Labor_Audit", index=False)
+
+                # Sheet 5: Codebook (Variable explanations & citations)
                 if variable_info:
                     sanitize(pd.DataFrame(variable_info)).to_excel(writer, sheet_name="Codebook", index=False)
 
-                # Sheet 5: Company_Info (Danh sách doanh nghiệp niêm yết, bỏ cột IR)
+                # Sheet 6: Company_Info (Danh sách doanh nghiệp niêm yết, bỏ cột IR)
                 panel_tickers = pd.Series(export_df["ticker"]).dropna().unique().tolist() if "ticker" in export_df.columns else None
                 company_df = load_company_info_df(tickers=panel_tickers)
                 if company_df is not None:
