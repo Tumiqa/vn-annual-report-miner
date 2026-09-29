@@ -13,16 +13,22 @@ Các nguồn cào bù chuẩn:
 
 from __future__ import annotations
 
+import io
 import fitz  # PyMuPDF
 import json
 import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
+import threading
 import time
 import urllib.request
 import urllib.parse
 from typing import Any, Dict, List, Optional, Tuple
+import zipfile
 
 from loguru import logger
 import requests
@@ -50,9 +56,14 @@ class ReportHealer:
         self.gdrive_root = gdrive_root or self._detect_gdrive_root()
         self._websites_db: Dict[str, Any] = {}
         self._load_websites_db()
+        self._vietstock_token: Optional[str] = None
+        self._vietstock_token_time: float = 0.0
 
     def _detect_gdrive_root(self) -> Optional[Path]:
+        avail = {d[0].upper() for d in os.listdrives()} if hasattr(os, "listdrives") else {"C", "D", "E", "F", "G", "H"}
         for drive_letter in ("H", "I", "G", "D"):
+            if drive_letter not in avail:
+                continue
             p = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
             if p.exists() and p.is_dir():
                 return p
@@ -67,6 +78,141 @@ class ReportHealer:
                 self._websites_db = json.loads(WEBSITES_DB_PATH.read_text(encoding="utf-8"))
             except Exception as e:
                 logger.warning(f"Could not load websites DB: {e}")
+
+    # =========================================================================
+    # 0. NGUỒN VIETSTOCK: KHO LƯU TRỮ VĂN BẢN NIÊM YẾT CHÍNH THỐNG (HOSE & HNX)
+    # =========================================================================
+
+    _token_lock = threading.Lock()
+
+    def _ensure_vietstock_token(self) -> str:
+        with self._token_lock:
+            now = time.time()
+            if self._vietstock_token and (now - self._vietstock_token_time < 300):
+                return self._vietstock_token
+            try:
+                from bs4 import BeautifulSoup
+                headers = {
+                    "User-Agent": DEFAULT_HEADERS["User-Agent"],
+                    "Referer": "https://finance.vietstock.vn/STB/tai-lieu/bao-cao-thuong-nien.htm",
+                }
+                r0 = self.session.get("https://finance.vietstock.vn/STB/tai-lieu/bao-cao-thuong-nien.htm", headers=headers, timeout=12)
+                soup = BeautifulSoup(r0.text, "html.parser")
+                t_tag = soup.find("input", {"name": "__RequestVerificationToken"})
+                if t_tag and t_tag.get("value"):
+                    self._vietstock_token = t_tag["value"]
+                    self._vietstock_token_time = now
+                    logger.info(f"ReportHealer: Đã cấp mới verification token Vietstock ({self._vietstock_token[:15]}...)")
+                    return self._vietstock_token
+            except Exception as e:
+                logger.debug(f"ReportHealer: Không thể lấy token Vietstock: {e}")
+            return self._vietstock_token or ""
+
+    def fetch_from_vietstock(self, ticker: str, year: int) -> Optional[bytes]:
+        """
+        Tìm và tải bản BCTN gốc từ kho dữ liệu niêm yết chính thống Vietstock (HOSE & HNX).
+        Tự động bóc tách các file nén (.zip, .rar, .7z) và trích xuất PDF báo cáo thường niên đầy đủ nhất.
+        """
+        from arminer.data.bctn_validator import is_valid_bctn_file
+
+        ticker_u = ticker.upper()
+        year_str = str(year)
+        token = self._ensure_vietstock_token()
+
+        payload = {
+            "code": ticker_u,
+            "type": "2",  # 2 = Báo cáo thường niên (BCTN)
+            "page": 1,
+            "pageSize": 50,
+        }
+        if token:
+            payload["__RequestVerificationToken"] = token
+
+        headers = {
+            "User-Agent": DEFAULT_HEADERS["User-Agent"],
+            "Referer": f"https://finance.vietstock.vn/{ticker_u}/tai-lieu/bao-cao-thuong-nien.htm",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+
+        try:
+            r = self.session.post("https://finance.vietstock.vn/data/getdocument", data=payload, headers=headers, timeout=12)
+            if r.status_code != 200:
+                return None
+            raw_text = r.content.decode("utf-8-sig", errors="replace").strip()
+            items = json.loads(raw_text)
+            if not isinstance(items, list):
+                return None
+        except Exception as e:
+            logger.debug(f"ReportHealer: Lỗi truy vấn Vietstock cho {ticker_u}: {e}")
+            return None
+
+        candidates = []
+        for it in items:
+            title = it.get("Title", "") or ""
+            url = it.get("Url", "") or it.get("FileUrl", "") or ""
+            comb = (title + " " + url).lower()
+
+            matched_year = False
+            if f"năm {year_str}" in comb or f" {year_str}" in comb or f"_{year_str}" in comb or f"/{year_str}/" in comb or f"-{year_str}" in comb:
+                matched_year = True
+
+            if matched_year:
+                candidates.append((title, url))
+
+        logger.info(f"ReportHealer: Tìm thấy {len(candidates)} ứng viên Vietstock cho {ticker_u}/{year}")
+
+        for title, url in candidates:
+            if not url or not url.startswith("http"):
+                continue
+            try:
+                resp = self.session.get(url, headers={"User-Agent": DEFAULT_HEADERS["User-Agent"]}, stream=True, timeout=30)
+                if resp.status_code != 200:
+                    continue
+                content = resp.content
+                if len(content) < 100_000:
+                    continue
+
+                url_low = url.lower()
+                # 1. Trực tiếp PDF
+                if url_low.endswith(".pdf") or b"%PDF" in content[:1024]:
+                    if is_valid_bctn_file(content):
+                        logger.info(f"ReportHealer: Tải thành công BCTN trực tiếp Vietstock: {ticker_u}/{year} ({len(content)//1024} KB)")
+                        return content
+
+                # 2. File nén ZIP
+                elif url_low.endswith(".zip") or content[:4] == b"PK\x03\x04":
+                    try:
+                        zf = zipfile.ZipFile(io.BytesIO(content))
+                        pdf_entries = [f for f in zf.infolist() if f.filename.lower().endswith(".pdf")]
+                        pdf_entries.sort(key=lambda x: x.file_size, reverse=True)
+                        for entry in pdf_entries:
+                            pdf_bytes = zf.read(entry)
+                            if is_valid_bctn_file(pdf_bytes):
+                                logger.info(f"ReportHealer: Bóc tách thành công BCTN từ ZIP Vietstock: {ticker_u}/{year} - {entry.filename} ({len(pdf_bytes)//1024} KB)")
+                                return pdf_bytes
+                    except Exception as ze:
+                        logger.debug(f"ReportHealer zip extract error: {ze}")
+
+                # 3. File nén RAR / 7Z
+                elif url_low.endswith((".rar", ".7z")):
+                    with tempfile.TemporaryDirectory() as tmp_dir:
+                        tmp_archive = Path(tmp_dir) / f"archive_{ticker_u}_{year}"
+                        tmp_archive.write_bytes(content)
+                        extract_dir = Path(tmp_dir) / "extracted"
+                        extract_dir.mkdir(exist_ok=True)
+
+                        proc = subprocess.run(["tar", "-xf", str(tmp_archive), "-C", str(extract_dir)], capture_output=True, text=True)
+                        if proc.returncode == 0:
+                            extracted_pdfs = list(extract_dir.rglob("*.pdf"))
+                            extracted_pdfs.sort(key=lambda p: p.stat().st_size, reverse=True)
+                            for ep in extracted_pdfs:
+                                if is_valid_bctn_file(ep):
+                                    logger.info(f"ReportHealer: Bóc tách thành công BCTN từ RAR/7Z Vietstock: {ticker_u}/{year} - {ep.name} ({ep.stat().st_size//1024} KB)")
+                                    return ep.read_bytes()
+            except Exception as e:
+                logger.debug(f"ReportHealer: Lỗi tải ứng viên Vietstock {url}: {e}")
+
+        return None
 
     # =========================================================================
     # 1. BỘ LỌC KIỂM TOÁN CHẤT LƯỢNG (AUDIT / BOGUS DETECTION)
@@ -126,6 +272,16 @@ class ReportHealer:
                 "/bao-cao-thuong-nien",
                 "/annual-report",
                 "/annual-reports",
+                "/shareholder/annual-report",
+                "/shareholder/annual-reports",
+                "/shareholder/bao-cao-thuong-nien",
+                "/vi/quan-he-co-dong/bao-cao-thuong-nien.html",
+                "/vi/quan-he-co-dong/bao-cao-thuong-nien",
+                "/vi/quan-he-nha-dau-tu/bao-cao-thuong-nien",
+                "/vi/quan-he-co-dong/tai-lieu-co-dong",
+                "/vi/bao-cao-thuong-nien.html",
+                "/nha-dau-tu/bao-cao-thuong-nien.html",
+                "/nha-dau-tu/bao-cao-thuong-nien",
                 "/bctn",
                 "/quan-he-co-dong/bao-cao-thuong-nien",
                 "/tai-lieu-co-dong",
@@ -347,20 +503,35 @@ class ReportHealer:
         if local_target.exists():
             logger.warning(f"ReportHealer: Phát hiện file cào lỗi trong local cache: {local_target.name}")
 
-        # 2. Bắt đầu cào bù từ các nguồn
+        # 2. Bắt đầu cào bù từ các nguồn dữ liệu chất lượng cao
         pdf_bytes = None
         healed_source = ""
 
-        # Ưu tiên 1: IR Portal chính thức của doanh nghiệp
-        pdf_bytes = self.fetch_from_ir_portal(ticker_u, year)
-        if pdf_bytes:
-            healed_source = "official_ir_portal"
-
-        # Ưu tiên 2: CafeF CDN 30+ patterns
-        if not pdf_bytes:
-            pdf_bytes = self.fetch_from_cafef_cdn(ticker_u, year)
+        # Ưu tiên 1: Kho văn bản niêm yết chính thống Vietstock (HOSE & HNX)
+        try:
+            pdf_bytes = self.fetch_from_vietstock(ticker_u, year)
             if pdf_bytes:
-                healed_source = "cafef_cdn_patterns"
+                healed_source = "vietstock_corporate_depository"
+        except Exception as e_vs:
+            logger.debug(f"ReportHealer: Lỗi Vietstock cho {ticker_u}/{year}: {e_vs}")
+
+        # Ưu tiên 2: IR Portal chính thức của doanh nghiệp
+        if not pdf_bytes:
+            try:
+                pdf_bytes = self.fetch_from_ir_portal(ticker_u, year)
+                if pdf_bytes:
+                    healed_source = "official_ir_portal"
+            except Exception as e_ir:
+                logger.debug(f"ReportHealer: Lỗi IR Portal cho {ticker_u}/{year}: {e_ir}")
+
+        # Ưu tiên 3: CafeF CDN 30+ patterns
+        if not pdf_bytes:
+            try:
+                pdf_bytes = self.fetch_from_cafef_cdn(ticker_u, year)
+                if pdf_bytes:
+                    healed_source = "cafef_cdn_patterns"
+            except Exception as e_cf:
+                logger.debug(f"ReportHealer: Lỗi CafeF cho {ticker_u}/{year}: {e_cf}")
 
         # 3. Ghi đè file chuẩn nếu tìm thấy
         if pdf_bytes and len(pdf_bytes) > 200_000:
@@ -388,6 +559,17 @@ class ReportHealer:
                     # Cập nhật drive_index.json nếu có
                     self._update_drive_index(ticker_u, year, len(pdf_bytes), new_pages)
 
+                    # Dọn dẹp file rác bogus trong .trash_bogus_notices nếu có
+                    if self.gdrive_root:
+                        trash_dir = self.gdrive_root / ".trash_bogus_notices"
+                        if trash_dir.exists():
+                            for trash_f in trash_dir.glob(f"{ticker_u}_{year}_BCTN*.pdf"):
+                                try:
+                                    trash_f.unlink()
+                                    logger.info(f"ReportHealer: Đã dọn file bogus cũ khỏi trash: {trash_f.name}")
+                                except Exception:
+                                    pass
+
                     res["status"] = "healed"
                     res["new_pages"] = new_pages
                     res["source"] = healed_source
@@ -401,7 +583,7 @@ class ReportHealer:
         return res
 
     def _update_drive_index(self, ticker: str, year: int, file_size: int, pages: int = 0):
-        """Cập nhật dung lượng mới vào data/gap_filler/drive_index.json."""
+        """Cập nhật dung lượng và trạng thái vào data/gap_filler/drive_index.json."""
         if not DRIVE_INDEX_PATH.exists():
             return
         try:
@@ -412,6 +594,15 @@ class ReportHealer:
                 if pages > 0:
                     d[k]["pages"] = pages
                     d[k]["healthy"] = True
-                DRIVE_INDEX_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+            else:
+                d[k] = {
+                    "file_id": "",
+                    "file_name": f"{ticker}_{year}_BCTN.pdf",
+                    "file_size": file_size,
+                    "pages": pages,
+                    "healthy": True,
+                    "direct_url": "",
+                }
+            DRIVE_INDEX_PATH.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as e:
             logger.debug(f"Could not update drive_index.json: {e}")

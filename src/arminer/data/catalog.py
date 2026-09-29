@@ -72,9 +72,13 @@ class UnifiedCatalog:
             if not p.is_file() or p.suffix.lower() not in (".pdf", ".txt"):
                 continue
             if p.suffix.lower() == ".pdf":
-                from arminer.data.bctn_validator import is_valid_bctn_file
-                if not is_valid_bctn_file(p):
+                sz = p.stat().st_size
+                if sz < 10_000:
                     continue
+                if sz < 100_000:
+                    from arminer.data.bctn_validator import is_valid_bctn_file
+                    if not is_valid_bctn_file(p):
+                        continue
 
             parsed = PDFSource.parse_filename(p)
             if not parsed:
@@ -122,9 +126,13 @@ class UnifiedCatalog:
             Path.cwd() / "data" / "raw_pdfs",
             Path.cwd() / "data" / "zenodo_sample" / "full_data",
             Path.cwd() / "data" / "zenodo_sample",
+            Path.cwd() / "data" / "zenodo_cache",
+            Path.cwd() / "data" / "zenodo_cache" / "gap_filler",
             Path.cwd() / "data" / "bctn_new_extracted",
             self.workspace_root / "data" / "reports",
             self.workspace_root / "data" / "raw_pdfs",
+            self.workspace_root / "data" / "zenodo_cache",
+            self.workspace_root / "data" / "zenodo_cache" / "gap_filler",
             self.workspace_root / "data" / "bctn_new_extracted",
             Path.home() / ".arminer" / "reports",
         ]
@@ -151,7 +159,10 @@ class UnifiedCatalog:
                     break
 
             if not active_gdrive_base:
+                avail_drv = {d[0].upper() for d in os.listdrives()} if hasattr(os, "listdrives") else {"C", "D", "E", "F", "G", "H"}
                 for drive_letter in ("H", "I", "G", "D"):
+                    if drive_letter not in avail_drv:
+                        continue
                     gdrive_dir = Path(f"{drive_letter}:\\My Drive\\arminer_bctn_gap")
                     if gdrive_dir.exists():
                         active_gdrive_base = gdrive_dir

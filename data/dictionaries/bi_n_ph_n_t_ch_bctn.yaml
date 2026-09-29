@@ -1,0 +1,80 @@
+name: Biến Phân Tích Bctn
+version: 1.0.0
+categories:
+  culture_claim:
+    description: Category culture_claim
+    keywords:
+    - keyword: claim_customer_quality
+      weight: 1.0
+      variants:
+      - customer
+      - quality
+      - khách hàng
+      - chất lượng
+      - uy tín
+      language: vi
+    - keyword: claim_employee_respect
+      weight: 1.0
+      variants:
+      - people
+      - employee
+      - con người
+      - nhân viên
+      - tôn trọng
+      - phát triển nhân lực
+      language: vi
+    - keyword: claim_innovation
+      weight: 1.0
+      variants:
+      - innovation
+      - sáng tạo
+      - đổi mới
+      - cải tiến
+      - technology
+      - công nghệ
+      language: vi
+    - keyword: claim_integrity
+      weight: 1.0
+      variants:
+      - integrity
+      - ethics
+      - minh bạch
+      - liêm chính
+      - đạo đức
+      - tuân thủ
+      language: vi
+    - keyword: claim_teamwork
+      weight: 1.0
+      variants:
+      - teamwork
+      - collaboration
+      - hợp tác
+      - đoàn kết
+      - đồng đội
+      language: vi
+    - keyword: has_core_values
+      weight: 1.0
+      variants:
+      - core values
+      - giá trị cốt lõi
+      - văn hóa doanh nghiệp
+      language: vi
+    - keyword: mission_statement
+      weight: 1.0
+      variants:
+      - mission
+      - sứ mệnh
+      language: vi
+    - keyword: vision_statement
+      weight: 1.0
+      variants:
+      - vision
+      - tầm nhìn
+      language: vi
+    - keyword: claim_sustainability
+      weight: 1.0
+      variants:
+      - sustainability
+      - phát triển bền vững
+      - trách nhiệm xã hội
+      language: vi

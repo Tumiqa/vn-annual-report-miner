@@ -18,9 +18,12 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 import time
 from pathlib import Path
 from typing import List, Optional
+
+_OCR_SEMAPHORE = threading.Semaphore(2)  # Giới hạn tối đa 2 tác vụ OCR đồng thời tránh nghẽn CPU/RAM
 
 from loguru import logger
 
@@ -349,20 +352,21 @@ class OCREngine:
         return full_text
 
     def _ocr_pages(self, doc, pdf_path: Path, page_indices: List[int], dpi: Optional[int] = None) -> List[str]:
-        """OCR các trang scanned — tự động chọn backend."""
-        backend = self._resolve_backend()
-        active_dpi = dpi or self.dpi
+        """OCR các trang scanned — tự động chọn backend với semaphore giới hạn tải CPU/RAM."""
+        with _OCR_SEMAPHORE:
+            backend = self._resolve_backend()
+            active_dpi = dpi or self.dpi
 
-        if backend == "easyocr":
-            return self._ocr_easyocr(doc, page_indices, dpi=active_dpi)
-        elif backend == "tesseract":
-            return self._ocr_tesseract(doc, page_indices, dpi=active_dpi)
-        else:
-            logger.warning(
-                f"No OCR backend — {len(page_indices)} scanned pages skipped. "
-                "Install: pip install easyocr"
-            )
-            return [""] * len(page_indices)
+            if backend == "easyocr":
+                return self._ocr_easyocr(doc, page_indices, dpi=active_dpi)
+            elif backend == "tesseract":
+                return self._ocr_tesseract(doc, page_indices, dpi=active_dpi)
+            else:
+                logger.warning(
+                    f"No OCR backend — {len(page_indices)} scanned pages skipped. "
+                    "Install: pip install easyocr"
+                )
+                return [""] * len(page_indices)
 
     # ── Image preprocessing ────────────────────────────────────────────
 
