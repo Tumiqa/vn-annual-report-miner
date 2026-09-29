@@ -29,6 +29,7 @@ from loguru import logger
 
 from arminer.mining.labor_patterns import (
     EXCLUSION_PATTERNS,
+    DELTA_EXCLUSION_REGEXES,
     normalize_number,
 )
 
@@ -112,30 +113,30 @@ class LaborExtractor:
             r"total\s+number\s+of\s+employees|total\s+employees|number\s+of\s+employees)"
         )
 
-        verb_re = r"(?:là|was|đạt|có|ở\s+mức|quy\s+mô|bình\s+quân|:|=|\s+)\s*"
+        verb_re = r"(?:là|was|đạt|có|ở\s+mức|quy\s+mô\s+là|quy\s+mô|bình\s+quân\s+là|bình\s+quân|[:=─–-])\s*"
 
         # 1. Date First: "Tại ngày 31 tháng 12 năm 2024 số lượng nhân viên công ty mẹ và các công ty con là 4.765 người"
         self.re_date_first = re.compile(
-            rf"{date_anchor}[^.\n]{{0,120}}?{lead_re}[^0-9\n]{{0,60}}?{verb_re}{num_re}{unit_opt}",
+            rf"{date_anchor}[^.\n]{{0,120}}?{lead_re}(?![^.\n]*\b(?:tăng|giảm)\b)[^0-9\n]{{0,60}}?{verb_re}{num_re}{unit_opt}",
             re.IGNORECASE,
         )
 
         # 2. Lead First: "Số lượng nhân sự tại công ty mẹ AAA thời điểm 31/12/2021 là 1.750 người"
         #    "Tổng số lao động của Công ty tại ngày 31/12/2012 là 1072 người"
         self.re_lead_first = re.compile(
-            rf"{lead_re}[^.\n]{{0,100}}?{date_anchor}[^0-9\n]{{0,60}}?{verb_re}{num_re}{unit_opt}",
+            rf"{lead_re}[^.\n]{{0,100}}?{date_anchor}(?![^.\n]*\b(?:tăng|giảm)\b)[^0-9\n]{{0,60}}?{verb_re}{num_re}{unit_opt}",
             re.IGNORECASE,
         )
 
         # 3. General Lead with Mandatory Unit: "Tổng số lao động: 1.255 người", "Lực lượng CBCNV là 1.097 người"
         self.re_general_lead = re.compile(
-            rf"{lead_re}[^.\n]{{0,80}}?{verb_re}{num_re}\s*{unit_req}",
+            rf"{lead_re}(?![^.\n]*\b(?:tăng|giảm)\b)[^.\n]{{0,80}}?{verb_re}{num_re}\s*{unit_req}",
             re.IGNORECASE,
         )
 
-        # 4. Comparison in Parentheses: "(tại ngày 31/12/2023 là 2.928 người)"
+        # 4. Comparison in Parentheses: "(tại ngày 31/12/2023 là 2.928 người)" or "(tại ngày 31/12/2021: 1.241)"
         self.re_parenthesis = re.compile(
-            rf"(?:tại|vào|đến|tính\s+đến|năm)?\s*(?:thời\s+điểm|ngày)?\s*31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(?:năm\s+)?(?P<comp_yr>201\d|202\d)[^0-9\n]{{0,40}}?{verb_re}{num_re}\s*{unit_req}",
+            rf"(?:tại|vào|đến|tính\s+đến|năm)?\s*(?:thời\s+điểm|ngày)?\s*31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(?:năm\s+)?(?P<comp_yr>201\d|202\d)[^0-9\n]{{0,40}}?{verb_re}{num_re}{unit_opt}",
             re.IGNORECASE,
         )
 
@@ -359,9 +360,18 @@ class LaborExtractor:
                 if any(c in trailing for c in CURRENCY_REJECTS):
                     continue
 
-                start_pos = max(0, m.start() - 50)
-                end_snippet = min(len(norm_text), end_pos + 100)
-                snippet = norm_text[start_pos:end_snippet].strip()
+                # Clip snippet to sentence boundaries [.!?;\n] so exclusions from adjacent sentences do not spill over
+                before_text = norm_text[:m.start()]
+                after_text = norm_text[m.end():]
+                m_prev_punct = list(re.finditer(r"[.!?;\n]", before_text))
+                sent_start = m_prev_punct[-1].end() if m_prev_punct else max(0, m.start() - 60)
+                sent_start = max(sent_start, m.start() - 80)
+
+                m_next_punct = re.search(r"[.!?;\n]", after_text)
+                sent_end = (m.end() + m_next_punct.start()) if m_next_punct else min(len(norm_text), m.end() + 60)
+                sent_end = min(sent_end, m.end() + 60)
+
+                snippet = norm_text[sent_start:sent_end].strip()
                 if self._has_exclusion(snippet):
                     continue
 
@@ -378,9 +388,13 @@ class LaborExtractor:
                     if matched_yr == year_str:
                         target_year_matched = True
                     else:
-                        conf = 0.50
-                elif year_str in snippet or year_str in norm_text:
+                        target_year_matched = False
+                        conf = 0.15  # Explicitly belongs to another year (e.g. comparative year)
+                elif year_str in snippet:
                     target_year_matched = True
+                elif year_str in norm_text:
+                    target_year_matched = False
+                    conf = base_conf * 0.8
 
                 is_group = any(g in snippet.lower() for g in ["công ty con", "tập đoàn", "toàn hệ thống", "toàn bộ", "hợp nhất"])
 
@@ -610,6 +624,11 @@ class LaborExtractor:
             "phải thu", "phải trả", "vốn chủ sở hữu", "công nợ", "nguyên vật liệu",
             "quyết định số", "triệu đồng", "nghìn đồng", "ngàn vnd", "nghìn vnd", "triệu vnd", "tỷ vnd",
             "bất động sản", "tiền chuyển nhượng", "tiền gửi", "khoản phải",
+            "phát hành", "chương trình", "lựa chọn", "esop", "mua cổ phiếu", "thưởng cổ phiếu",
+            "quyết định", "qđ-", "/qđ", "nq.hđqt", "nq-hđqt", "điều lệ",
+            "thai sản", "nghỉ việc", "thôi việc", "sa thải", "kỷ luật",
+            "bctn/bc", "qtct", "thẻ điểm", "tiêu chí đánh giá", "nguyên tắc", "sáng kiến", "giải pháp",
+            "ban kiểm toán", "ban điều hành", "khối bán hàng", "chi nhánh phân phối",
         ]
 
         LABOR_CONTEXT_WORDS = [
@@ -632,11 +651,18 @@ class LaborExtractor:
                     continue
 
                 for w_line in window:
+                    # Strip decision codes / question codes like 32/QĐ or E.3.20
+                    cleaned_w = re.sub(r"\b(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+|[A-Za-z]\.\d+\.\d+)\b", "", w_line)
                     # Strip percentages first to avoid false matches
-                    line_no_pct = re.sub(r"\d+([.,]\d+)?\s*%", "", w_line)
+                    line_no_pct = re.sub(r"\d+([.,]\d+)?\s*%", "", cleaned_w)
                     nums = [n for n in re.findall(r"\b\d{1,3}(?:[.,]\d{3})*\b", line_no_pct) if n not in ["100", "10000", "00", "1", "2", "3", "4", "5", year_str]]
                     for num_idx, n_str in enumerate(nums):
                         val = normalize_number(n_str)
+                        # Small numbers (< 50) MUST have explicit labor unit on the line
+                        if val < 50 and not any(u in w_line.lower() for u in ["người", "nhân viên", "lao động", "cbcnv"]):
+                            continue
+                        if val > 60000 and any(m in w_line.lower() for m in ["đồng", "vnd", "lương", "thu nhập"]):
+                            continue
                         if self._is_valid_headcount(val) and not self._is_year_like(val) and not self._has_exclusion(window_str):
                             # In multi-column historical breakdown, the latest/last column is the current year
                             is_target_year = (num_idx == len(nums) - 1) and (year_str in window_str or f"31/12/{year_str}" in text)
@@ -669,10 +695,15 @@ class LaborExtractor:
                 forward_str = " // ".join(forward)
 
                 for w_line in forward:
-                    line_no_pct = re.sub(r"\d+([.,]\d+)?\s*%", "", w_line)
+                    cleaned_w = re.sub(r"\b(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+|[A-Za-z]\.\d+\.\d+)\b", "", w_line)
+                    line_no_pct = re.sub(r"\d+([.,]\d+)?\s*%", "", cleaned_w)
                     nums = re.findall(r"\b\d{1,3}(?:[.,]\d{3})*\b", line_no_pct)
                     for n_str in nums:
                         val = normalize_number(n_str)
+                        if val < 50 and not any(u in w_line.lower() for u in ["người", "nhân viên", "lao động", "cbcnv"]):
+                            continue
+                        if val > 60000 and any(m in w_line.lower() for m in ["đồng", "vnd", "lương", "thu nhập"]):
+                            continue
                         if self._is_valid_headcount(val) and not self._is_year_like(val) and not self._has_exclusion(f"{line} {w_line}"):
                             cand = LaborCandidate(
                                 value=val,
@@ -741,17 +772,30 @@ class LaborExtractor:
         year_str = str(year)
         lines = [line.strip() for line in text.split("\n") if line.strip()]
 
-        METRIC_ROWS = [
-            "tổng số lao động", "tổng số nhân viên", "tổng số cán bộ", "tổng số cbcnv",
-            "số lượng lao động", "số lượng nhân sự", "số lượng nhân viên", "lao động bình quân",
-            "nhân sự bình quân", "quy mô nhân sự",
+        SUBSET_ROW_REJECTS = [
+            "tỷ lệ", "chiếm", "nữ", "nam", "%", "trong tổng số", "tỷ trọng", "trực tiếp", "gián tiếp",
+            "độ tuổi", "tuổi", "trình độ", "thời vụ", "bán thời gian", "xuất khẩu", "ngoài nước",
+            "chính sách", "hoạt động", "đánh giá", "bảo vệ", "nghị quyết", "kế hoạch",
         ]
+
+        METRIC_ROW_REGEX = re.compile(
+            r"^[-–—•*+\d./\s]*(?:"
+            r"tổng\s+số\s+(?:lao\s+động|nhân\s*viên|cbcnv|cbnv|cán\s*bộ)|"
+            r"số\s+lượng\s+(?:lao\s+động|nhân\s*viên|nhân\s*sự)|"
+            r"lao\s+động\s+bình\s+quân|"
+            r"nhân\s*sự\s+bình\s+quân|"
+            r"quy\s+mô\s+nhân\s+sự"
+            r")\b",
+            re.IGNORECASE,
+        )
 
         for i, line in enumerate(lines):
             low = line.lower()
             if len(line) > 60 or any(v in low for v in [" là ", " đạt ", " người", " nhân viên"]):
                 continue
-            if not any(k in low for k in METRIC_ROWS):
+            if not METRIC_ROW_REGEX.match(line):
+                continue
+            if any(bad in low for bad in SUBSET_ROW_REJECTS):
                 continue
 
             forward = lines[i + 1 : min(len(lines), i + 10)]
@@ -767,20 +811,38 @@ class LaborExtractor:
                 if "%" in fl:
                     break
                 fl_low = fl.lower()
-                if any(bad in fl_low for bad in ["triệu", "tỷ", "đồng", "vnd", "usd", "lương", "thu nhập"]) or fl_low.endswith("đ"):
+
+                # If nums already collected, stop immediately when a new row title or category begins
+                if nums:
+                    if not any(ch.isdigit() for ch in fl) and not any(u in fl_low for u in ["người", "nhân viên", "lao động", "cbcnv", "cbnv"]):
+                        break
+                    if re.match(r"^[A-Za-zÀ-ỹ\s]{3,}", fl) and not any(u in fl_low for u in ["người", "nhân viên", "lao động", "cbcnv"]):
+                        break
+
+                if any(bad in fl_low for bad in ["triệu", "tỷ", "đồng", "vnd", "usd", "lương", "thu nhập", "tuổi", "trình độ", "tỷ lệ"]) or fl_low.endswith("đ"):
                     continue
                 m_num = re.search(r"\b(\d{1,3}(?:[.,]\d{3})*|\d{2,6})\b", fl)
                 if m_num:
                     clean = m_num.group(1).replace(".", "").replace(",", "")
                     if clean.isdigit():
                         int_val = int(clean)
+                        # Small numbers (< 50) in a table row must have explicit headcount unit on their line
+                        if int_val < 50 and not any(u in fl_low for u in ["người", "nhân viên", "lao động", "cbcnv"]):
+                            continue
                         fl_has_unit = has_unit or any(u in fl_low for u in ["người", "lao động", "nhân sự", "nhân viên", "cbcnv", "cbnv"])
                         if self._is_valid_headcount(int_val, has_unit=fl_has_unit) and not self._is_year_like(int_val):
                             nums.append(int_val)
 
             if nums:
-                # If multiple numbers (e.g. Plan vs Actual), actual realized is the last column
-                val = nums[-1] if len(nums) >= 2 else nums[0]
+                lookback = lines[max(0, i - 8) : i]
+                header_str = " ".join(lookback).lower()
+                # Check for explicit year columns in table header
+                header_years = re.findall(r"\b(201\d|202\d)\b", " ".join(lookback))
+                if header_years and len(header_years) == len(nums) and year_str in header_years:
+                    val = nums[header_years.index(year_str)]
+                else:
+                    # If multiple numbers (e.g. Plan vs Actual), actual realized is the last column
+                    val = nums[-1] if len(nums) >= 2 else nums[0]
                 snippet = f"{line} -> " + " // ".join(str(n) for n in nums)
                 lookback = lines[max(0, i - 8) : i]
                 header_str = " ".join(lookback).lower()
@@ -859,9 +921,12 @@ class LaborExtractor:
             if c.value in [year, year - 1, year - 2, 31, 30, 12, 1, 2, 3]:
                 score -= 0.60
 
-            # Heavy penalty for small numbers (< 20) without explicit labor unit
-            if c.value < 20 and not any(u in snippet_low for u in ["người", "nhân viên", "lao động", "cbcnv"]):
-                score -= 0.80
+            # Heavy penalty for small numbers (< 50) without explicit labor unit
+            if c.value < 50:
+                if not any(u in snippet_low for u in ["người", "nhân viên", "lao động", "cbcnv"]):
+                    score -= 0.85
+                if any(w in snippet_low for w in ["ban điều hành", "ban kiểm toán", "hđqt", "bộ phận", "chi nhánh", "đợt", "khối", "khen thưởng", "sáng kiến"]):
+                    score -= 0.60
 
             # Penalty for financial terms nearby (only if no explicit labor unit)
             if any(w in snippet_low for w in ["tỷ đồng", "triệu đồng", "đồng/người", "vnd", "usd"]):
@@ -869,7 +934,7 @@ class LaborExtractor:
                     score -= 0.50
 
             # Penalty for resolution or shareholder terms
-            if any(w in snippet_low for w in ["nghị quyết", "biểu quyết", "cổ đông", "cổ phần"]):
+            if any(w in snippet_low for w in ["nghị quyết", "biểu quyết", "cổ đông", "cổ phần", "điều lệ"]):
                 score -= 0.60
 
             # Bonus for high-specificity aligned strategies
@@ -885,6 +950,10 @@ class LaborExtractor:
         # Sort by target_year_matched first, then score
         scored.sort(key=lambda x: (1 if x[1].target_year_matched else 0, x[0]), reverse=True)
         best_score, best_cand = scored[0]
+
+        # If best candidate is an explicit mismatch from another year
+        if best_cand.confidence <= 0.20 and not best_cand.target_year_matched:
+            best_score = 0.0
 
         # Consensus boost only among candidates with same year-match status
         same_val_count = sum(
@@ -938,4 +1007,8 @@ class LaborExtractor:
     def _has_exclusion(self, text: str) -> bool:
         """Check if text snippet is an excluded non-headcount metric."""
         low = text.lower()
-        return any(ex in low for ex in EXCLUSION_PATTERNS)
+        if any(ex in low for ex in EXCLUSION_PATTERNS):
+            return True
+        if any(rgx.search(text) for rgx in DELTA_EXCLUSION_REGEXES):
+            return True
+        return False

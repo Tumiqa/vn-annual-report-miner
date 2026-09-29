@@ -133,7 +133,7 @@ from arminer.data.pdf_source import PDFSource
 from arminer.data.catalog import UnifiedCatalog
 from arminer.core.dictionary_manager import DictionaryManager
 from arminer.core.dictionary_importer import DictionaryFileImporter
-from arminer.data.zenodo_downloader import ZenodoDownloader
+from arminer.data.zenodo_downloader import ZenodoDownloader, MIN_BCTN_PAGES, is_valid_bctn_file
 from arminer.data.news_scraper import (
     CompanyWebsiteResolver,
     UniversalNewsExtractor,
@@ -876,7 +876,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
             downloaded = zenodo_downloader.download_reports(records)
             for r in downloaded:
                 lp = r.get("local_path")
-                if lp and Path(lp).exists():
+                if lp and Path(lp).exists() and is_valid_bctn_file(lp):
                     target_items.append({
                         "path": Path(lp),
                         "ticker": r.get("ticker", ""),
@@ -884,12 +884,14 @@ def scan_selected_reports(req: ScanSelectedRequest):
                         "icb_l1": r.get("icb_l1", "Khác"),
                         "icb_l2": r.get("icb_l2", "Khác"),
                     })
+                elif lp and Path(lp).exists():
+                    logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {Path(lp).name}")
 
     # 2. Process direct local report_paths (Tab 3 or custom)
     if req.report_paths:
         for fp in req.report_paths:
             p = Path(fp)
-            if p.exists():
+            if p.exists() and is_valid_bctn_file(p):
                 parsed = PDFSource.parse_filename(p)
                 t_val = parsed[0] if parsed else p.parent.name.replace("MST_", "").upper()
                 y_val = parsed[1] if parsed else None
@@ -901,6 +903,8 @@ def scan_selected_reports(req: ScanSelectedRequest):
                     "icb_l1": l1,
                     "icb_l2": l2,
                 })
+            elif p.exists():
+                logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {p.name}")
 
     if not target_items:
         err_msg = "Không có báo cáo nào khả dụng để quét."

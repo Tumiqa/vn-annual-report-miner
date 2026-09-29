@@ -49,6 +49,25 @@ DEFAULT_HEADERS = {
     "Accept-Encoding": "identity",
 }
 
+# Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ
+# Mọi file dưới 8 trang đều là công văn, nghị quyết, thông báo công bố thông tin, hoặc trang bìa ký số
+MIN_BCTN_PAGES = 8
+
+
+def is_valid_bctn_file(pdf_path: Union[str, Path], min_pages: int = MIN_BCTN_PAGES) -> bool:
+    """Kiểm tra file PDF có phải là BCTN thực thụ không (ít nhất min_pages trang)."""
+    try:
+        p = Path(pdf_path)
+        if not p.exists() or p.stat().st_size < 1000:
+            return False
+        import fitz
+        doc = fitz.open(p)
+        pg = len(doc)
+        doc.close()
+        return pg >= min_pages
+    except Exception:
+        return False
+
 
 def _get_cache_root() -> Path:
     """
@@ -347,15 +366,18 @@ class ZenodoDownloader:
         if relative_path:
             for s_dir in search_dirs:
                 direct = s_dir / relative_path
-                if direct.exists() and direct.is_file() and direct.stat().st_size > 1000:
-                    return direct.resolve()
+                res = self._check_and_return_path(direct)
+                if res:
+                    return res
                 if base_name:
                     by_base = s_dir / base_name
-                    if by_base.exists() and by_base.is_file() and by_base.stat().st_size > 1000:
-                        return by_base.resolve()
+                    res = self._check_and_return_path(by_base)
+                    if res:
+                        return res
                     by_ticker_folder = s_dir / ticker_u / base_name
-                    if by_ticker_folder.exists() and by_ticker_folder.is_file() and by_ticker_folder.stat().st_size > 1000:
-                        return by_ticker_folder.resolve()
+                    res = self._check_and_return_path(by_ticker_folder)
+                    if res:
+                        return res
 
         # Check ticker and year patterns across candidate directories
         yy_str = f"{year % 100:02d}" if year else ""
@@ -373,12 +395,41 @@ class ZenodoDownloader:
 
             for pat in expected_patterns:
                 p1 = s_dir / pat
-                if p1.exists() and p1.is_file() and p1.stat().st_size > 1000:
-                    return p1.resolve()
+                res = self._check_and_return_path(p1)
+                if res:
+                    return res
                 p2 = s_dir / ticker_u / pat
-                if p2.exists() and p2.is_file() and p2.stat().st_size > 1000:
-                    return p2.resolve()
+                res = self._check_and_return_path(p2)
+                if res:
+                    return res
 
+        return None
+
+    def _is_valid_bctn_file(self, path: Path) -> bool:
+        """Kiểm tra file PDF có đủ tiêu chuẩn là BCTN hay không (ít nhất MIN_BCTN_PAGES trang)."""
+        if not path or not path.exists() or not path.is_file():
+            return False
+        try:
+            import fitz
+            doc = fitz.open(path)
+            pages = len(doc)
+            doc.close()
+            return pages >= MIN_BCTN_PAGES
+        except Exception:
+            return False
+
+    def _check_and_return_path(self, path: Path) -> Optional[Path]:
+        """Xác thực file tồn tại và đủ số trang chuẩn BCTN, tự động loại bỏ nếu là công văn 1-2 trang."""
+        if path.exists() and path.is_file() and path.stat().st_size > 1000:
+            if self._is_valid_bctn_file(path):
+                return path.resolve()
+            else:
+                # File cào lỗi / công văn 1-2 trang -> loại bỏ khỏi cache để không trả về kết quả sai
+                try:
+                    logger.warning(f"Phát hiện file sai quy cách (< {MIN_BCTN_PAGES} trang): {path.name}. Đã loại bỏ khỏi cache.")
+                    path.unlink(missing_ok=True)
+                except Exception:
+                    pass
         return None
 
     def _get_zip_handle(self, archive_period: str) -> Optional[zipfile.ZipFile]:
@@ -462,29 +513,29 @@ class ZenodoDownloader:
         """
         # --- STAGE 1: LOCAL & GOOGLE DRIVE FIRST (0ms) ---
         local_found = self._find_local_pdf(ticker, year, archive_period, relative_path)
-        if local_found:
-            # Audit check: Nếu phát hiện file cào nhầm (<= 4 trang), tự động cào bù bản chuẩn
-            try:
-                import fitz
-                doc_chk = fitz.open(local_found)
-                p_count = len(doc_chk)
-                doc_chk.close()
-                if p_count <= 4:
-                    from arminer.data.report_healer import ReportHealer
-                    healer = ReportHealer()
-                    heal_res = healer.heal_report(ticker, year)
-                    if heal_res.get("status") == "healed" and healer.gdrive_root:
-                        healed_file = healer.gdrive_root / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
-                        if healed_file.exists():
-                            return healed_file
-            except Exception:
-                pass
+        if local_found and self._is_valid_bctn_file(local_found):
             return local_found
+
+        # If not found or was invalid, trigger auto-healing from official corporate IR
+        try:
+            from arminer.data.report_healer import ReportHealer
+            healer = ReportHealer()
+            heal_res = healer.heal_report(ticker, year)
+            if heal_res.get("status") == "healed":
+                healed_candidate = self.cache_root / "gap_filler" / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
+                if healed_candidate.exists() and self._is_valid_bctn_file(healed_candidate):
+                    return healed_candidate
+                if healer.gdrive_root:
+                    healed_file = healer.gdrive_root / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
+                    if healed_file.exists() and self._is_valid_bctn_file(healed_file):
+                        return healed_file
+        except Exception as e_heal:
+            logger.debug(f"Self-Healing check failed: {e_heal}")
 
         # --- STAGE 1.2: GOOGLE DRIVE CLOUD HTTP STREAM (0.5s) ---
         # Ưu tiên tải trực tiếp từ Google Drive Cloud qua HTTP nếu có trong drive_index.json
         gdrive_cloud = self._try_gap_filler_download(ticker, year)
-        if gdrive_cloud and gdrive_cloud.exists():
+        if gdrive_cloud and gdrive_cloud.exists() and self._is_valid_bctn_file(gdrive_cloud):
             return gdrive_cloud
 
         # If this is a gap_filler record and Cloud download did not find it, do not attempt Zenodo ZIP
@@ -496,7 +547,7 @@ class ZenodoDownloader:
         # For supplement records, try downloading from HF dataset
         if archive_period == "supplement":
             hf_result = self._try_hf_download(ticker, year, relative_path)
-            if hf_result:
+            if hf_result and self._is_valid_bctn_file(hf_result):
                 return hf_result
 
         # Destination in cache
@@ -539,9 +590,24 @@ class ZenodoDownloader:
                     dst.write(chunk)
                     chunk = src.read(4 * 1024 * 1024)
 
-            self.circuit_breaker.record_success()
-            logger.info(f"Successfully cached: {cached_pdf} ({cached_pdf.stat().st_size / (1024*1024):.1f} MB)")
-            return cached_pdf
+            if self._is_valid_bctn_file(cached_pdf):
+                self.circuit_breaker.record_success()
+                logger.info(f"Successfully cached: {cached_pdf} ({cached_pdf.stat().st_size / (1024*1024):.1f} MB)")
+                return cached_pdf
+            else:
+                logger.warning(f"File {entry_name} from Zenodo {archive_period} is a short filing (< {MIN_BCTN_PAGES} pages). Quarantining and triggering heal...")
+                cached_pdf.unlink(missing_ok=True)
+                try:
+                    from arminer.data.report_healer import ReportHealer
+                    healer = ReportHealer()
+                    heal_res = healer.heal_report(ticker, year)
+                    if heal_res.get("status") == "healed":
+                        healed_cand = self.cache_root / "gap_filler" / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
+                        if healed_cand.exists() and self._is_valid_bctn_file(healed_cand):
+                            return healed_cand
+                except Exception:
+                    pass
+                return None
         except Exception as e:
             self.circuit_breaker.record_failure(str(e))
             logger.error(f"Failed extracting {entry_name}: {e}")
@@ -612,8 +678,11 @@ class ZenodoDownloader:
         cached_pdf = gap_dir / ticker / f"{ticker}_{year}_BCTN.pdf"
 
         # Already cached locally
-        if cached_pdf.exists() and cached_pdf.stat().st_size > 1000:
-            return cached_pdf
+        if cached_pdf.exists():
+            if self._is_valid_bctn_file(cached_pdf):
+                return cached_pdf
+            else:
+                cached_pdf.unlink(missing_ok=True)
 
         # 1. Tải trực tiếp từ Google Drive Cloud qua File ID (Chuẩn 100% như Zenodo)
         index = self._load_drive_index()
@@ -645,9 +714,13 @@ class ZenodoDownloader:
                                 while chunk := resp.read(64 * 1024):
                                     f_out.write(chunk)
 
-                            if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
-                                logger.info(f"Downloaded from Google Drive Cloud HTTP: {ticker} ({year}) -> {cached_pdf.name}")
-                                return cached_pdf
+                            if cached_pdf.exists():
+                                if self._is_valid_bctn_file(cached_pdf):
+                                    logger.info(f"Downloaded from Google Drive Cloud HTTP: {ticker} ({year}) -> {cached_pdf.name}")
+                                    return cached_pdf
+                                else:
+                                    logger.warning(f"File từ Google Drive cho {ticker} ({year}) chỉ là công văn/thông báo (< {MIN_BCTN_PAGES} trang). Đã loại bỏ.")
+                                    cached_pdf.unlink(missing_ok=True)
             except Exception as e:
                 logger.debug(f"Direct Google Drive HTTP download failed, trying gdown: {e}")
 
@@ -656,18 +729,17 @@ class ZenodoDownloader:
                 import gdown
                 cached_pdf.parent.mkdir(parents=True, exist_ok=True)
                 gdown.download(gdrive_url, str(cached_pdf), quiet=True)
-                if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
-                    with open(cached_pdf, "rb") as f_chk:
-                        if f_chk.read(4).startswith(b"%PDF"):
-                            logger.info(f"Downloaded from Google Drive Cloud (gdown): {ticker} ({year})")
-                            return cached_pdf
-                        else:
-                            cached_pdf.unlink(missing_ok=True)
+                if cached_pdf.exists():
+                    if self._is_valid_bctn_file(cached_pdf):
+                        logger.info(f"Downloaded from Google Drive Cloud (gdown): {ticker} ({year})")
+                        return cached_pdf
+                    else:
+                        cached_pdf.unlink(missing_ok=True)
             except Exception:
                 pass
 
         # 2. Cloud CDN Network Fallback: Tải trực tiếp qua mạng từ Cloud CDN (CafeF / Vietstock)
-        # Hoạt động 100% khi Google Drive PC không chạy hoặc trên máy khác
+        # Chỉ chấp nhận nếu file tải về >= MIN_BCTN_PAGES trang
         import urllib.request
         yy = f"{year % 100:02d}"
         cdn_candidates = [
@@ -677,6 +749,7 @@ class ZenodoDownloader:
             f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{yy}_BCTN.pdf",
             f"https://cafef1.mediacdn.vn/Images/Uploaded/DuLieuDownload/BCTC/{ticker}_{year}.pdf",
             f"https://static2.vietstock.vn/data/HNX/{year}/BCTC/VN/{ticker}_{year}_BCTN.pdf",
+            f"https://static2.vietstock.vn/data/HOSE/{year}/BCTC/VN/{ticker}_{year}_BCTN.pdf",
         ]
 
         headers = {
@@ -689,17 +762,32 @@ class ZenodoDownloader:
                 with urllib.request.urlopen(req, timeout=8) as resp:
                     if resp.status == 200:
                         content_len = int(resp.headers.get("Content-Length", 0))
-                        if content_len > 10000:  # File hợp lệ > 10KB
+                        if content_len > 150_000:  # File BCTN thật luôn > 150KB
                             cached_pdf.parent.mkdir(parents=True, exist_ok=True)
                             with open(cached_pdf, "wb") as f_out:
                                 while chunk := resp.read(64 * 1024):
                                     f_out.write(chunk)
 
-                            if cached_pdf.exists() and cached_pdf.stat().st_size > 10000:
-                                logger.info(f"Downloaded from Cloud CDN Network: {ticker} ({year}) -> {cached_pdf.name}")
-                                return cached_pdf
+                            if cached_pdf.exists():
+                                if self._is_valid_bctn_file(cached_pdf):
+                                    logger.info(f"Downloaded from Cloud CDN Network: {ticker} ({year}) -> {cached_pdf.name}")
+                                    return cached_pdf
+                                else:
+                                    logger.warning(f"File từ CDN cho {ticker} ({year}) chỉ là công văn/thông báo (< {MIN_BCTN_PAGES} trang). Đã loại bỏ.")
+                                    cached_pdf.unlink(missing_ok=True)
             except Exception:
                 continue
+
+        # 3. Kích hoạt cào chuẩn từ chuyên trang Quan hệ cổ đông (IR Portal) chính thức
+        try:
+            from arminer.data.report_healer import ReportHealer
+            healer = ReportHealer()
+            heal_res = healer.heal_report(ticker, year)
+            if heal_res.get("status") == "healed":
+                if cached_pdf.exists() and self._is_valid_bctn_file(cached_pdf):
+                    return cached_pdf
+        except Exception:
+            pass
 
         return None
 

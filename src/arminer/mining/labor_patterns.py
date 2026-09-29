@@ -127,14 +127,53 @@ EXCLUSION_PATTERNS: List[str] = [
     "vnd", "usd", "ca mắc", "cổ phần", "cổ phiếu",
     "doanh thu/nhân viên", "lợi nhuận/nhân viên",
     "năng suất lao động", "năng suất nhân viên",
-    "thu nhập bình quân", "lương bình quân", "thu nhập",
+    "thu nhập bình quân", "lương bình quân", "thu nhập/người", "thu nhập/tháng", "thu nhập/năm",
+    "thu nhập mỗi người", "thu nhập trung bình", "tổng thu nhập",
     "per employee", "per capita", "per head",
     "training hours", "hours per",
     "productivity", "compensation per",
     "revenue per", "profit per", "income per",
     "tuyển dụng thêm", "tuyển mới", "nghỉ việc", "thôi việc",
     "turnover rate", "attrition", "hiring",
-    "tăng thêm", "giảm bớt", "giảm đi",  # delta exclusions, avoid broad 'giảm'
+    "tăng thêm", "giảm bớt", "giảm đi",  # delta exclusions
+    "xuất khẩu lao động", "đi làm việc ở nước ngoài", "sang thị trường",
+    "cục quản lý lao động ngoài nước", "toàn ngành", "cả nước",
+    "không còn là nhân viên", "ban kiểm toán nội bộ", "nghỉ thai sản",
+    "sáng kiến, giải pháp của", "sáng kiến của", "mua cổ phiếu của cbcnv",
+    "phát hành cổ phiếu theo chương trình", "lựa chọn người lao động", "esop",
+]
+
+# Regex nhận diện các câu chỉ mức biến động (delta), bộ phận, hoặc quyết định chứ không phải tổng quy mô
+DELTA_EXCLUSION_REGEXES: List[Pattern] = [
+    re.compile(
+        r"\b(?:tăng|giảm|tăng\s+thêm|giảm\s+bớt|tăng\s+trưởng|biến\s+động|thay\s+đổi|tuyển\s+mới|tuyển\s+dụng|nghỉ\s+việc|thôi\s+việc|điều\s+động)\s+"
+        r"(?:khoảng\s+|hơn\s+|gần\s+)?\d+\s*(?:người|lao\s*động|nhân\s*viên|cbcnv|cbnv|lao\s*dng)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:tăng|giảm)\s+(?:so\s+với\s+[^\n,.]+?|khoảng\s+|hơn\s+|gần\s+)?(?:là\s+)?\d+\s*(?:người|lao\s*động|nhân\s*viên|nhân\s*sự)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:tổng\s+số\s+lao\s+động|tổng\s+số\s+nhân\s+sự|số\s+lượng\s+lao\s+động)\s+(?:tăng|giảm)\s+\d+\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:\d+[/.-](?:QĐ|NQ)[A-Za-z0-9_./-]*|(?:QĐ|NQ)[/.-]\d+)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:E|C|B|A)\.\d+\.\d+\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:khối\s+bán\s+hàng|chi\s+nhánh\s+phân\s+phối|đội\s+ngũ\s+nhân\s+sự\s+tại\s+\d+\s+chi\s+nhánh)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bđào\s+tạo[^.\n]{0,40}?\b\d+\s*(?:cbql|cán\s+bộ\s+quản\s+lý|lãnh\s+đạo)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # =========================================================================
