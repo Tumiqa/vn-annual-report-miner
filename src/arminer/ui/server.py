@@ -789,6 +789,10 @@ def _process_one_bctn(
             yr = int(item["year"]) if item.get("year") else 0
             if p.exists() and p.suffix.lower() == ".pdf":
                 labor_res = labor_extractor.extract_from_pdf(p, item["ticker"], yr)
+                if (not labor_res or labor_res.labor is None) and text:
+                    text_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
+                    if text_res and text_res.labor is not None:
+                        labor_res = text_res
             else:
                 labor_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
 

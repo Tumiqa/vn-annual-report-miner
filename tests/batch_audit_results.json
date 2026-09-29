@@ -1,6 +1,578 @@
 {
   "results": [
     {
+      "ticker": "ABT",
+      "year": 2024,
+      "pages": 25,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\ABT\\ABT_2024_BCTN.pdf",
+      "labor": 611,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 8,
+      "strategy": "narrative_post_date",
+      "raw_text": "+ S6 luong can be>,nhan vien/ Number of employees: 611 ngiroi (d~n 31/12/2024)1611 people (as of December 31",
+      "elapsed_sec": 0.16
+    },
+    {
+      "ticker": "ACC",
+      "year": 2010,
+      "pages": 15,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\ACC\\ACC_2010_BCTN.pdf",
+      "labor": 270,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 10,
+      "strategy": "table_breakdown_total_row",
+      "raw_text": "3% // Trung Cấp, Cao đẳng // 34 // 12,6% // Công nhân kỹ thuật // 79 // 29,25% // 2. Lao động phổ thông // 140 // 51,85% // Tổng Cộng: 270",
+      "elapsed_sec": 0.08
+    },
+    {
+      "ticker": "ACV",
+      "year": 2023,
+      "pages": 55,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\ACV\\ACV_2023_BCTN.pdf",
+      "labor": 9820,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 18,
+      "strategy": "narrative_direct_total",
+      "raw_text": "định về môi trường: Không có. // 6.5.   Chính sách liên quan đến người lao động // a. // Số lượng lao động, quỹ tiền lương người lao động // - Tổng số lao động thực tế sử dụng bình quân năm 2023 là 9.",
+      "elapsed_sec": 0.33
+    },
+    {
+      "ticker": "ANV",
+      "year": 2019,
+      "pages": 43,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\ANV\\ANV_2019_BCTN.pdf",
+      "labor": 5593,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 19,
+      "strategy": "narrative_date_total",
+      "raw_text": "NH HOẠT ĐỘNG TRONG NĂM 30 31 Báo cáo thường niên 2019 Số lượng cán bộ nhân viên Tính đến 31/12/2019, tổng số lao động của Tổng Công ty là 5.593 người với cơ cấu cụ thể như sau: STT Tiêu chí Số lượng (",
+      "elapsed_sec": 0.73
+    },
+    {
+      "ticker": "ASM",
+      "year": 2022,
+      "pages": 164,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\ASM\\ASM_2022_BCTN.pdf",
+      "labor": 12000,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 23,
+      "strategy": "table_multiyear_row",
+      "raw_text": "Tổng số lao động của toàn Tập đoàn Sao Mai tính bình quân trong năm 2022 gần 12.000 // Tổng số lao động của toàn Tập đoàn Sao Mai tính bình quân trong năm 2022 gần 12.000",
+      "elapsed_sec": 0.58
+    },
+    {
+      "ticker": "BAF",
+      "year": 2025,
+      "pages": 135,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\BAF\\BAF_2025_BCTN.pdf",
+      "labor": 3440,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 108,
+      "strategy": "narrative_date_total",
+      "raw_text": "nh và Tỉnh Nghệ An. Số lượng nhân viên của Nhóm Công ty vào ngày 31 tháng 12 năm 2025 là 3.440 người (ngày 31 tháng 12 năm 2024: 2.125 người). CƠ CẤU TỔ C",
+      "elapsed_sec": 1.53
+    },
+    {
+      "ticker": "BCM",
+      "year": 2025,
+      "pages": 91,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\BCM\\BCM_2025_BCTN.pdf",
+      "labor": 1727,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 32,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Theo trình độ lao động // 2.020 // 100% // 1.727 // 100% // 1 // Trình độ Đại học và trên Đại học // 879",
+      "elapsed_sec": 0.53
+    },
+    {
+      "ticker": "BSR",
+      "year": 2025,
+      "pages": 45,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\BSR\\BSR_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.37
+    },
+    {
+      "ticker": "BVH",
+      "year": 2023,
+      "pages": 406,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\BVH\\BVH_2023_BCTN.pdf",
+      "labor": 5,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 122,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Số lượng lao động -> 5",
+      "elapsed_sec": 2.81
+    },
+    {
+      "ticker": "BWE",
+      "year": 2024,
+      "pages": 201,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\BWE\\BWE_2024_BCTN.pdf",
+      "labor": 162,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 170,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Tổng số lao động theo giới tính -> 813 // 828 // 493 // 241 // 243 // 162",
+      "elapsed_sec": 1.87
+    },
+    {
+      "ticker": "CEO",
+      "year": 2025,
+      "pages": 100,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CEO\\CEO_2025_BCTN.pdf",
+      "labor": 1293,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 37,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tính đến 31/12/2025,  tổng số nhân sự Tập đoàn là 1.293 người",
+      "elapsed_sec": 0.62
+    },
+    {
+      "ticker": "CHP",
+      "year": 2022,
+      "pages": 83,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CHP\\CHP_2022_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 2.55
+    },
+    {
+      "ticker": "CII",
+      "year": 2024,
+      "pages": 254,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CII\\CII_2024_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 1.09
+    },
+    {
+      "ticker": "CKV",
+      "year": 2012,
+      "pages": 13,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CKV\\CKV_2012_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.03
+    },
+    {
+      "ticker": "CSV",
+      "year": 2025,
+      "pages": 182,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CSV\\CSV_2025_BCTN.pdf",
+      "labor": 19,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 32,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "Tổng số lao động bình quân (người) -> 638 // 629 // 633 // 2 // 16 // 18 // 19",
+      "elapsed_sec": 0.89
+    },
+    {
+      "ticker": "CTD",
+      "year": 2024,
+      "pages": 128,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CTD\\CTD_2024_BCTN.pdf",
+      "labor": 2398,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 93,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Số lượng nhân viên của Tập đoàn tại ngày 30 tháng 6 năm 2024 là 2.398 người (ngày 30 tháng 6 năm 2023: 1",
+      "elapsed_sec": 2.2
+    },
+    {
+      "ticker": "CTR",
+      "year": 2025,
+      "pages": 79,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\CTR\\CTR_2025_BCTN.pdf",
+      "labor": 10169,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 26,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Số lượng lao động bình quân 2025: 10.169 người BÁO CÁO THƯỜNG NIÊN 2025 - VIETTEL CONSTRUCTION TRANG 26 TÊ",
+      "elapsed_sec": 0.43
+    },
+    {
+      "ticker": "DBC",
+      "year": 2025,
+      "pages": 112,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DBC\\DBC_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.48
+    },
+    {
+      "ticker": "DBD",
+      "year": 2025,
+      "pages": 81,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DBD\\DBD_2025_BCTN.pdf",
+      "labor": 1375,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 64,
+      "strategy": "narrative_date_total",
+      "raw_text": "Số lượng công nhân viên của Nhóm Công ty vào ngày 31 tháng 12 năm 2025 là 1.375 người (ngày 31 tháng 12 năm 2024: 1",
+      "elapsed_sec": 0.51
+    },
+    {
+      "ticker": "DCM",
+      "year": 2024,
+      "pages": 173,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DCM\\DCM_2024_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.06
+    },
+    {
+      "ticker": "DGW",
+      "year": 2025,
+      "pages": 126,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DGW\\DGW_2025_BCTN.pdf",
+      "labor": 862,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 86,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Trung cấp nghề // 79 // 45 // Sơ cấp nghề // 0 // 0 // Dạy nghề thường xuyên // 0 // 0 // Chưa qua đào tạo // 207 // 226 // Tổng: 862",
+      "elapsed_sec": 0.6
+    },
+    {
+      "ticker": "DHG",
+      "year": 2025,
+      "pages": 110,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DHG\\DHG_2025_BCTN.pdf",
+      "labor": 2819,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 41,
+      "strategy": "narrative_date_total",
+      "raw_text": "HOẠT ĐỘNG NHÂN SỰ, TÀI CHÍNH VÀ QUẢN TRỊ - Tính đến ngày 31/12/2025, tổng số lượng nhân viên của DHG đạt 2.819 người (năm 2024: 2",
+      "elapsed_sec": 0.64
+    },
+    {
+      "ticker": "DIG",
+      "year": 2025,
+      "pages": 127,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DIG\\DIG_2025_BCTN.pdf",
+      "labor": 1787,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 99,
+      "strategy": "narrative_date_total",
+      "raw_text": "Số lượng nhân viên của Tập đoàn tại ngày 31 tháng 12 năm 2025 là 1.787 người (tại ngày 31 tháng 12 năm 2024 là 1",
+      "elapsed_sec": 0.63
+    },
+    {
+      "ticker": "DPM",
+      "year": 2025,
+      "pages": 114,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DPM\\DPM_2025_BCTN.pdf",
+      "labor": 1567,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 95,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số nhân viên của Tổng Công ty và các công ty con tại ngày 31 tháng 12 năm 2025 là 1.567 người (tại ngày 31 tháng 12 năm 2024: 1",
+      "elapsed_sec": 1.49
+    },
+    {
+      "ticker": "DPR",
+      "year": 2023,
+      "pages": 195,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DPR\\DPR_2023_BCTN.pdf",
+      "labor": 2096,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 21,
+      "strategy": "narrative_date_total",
+      "raw_text": "ổ phần đại diện sở hữu UBND Tỉnh Đắk Lắk : - c) Số lượng cán bộ, nhân viên (Tại thời điểm ngày 31/12/2023) Tính đến thời điểm 31/12/2023, tổng số lao động của Công ty là 2.096 người",
+      "elapsed_sec": 0.48
+    },
+    {
+      "ticker": "DXG",
+      "year": 2025,
+      "pages": 74,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\DXG\\DXG_2025_BCTN.pdf",
+      "labor": 4541,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 45,
+      "strategy": "narrative_date_total",
+      "raw_text": "Số lượng nhân viên của Tập đoàn tại ngày 31 tháng 12 năm 2025 là 4.541 (ngày 31 tháng 12 năm 2024: 2",
+      "elapsed_sec": 0.63
+    },
+    {
+      "ticker": "FCN",
+      "year": 2021,
+      "pages": 110,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\FCN\\FCN_2021_BCTN.pdf",
+      "labor": 1357,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 76,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số lao động của Công ty mẹ và các Công ty con tại ngày 31/12/2021 là 1.357 lao động (tại ngày 31/12/2020: 1",
+      "elapsed_sec": 0.65
+    },
+    {
+      "ticker": "FOX",
+      "year": 2022,
+      "pages": 93,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\FOX\\FOX_2022_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 1.69
+    },
+    {
+      "ticker": "FPT",
+      "year": 2025,
+      "pages": 233,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\FPT\\FPT_2025_BCTN.pdf",
+      "labor": 54110,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 174,
+      "strategy": "narrative_comparison",
+      "raw_text": "Tại ngày 31 tháng 12 năm 2025, Tập đoàn có  54.110 nhân viên (tại ngày 31 tháng 12 năm 2024: 54",
+      "elapsed_sec": 1.3
+    },
+    {
+      "ticker": "FRT",
+      "year": 2025,
+      "pages": 90,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\FRT\\FRT_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.39
+    },
+    {
+      "ticker": "FTS",
+      "year": 2015,
+      "pages": 41,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\FTS\\FTS_2015_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.19
+    },
+    {
+      "ticker": "GAS",
+      "year": 2023,
+      "pages": 91,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\GAS\\GAS_2023_BCTN.pdf",
+      "labor": 2827,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 63,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Tại ngày 31 tháng 12 năm 2023, Tổng Công ty có 2.827 nhân viên (tại ngày 31 tháng 12 năm 2022: 2",
+      "elapsed_sec": 0.65
+    },
+    {
+      "ticker": "GEX",
+      "year": 2025,
+      "pages": 68,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\GEX\\GEX_2025_BCTN.pdf",
+      "labor": 2035,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 33,
+      "strategy": "table_multiyear_row",
+      "raw_text": "Phát triển nguồn nhân lực chiến lược: Khởi động dự án “GELEX Kết nối” // (2025–2035), hợp tác với các trường đại học trọng điểm để xây dựng",
+      "elapsed_sec": 0.48
+    },
+    {
+      "ticker": "GMD",
+      "year": 2025,
+      "pages": 93,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\GMD\\GMD_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": "narrative_direct_total",
+      "raw_text": null,
+      "elapsed_sec": 0.96
+    },
+    {
+      "ticker": "GVR",
+      "year": 2025,
+      "pages": 169,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\GVR\\GVR_2025_BCTN.pdf",
+      "labor": 79000,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 11,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "50 // 25 // Tổng doanh thu hợp nhất // Nộp ngân sách // Tổng số lao động // Lợi nhuận trước thuế hợp nhất // 32.431 Tỷ đồng // 4.977 Tỷ đồng // + 79.000 Lao động",
+      "elapsed_sec": 0.78
+    },
+    {
+      "ticker": "HAG",
+      "year": 2025,
+      "pages": 93,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HAG\\HAG_2025_BCTN.pdf",
+      "labor": 1480,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 45,
+      "strategy": "narrative_date_total",
+      "raw_text": "3% Theo kỹ năng Số lượng nhân viên ký kết hợp đồng lao động dài hạn của Tập đoàn vào ngày 31 tháng 12 năm 2025 là 1.480 nhân viên (ngày 31 tháng 12 năm 2024 là 1",
+      "elapsed_sec": 0.64
+    },
+    {
+      "ticker": "HAH",
+      "year": 2025,
+      "pages": 183,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HAH\\HAH_2025_BCTN.pdf",
+      "labor": 847,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 37,
+      "strategy": "narrative_date_total",
+      "raw_text": "g ty thành viên)/ Structure and Headcount of Employees (Including Subsidiaries) Số lượng cán bộ công nhân viên lao động tại công ty tính đến thời điểm 31/12/2025 là: 847 nhân viên đang làm việc tại cá",
+      "elapsed_sec": 0.58
+    },
+    {
+      "ticker": "HBC",
+      "year": 2025,
+      "pages": 104,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HBC\\HBC_2025_BCTN.pdf",
+      "labor": 1040,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 57,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "6 // 41 // 21 // 1 // Phổ thông // 76 // 61 // 15 // 76 // 7 // 64 // 5 // 21 // 40 // 13 // Tổng cộng: 1.040",
+      "elapsed_sec": 0.48
+    },
+    {
+      "ticker": "HDG",
+      "year": 2025,
+      "pages": 59,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HDG\\HDG_2025_BCTN.pdf",
+      "labor": 1600,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 20,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Số lượng lao động qua các năm -> 200 // 400 // 600 // 800 // 1000 // 1200 // 1400 // 1600",
+      "elapsed_sec": 0.23
+    },
+    {
+      "ticker": "HHV",
+      "year": 2025,
+      "pages": 98,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HHV\\HHV_2025_BCTN.pdf",
+      "labor": 1336,
+      "status": "SUCCESS",
+      "confidence": 0.87,
+      "source_page": 8,
+      "strategy": "narrative_comparison",
+      "raw_text": "Số lượng lao động -> 1336",
+      "elapsed_sec": 0.3
+    },
+    {
+      "ticker": "HNG",
+      "year": 2025,
+      "pages": 51,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HNG\\HNG_2025_BCTN.pdf",
+      "labor": 7256,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 39,
+      "strategy": "narrative_date_total",
+      "raw_text": "YÊN VẬT LIỆU, NĂNG LƯỢNG VÀ NƯỚC BÁO CÁO THƯỜNG NIÊN 2025 74 75 HAGL AGRICO Đến cuối năm 2025, tổng số lượng cán bộ, nhân viên ký hợp đồng lao động dài hạn với Công ty là 7.256 người",
+      "elapsed_sec": 0.34
+    },
+    {
+      "ticker": "HPG",
+      "year": 2025,
+      "pages": 141,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HPG\\HPG_2025_BCTN.pdf",
+      "labor": 32000,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 56,
+      "strategy": "table_multiyear_row",
+      "raw_text": "NGUỒN NHÂN LỰC // Năm 2025 toàn Tập đoàn có gần 32.000 lao động. Trong đó, Tổng Công ty Gang",
+      "elapsed_sec": 0.52
+    },
+    {
+      "ticker": "HSG",
+      "year": 2025,
+      "pages": 125,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HSG\\HSG_2025_BCTN.pdf",
+      "labor": 7968,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 43,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Cơ cấu nhân sự theo trình độ Tính đến ngày 30/09/2025, tổng số cán bộ công nhân viên của Tập đoàn Hoa Sen là 7.968 người",
+      "elapsed_sec": 0.57
+    },
+    {
+      "ticker": "HT1",
+      "year": 2025,
+      "pages": 111,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\HT1\\HT1_2025_BCTN.pdf",
+      "labor": 2256,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 75,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số nhân viên của Công ty tại ngày 31 tháng 12 năm 2025 là 2.256 người (tại ngày 31 tháng 12 năm 2024 là 2",
+      "elapsed_sec": 1.2
+    },
+    {
       "ticker": "HU3",
       "year": 2014,
       "pages": 22,
@@ -10,8 +582,8 @@
       "confidence": 1.0,
       "source_page": 7,
       "strategy": "narrative_direct_total",
-      "raw_text": "1.755 1.755 3 Lê Ngọc Vinh 1984 Thành viên 0 0   Số lượng cán bộ, nhân viên ký hợp đồng trực tiếp với HUD3: 89 người 8  III. Tình hình đầu tƣ, tình hình thực hiện các dự án a) Các khoản đầu tư lớn: V",
-      "elapsed_sec": 0.57
+      "raw_text": "755 3 Lê Ngọc Vinh 1984 Thành viên 0 0   Số lượng cán bộ, nhân viên ký hợp đồng trực tiếp với HUD3: 89 người 8  III",
+      "elapsed_sec": 0.12
     },
     {
       "ticker": "HWS",
@@ -24,20 +596,20 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 4.19
+      "elapsed_sec": 0.27
     },
     {
       "ticker": "ICF",
       "year": 2015,
       "pages": 34,
       "pdf_path": "data/bctn_new_extracted\\ICF\\ICF_2015_BCTN.pdf",
-      "labor": 550,
+      "labor": 347,
       "status": "SUCCESS",
       "confidence": 1.0,
-      "source_page": 13,
+      "source_page": 9,
       "strategy": "table_plan_actual_metric",
-      "raw_text": ": 10-15% + Asean, China và các nước khác : 05% 4/ Nhu cầu lao động – tiền lương: + Tổng số     : 550 người. Trong đó, trực tiếp : 450 người và gián tiếp : 100 người. + Tổng tiền lương : 42.185.000.000",
-      "elapsed_sec": 0.84
+      "raw_text": "1/ Tổng số lao động ( chưa bao -> 315 // 347",
+      "elapsed_sec": 0.17
     },
     {
       "ticker": "IDI",
@@ -48,9 +620,9 @@
       "status": "SUCCESS",
       "confidence": 0.99,
       "source_page": 108,
-      "strategy": "table_multiyear_row",
+      "strategy": "table_breakdown_total_row",
       "raw_text": "trên đại học // 116 // 2 // Cao đẳng // 23 // 3 // Trung cấp và kỹ thuật viên // 103 // 4 // Lao động phổ thông // 2.556 // Tổng cộng:: 2.798",
-      "elapsed_sec": 2.52
+      "elapsed_sec": 0.55
     },
     {
       "ticker": "IDJ",
@@ -63,7 +635,7 @@
       "source_page": 26,
       "strategy": "table_plan_actual_metric",
       "raw_text": "Số lượng nhân sự -> 136 // 119",
-      "elapsed_sec": 16.2
+      "elapsed_sec": 2.29
     },
     {
       "ticker": "IFS",
@@ -75,8 +647,8 @@
       "confidence": 1.0,
       "source_page": 51,
       "strategy": "narrative_comparison",
-      "raw_text": "(Xem phụ lục 1 đính kèm)  4.1.2. NGƯỜI LAO ĐỘNG  Tại ngày 31 tháng 12 năm 2014, nhóm công ty có 1539 nhân viên (năm 2013: 1423 nhân viên).  Tóm tắt chính sách đối với người lao động Công ty áp dụng Lu",
-      "elapsed_sec": 1.35
+      "raw_text": "NGƯỜI LAO ĐỘNG  Tại ngày 31 tháng 12 năm 2014, nhóm công ty có 1539 nhân viên (năm 2013: 1423 nhân viên)",
+      "elapsed_sec": 0.27
     },
     {
       "ticker": "IHK",
@@ -88,8 +660,21 @@
       "confidence": 0.99,
       "source_page": 11,
       "strategy": "narrative_date_total",
-      "raw_text": "- kế toán Chức vụ nắm giữ ở tổ chức khác Không - Số lượng cán bộ, nhân viên và chính sách đối với người lao động: Tổng số lao động kết thúc ngày 31/12/2017 là 191 người, được Công ty trích lập BHXH, B",
-      "elapsed_sec": 0.56
+      "raw_text": "rưởng - Trưởng phòng Tài chính - kế toán Chức vụ nắm giữ ở tổ chức khác Không - Số lượng cán bộ, nhân viên và chính sách đối với người lao động: Tổng số lao động kết thúc ngày 31/12/2017 là 191 người",
+      "elapsed_sec": 0.12
+    },
+    {
+      "ticker": "IJC",
+      "year": 2025,
+      "pages": 105,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\IJC\\IJC_2025_BCTN.pdf",
+      "labor": 159,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 69,
+      "strategy": "narrative_date_total",
+      "raw_text": "Đặc biệt, tính đến ngày 31/12/2025, tổng số cán bộ nhân viên tại công ty mẹ là 159 người",
+      "elapsed_sec": 0.81
     },
     {
       "ticker": "ILB",
@@ -102,7 +687,7 @@
       "source_page": 19,
       "strategy": "table_breakdown_100pct",
       "raw_text": "Tỷ lệ // A // Theo trình độ chuyên môn // 323 // 100% // 1 // Trên đại học // 10",
-      "elapsed_sec": 3.87
+      "elapsed_sec": 0.65
     },
     {
       "ticker": "IME",
@@ -115,7 +700,7 @@
       "source_page": 16,
       "strategy": "table_plan_actual_metric",
       "raw_text": "Lao động bình quân -> 225 // 210 // 206",
-      "elapsed_sec": 1.98
+      "elapsed_sec": 0.33
     },
     {
       "ticker": "ITC",
@@ -124,11 +709,11 @@
       "pdf_path": "data/bctn_new_extracted\\ITC\\ITC_2014_BCTN.pdf",
       "labor": 94,
       "status": "SUCCESS",
-      "confidence": 0.99,
+      "confidence": 1.0,
       "source_page": 27,
       "strategy": "table_breakdown_100pct",
-      "raw_text": "Tổng số lao động -> 94 // 2 // 94",
-      "elapsed_sec": 1.35
+      "raw_text": "36,17% // 3 // Phân theo HĐ LĐ // 94 // 100% // HĐLĐ không thời hạn // 59 // 62,77%",
+      "elapsed_sec": 0.11
     },
     {
       "ticker": "ITD",
@@ -141,7 +726,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 1.25
+      "elapsed_sec": 0.21
     },
     {
       "ticker": "JOS",
@@ -154,20 +739,33 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.63
+      "elapsed_sec": 0.16
+    },
+    {
+      "ticker": "KBC",
+      "year": 2025,
+      "pages": 49,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\KBC\\KBC_2025_BCTN.pdf",
+      "labor": 255,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 20,
+      "strategy": "narrative_date_total",
+      "raw_text": "37 38 SỐ LƯỢNG CÁN BỘ NHÂN VIÊN Cơ cấu lao động tại Công ty mẹ tại ngày 31/12/2025 Tổng số nhân viên tại Công ty mẹ tính đến 31/12/2025 là 255 người",
+      "elapsed_sec": 0.33
     },
     {
       "ticker": "KDC",
-      "year": 2022,
-      "pages": 85,
-      "pdf_path": "data/bctn_new_extracted\\KDC\\KDC_2022_BCTN.pdf",
-      "labor": 3961,
+      "year": 2025,
+      "pages": 114,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\KDC\\KDC_2025_BCTN.pdf",
+      "labor": 5199,
       "status": "SUCCESS",
-      "confidence": 1.0,
-      "source_page": 65,
+      "confidence": 0.99,
+      "source_page": 87,
       "strategy": "narrative_date_total",
-      "raw_text": "Đa Kao, Quận 1, Thành phố Hồ Chí Minh, Việt Nam. Số lượng công nhân viên của Tập đoàn vào ngày 31 tháng 12 năm 2022 là 3.961 (31 tháng 12 năm 2021: 3.857). Các công ty con Tên công ty Lĩnh vực kinh do",
-      "elapsed_sec": 13.19
+      "raw_text": "Số lượng công nhân viên của Tập đoàn vào ngày 31 tháng 12 năm 2025 là 5.199 (31 tháng 12 năm 2024: 3",
+      "elapsed_sec": 1.11
     },
     {
       "ticker": "KHD",
@@ -180,7 +778,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.67
+      "elapsed_sec": 0.09
     },
     {
       "ticker": "KHG",
@@ -189,11 +787,11 @@
       "pdf_path": "data/bctn_new_extracted\\KHG\\KHG_2020_BCTN.pdf",
       "labor": 109,
       "status": "SUCCESS",
-      "confidence": 0.99,
+      "confidence": 1.0,
       "source_page": 19,
       "strategy": "table_breakdown_100pct",
-      "raw_text": "Tỷ trọng (%) // I // Theo trình độ lao động // 109 // 100% // 2 // Trình độ đại học trở lên // 67",
-      "elapsed_sec": 4.67
+      "raw_text": "19,27% // II // Theo loại hợp đồng lao động // 109 // 100% // 1 // Hợp đồng không thời hạn // 27",
+      "elapsed_sec": 0.48
     },
     {
       "ticker": "KIP",
@@ -206,7 +804,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.45
+      "elapsed_sec": 0.09
     },
     {
       "ticker": "KKC",
@@ -219,7 +817,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.14
+      "elapsed_sec": 0.03
     },
     {
       "ticker": "KPF",
@@ -232,7 +830,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 3.3
+      "elapsed_sec": 0.23
     },
     {
       "ticker": "KTC",
@@ -243,9 +841,9 @@
       "status": "SUCCESS",
       "confidence": 0.99,
       "source_page": 26,
-      "strategy": "table_breakdown_total_row",
-      "raw_text": "KIÊN GIANG| 51 Tình hình lao động trong Công ty • Tổng số cán bộ, công nhân lao động toàn Công ty tính đến ngày 31/12/2017 là 470 người. Trong đó, 250 lao động trực tiếp, 220 lao động gián tiếp, về tr",
-      "elapsed_sec": 1.13
+      "strategy": "narrative_date_total",
+      "raw_text": "51 Tình hình lao động trong Công ty • Tổng số cán bộ, công nhân lao động toàn Công ty tính đến ngày 31/12/2017 là 470 người",
+      "elapsed_sec": 0.2
     },
     {
       "ticker": "KTL",
@@ -258,7 +856,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.65
+      "elapsed_sec": 0.11
     },
     {
       "ticker": "L18",
@@ -271,7 +869,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.55
+      "elapsed_sec": 0.09
     },
     {
       "ticker": "L40",
@@ -283,8 +881,8 @@
       "confidence": 0.99,
       "source_page": 16,
       "strategy": "table_breakdown_100pct",
-      "raw_text": "Tỷ trọng // I // Theo trình độ // 27 // 100% // 1 // Đại học, trên Đại học // 17",
-      "elapsed_sec": 2.04
+      "raw_text": "25,93% // II // Theo thời hạn Hợp đồng lao động // 27 // 100% // 1 // Hợp đồng không xác định thời hạn // 27",
+      "elapsed_sec": 0.44
     },
     {
       "ticker": "LAS",
@@ -293,11 +891,11 @@
       "pdf_path": "data/bctn_new_extracted\\LAS\\LAS_2015_BCTN.pdf",
       "labor": 3040,
       "status": "SUCCESS",
-      "confidence": 1.0,
-      "source_page": 15,
-      "strategy": "table_breakdown_total_row",
-      "raw_text": "n lý và nhân viên // gián tiếp // 447 // Công nhân, nhân viên phục // vụ // 376 // Công nhân trực tiếp sản xuất // 2.217 // Tổng cộng: 3.040",
-      "elapsed_sec": 6.32
+      "confidence": 0.99,
+      "source_page": 24,
+      "strategy": "narrative_direct_total",
+      "raw_text": "- Tổng lao động bình quân là: 3.040 người",
+      "elapsed_sec": 0.89
     },
     {
       "ticker": "LBC",
@@ -310,20 +908,20 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.38
+      "elapsed_sec": 0.06
     },
     {
       "ticker": "LCG",
-      "year": 2019,
-      "pages": 27,
-      "pdf_path": "data/bctn_new_extracted\\LCG\\LCG_2019_BCTN.pdf",
-      "labor": 401,
-      "status": "SUCCESS",
-      "confidence": 0.99,
-      "source_page": 10,
-      "strategy": "narrative_date_total",
-      "raw_text": "ng năm Số lượng cán bộ, nhân viên Cơ cấu lao động tính đến 31/12/2019, tổng số lao động ký hợp đồng trực tiếp với công ty là 401 người, tăng so với năm 2018 là 17 người. Trong đó, khối gián tiếp làm v",
-      "elapsed_sec": 2.03
+      "year": 2025,
+      "pages": 127,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\LCG\\LCG_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.42
     },
     {
       "ticker": "LDG",
@@ -335,8 +933,8 @@
       "confidence": 0.99,
       "source_page": 51,
       "strategy": "narrative_date_total",
-      "raw_text": "Thạch, phường 6, quận 3, Thành phố Hồ Chí Minh.  Tổng số nhân viên của Công ty tại ngày 31/12/2014 là 132 nhân viên (31/12/2013: 25 nhân viên).  Đến ngày 31/12/2014, Công ty đầu tư vào 02 Công ty con ",
-      "elapsed_sec": 3.47
+      "raw_text": "Tổng số nhân viên của Công ty tại ngày 31/12/2014 là 132 nhân viên (31/12/2013: 25 nhân viên)",
+      "elapsed_sec": 0.63
     },
     {
       "ticker": "LDP",
@@ -349,7 +947,7 @@
       "source_page": 23,
       "strategy": "table_breakdown_100pct",
       "raw_text": "TỶ LỆ // A // Theo trình độ // 246 // 100% // 1 // Trên đại học // 1",
-      "elapsed_sec": 2.4
+      "elapsed_sec": 0.51
     },
     {
       "ticker": "LEC",
@@ -361,8 +959,8 @@
       "confidence": 0.99,
       "source_page": 42,
       "strategy": "narrative_direct_total",
-      "raw_text": ", mức lương trung bình đối với người lao động:  • Số lượng cán bộ công nhân viên lao động: Tổng số lao động tại công ty mẹ đến tháng 12/2022 là 8 người  • Mức lương trung bình: 8.000.000 đồng/người/th",
-      "elapsed_sec": 8.95
+      "raw_text": "lao động  – Số lượng lao động, mức lương trung bình đối với người lao động:  • Số lượng cán bộ công nhân viên lao động: Tổng số lao động tại công ty mẹ đến tháng 12/2022 là 8 người  • Mức lương trung ",
+      "elapsed_sec": 1.08
     },
     {
       "ticker": "LHG",
@@ -375,7 +973,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 7.92
+      "elapsed_sec": 1.15
     },
     {
       "ticker": "LIC",
@@ -384,11 +982,11 @@
       "pdf_path": "data/bctn_new_extracted\\LIC\\LIC_2023_BCTN.pdf",
       "labor": 172,
       "status": "SUCCESS",
-      "confidence": 0.95,
+      "confidence": 1.0,
       "source_page": 20,
       "strategy": "table_breakdown_100pct",
       "raw_text": "100% // 172 // 100% // 125 // 100% // 121 // 100% // Cơ cấu lao động",
-      "elapsed_sec": 1.71
+      "elapsed_sec": 0.3
     },
     {
       "ticker": "LKW",
@@ -401,7 +999,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.37
+      "elapsed_sec": 0.08
     },
     {
       "ticker": "LM3",
@@ -411,10 +1009,10 @@
       "labor": 103,
       "status": "SUCCESS",
       "confidence": 0.99,
-      "source_page": 34,
+      "source_page": 70,
       "strategy": "narrative_date_total",
-      "raw_text": "Mẫu số B 09 - DN      34 1.5 Lao động  Tại ngày 31 tháng 12 năm 2022, tổng số nhân viên của Công ty là 103 người (tại ngày 31 tháng 12 năm 2021 là 83 người).  2. NĂM TÀI CHÍNH, ĐƠN VỊ TIỀN TỆ SỬ DỤNG ",
-      "elapsed_sec": 3.92
+      "raw_text": "10 Lao động  Tại ngày 31 tháng 12 năm 2022, tổng số nhân viên của Công ty là 103 người (tại ngày 31 tháng 12 năm 2021 là 83người)",
+      "elapsed_sec": 0.44
     },
     {
       "ticker": "LM7",
@@ -427,7 +1025,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 1.84
+      "elapsed_sec": 0.21
     },
     {
       "ticker": "LM8",
@@ -440,7 +1038,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 1.78
+      "elapsed_sec": 0.38
     },
     {
       "ticker": "LSG",
@@ -452,8 +1050,8 @@
       "confidence": 0.99,
       "source_page": 8,
       "strategy": "narrative_date_total",
-      "raw_text": "25 2 21 1 1 16 9 TỶ LỆ 100% 8% 84% 4% 4% 64% 36% Số lượng cán bộ, nhân viên Tổng số lao động của Công ty tính đến ngày 31/12/2024 là 25 người. Trong đó: Chính sách tuyển dụng, đào tạo Tuyển dụng, đào ",
-      "elapsed_sec": 4.15
+      "raw_text": "INH DOANH 5  5   2 3 TỔNG CỘNG 25 2 21 1 1 16 9 TỶ LỆ 100% 8% 84% 4% 4% 64% 36% Số lượng cán bộ, nhân viên Tổng số lao động của Công ty tính đến ngày 31/12/2024 là 25 người",
+      "elapsed_sec": 0.68
     },
     {
       "ticker": "LSS",
@@ -465,21 +1063,21 @@
       "confidence": 0.99,
       "source_page": 14,
       "strategy": "narrative_date_total",
-      "raw_text": "BÁO CÁO THƯỜNG NIÊN 2023-2024 1. CƠ CẤU LAO ĐỘNG Năm tài chính 2023-2024, tổng số lao động toàn công ty có 498 người, giảm 35 người so với năm 2022-2023. Trong đó: Cơ cấu lao động theo trình độ 2023-2",
-      "elapsed_sec": 3.08
+      "raw_text": "CƠ CẤU LAO ĐỘNG Năm tài chính 2023-2024, tổng số lao động toàn công ty có 498 người",
+      "elapsed_sec": 0.41
     },
     {
       "ticker": "LTG",
       "year": 2023,
       "pages": 32,
       "pdf_path": "data/bctn_new_extracted\\LTG\\LTG_2023_BCTN.pdf",
-      "labor": 970,
+      "labor": 3093,
       "status": "SUCCESS",
       "confidence": 0.99,
       "source_page": 14,
       "strategy": "narrative_date_total",
-      "raw_text": "Không có Những khoản nợ đối với Công ty Không có Số lượng cán bộ, nhân viên của Công ty tại ngày 31 tháng 12 năm 2023 là 970 người, số lượng nhân viên của Công ty và các công ty con tại ngày 31 tháng ",
-      "elapsed_sec": 1.31
+      "raw_text": "lượng cán bộ, nhân viên của Công ty tại ngày 31 tháng 12 năm 2023 là 970 người, số lượng nhân viên của Công ty và các công ty con tại ngày 31 tháng 12 năm 2023 là 3093 người",
+      "elapsed_sec": 0.25
     },
     {
       "ticker": "MC3",
@@ -488,11 +1086,11 @@
       "pdf_path": "data/bctn_new_extracted\\MC3\\MC3_2017_BCTN.pdf",
       "labor": 191,
       "status": "SUCCESS",
-      "confidence": 0.99,
+      "confidence": 1.0,
       "source_page": 26,
-      "strategy": "narrative_date_total",
-      "raw_text": "2.2 Những thay đổi ban điều hành: Không có. 2.3 Số lượng cán bộ, nhân viên: 25     Bảng số 7: Cơ cấu lao động của Công ty tại thời điểm 31/12/2017 Tiêu chí Số lƣợng (ngƣời) Tỉ trọng (%) Tổng số 191 10",
-      "elapsed_sec": 1.42
+      "strategy": "table_breakdown_total_row",
+      "raw_text": "// Bảng số 7: Cơ cấu lao động của Công ty tại thời điểm 31/12/2017 // Tiêu chí // Số lƣợng // (ngƣời) // Tỉ trọng // (%) // Tổng số: 191",
+      "elapsed_sec": 0.27
     },
     {
       "ticker": "MCC",
@@ -505,20 +1103,20 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.59
+      "elapsed_sec": 0.13
     },
     {
       "ticker": "MCH",
-      "year": 2015,
-      "pages": 73,
-      "pdf_path": "data/bctn_new_extracted\\MCH\\MCH_2015_BCTN.pdf",
-      "labor": 38,
+      "year": 2025,
+      "pages": 143,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\MCH\\MCH_2025_BCTN.pdf",
+      "labor": 1215,
       "status": "SUCCESS",
-      "confidence": 1.0,
-      "source_page": 68,
-      "strategy": "table_breakdown_100pct",
-      "raw_text": "38 // 3% // Tổng cộng // 1.128 // 100% // Ghi chú: Tỷ lệ nhân viên có trình độ học vấn từ Trung cấp trở xuống phần lớn bao gồm lao động trực tiếp của các kho // hàng, nhân viên giới thiệu sản phẩm, lá",
-      "elapsed_sec": 4.17
+      "confidence": 0.99,
+      "source_page": 126,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Số lượng và cơ cấu lao động trong Công ty Tính đến thời điểm 31/12/2025, tổng số lượng lao động của Công ty là 1.215 người và của Tập đoàn là 5",
+      "elapsed_sec": 0.76
     },
     {
       "ticker": "MCO",
@@ -531,7 +1129,7 @@
       "source_page": 19,
       "strategy": "table_multiyear_row",
       "raw_text": "h sách liên quan đến người lao động  a) Số lượng lao động: Tại thời điểm 31/12/2016 là 48 người   Mức thu nhập bình quân năm 2016: 6,896 triệu/người/tháng.  b) Chính sách lao",
-      "elapsed_sec": 2.18
+      "elapsed_sec": 0.15
     },
     {
       "ticker": "MDF",
@@ -540,11 +1138,24 @@
       "pdf_path": "data/bctn_new_extracted\\MDF\\MDF_2014_BCTN.pdf",
       "labor": 255,
       "status": "SUCCESS",
-      "confidence": 1.0,
+      "confidence": 0.99,
       "source_page": 17,
-      "strategy": "table_multiyear_row",
-      "raw_text": "Tổng số lao động năm 2014: 255 người. // Tổng số lao động năm 2014: 255 người.",
-      "elapsed_sec": 1.25
+      "strategy": "narrative_direct_total",
+      "raw_text": "Tổng số lao động năm 2014: 255 người",
+      "elapsed_sec": 0.15
+    },
+    {
+      "ticker": "MED",
+      "year": 2020,
+      "pages": 61,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\MED\\MED_2020_BCTN.pdf",
+      "labor": 450,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 12,
+      "strategy": "narrative_direct_total",
+      "raw_text": "2    Chính sách Nhân lực:  Hiện nay tổng số cán bộ nhân viên của Công ty là 450 lao động",
+      "elapsed_sec": 0.23
     },
     {
       "ticker": "MEF",
@@ -557,7 +1168,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.21
+      "elapsed_sec": 0.04
     },
     {
       "ticker": "MPC",
@@ -570,20 +1181,33 @@
       "source_page": 23,
       "strategy": "table_breakdown_100pct",
       "raw_text": "(%) // A // Theo trình độ // 12.382 // 100% // 1 // Trình độ Đại học và trên Đại học // 976",
-      "elapsed_sec": 1.94
+      "elapsed_sec": 0.33
+    },
+    {
+      "ticker": "MSB",
+      "year": 2021,
+      "pages": 157,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\MSB\\MSB_2021_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.42
     },
     {
       "ticker": "MSH",
-      "year": 2017,
-      "pages": 25,
-      "pdf_path": "data/bctn_new_extracted\\MSH\\MSH_2017_BCTN.pdf",
-      "labor": 9975,
+      "year": 2025,
+      "pages": 91,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\MSH\\MSH_2025_BCTN.pdf",
+      "labor": 11720,
       "status": "SUCCESS",
       "confidence": 0.99,
-      "source_page": 11,
-      "strategy": "narrative_date_total",
-      "raw_text": "Danh sách Ban điều hành tại ngày 31/12/2017       Số lượng cán bộ, nhân viên tại thời điểm 31/12/2017:  9.975 người Tóm tắt chính sách và thay đổi trong chính sách đối với người lao động:  Tất cả các",
-      "elapsed_sec": 0.96
+      "source_page": 69,
+      "strategy": "bctc_notes",
+      "raw_text": "gười/ tháng 10,6 10,9 10,4 12,7 14,2 \t• Số lượng nhân sự: Tính đến thời điểm 31/12/2025, toàn công ty có tổng cộng 11.720 lao động. \t• Thu nhập bình quân của người lao động qua các năm: Chính sách nhâ",
+      "elapsed_sec": 0.45
     },
     {
       "ticker": "MST",
@@ -596,7 +1220,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 0.96
+      "elapsed_sec": 0.08
     },
     {
       "ticker": "MTA",
@@ -609,7 +1233,7 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 1.03
+      "elapsed_sec": 0.12
     },
     {
       "ticker": "MTH",
@@ -621,34 +1245,554 @@
       "confidence": 0.99,
       "source_page": 25,
       "strategy": "narrative_date_total",
-      "raw_text": "n bộ. nhân viên và chính sách với người lao động. Tổng số lao động tại thời điểm 31/12/2014 là 870 người. trong đó: TT Nội dung Số người 1 Trình độ đại học 96 2 Trình độ cao đẳng và trung cấp 130 3 La",
-      "elapsed_sec": 1.26
+      "raw_text": "Tổng số lao động tại thời điểm 31/12/2014 là 870 người",
+      "elapsed_sec": 0.17
     },
     {
       "ticker": "MTV",
       "year": 2016,
       "pages": 20,
       "pdf_path": "data/bctn_new_extracted\\MTV\\MTV_2016_BCTN.pdf",
-      "labor": 520,
+      "labor": 530,
       "status": "SUCCESS",
       "confidence": 1.0,
       "source_page": 9,
       "strategy": "table_plan_actual_metric",
       "raw_text": "Tổng số lao động bình quân -> 530 // 520",
-      "elapsed_sec": 0.69
+      "elapsed_sec": 0.11
     },
     {
       "ticker": "MVC",
       "year": 2023,
       "pages": 27,
       "pdf_path": "data/bctn_new_extracted\\MVC\\MVC_2023_BCTN.pdf",
+      "labor": 83,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 10,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Tổng số cán bộ công nhân của công ty: 510 người -> 83",
+      "elapsed_sec": 0.14
+    },
+    {
+      "ticker": "MWG",
+      "year": 2025,
+      "pages": 158,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\MWG\\MWG_2025_BCTN.pdf",
+      "labor": 64727,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 137,
+      "strategy": "infographic_callout",
+      "raw_text": "• Thúc đẩy cơ hội phát triển cá nhân cho mọi nhân viên // 64.727 Nhân viên // Nam // Nữ // TỔNG SỐ NHÂN VIÊN THEO CHUỖI // THỐNG KÊ THEO ĐỘ TUỔI // THỐNG KÊ THEO THÂM NIÊN // Thegioididong.com, // Điệ",
+      "elapsed_sec": 0.92
+    },
+    {
+      "ticker": "NBB",
+      "year": 2025,
+      "pages": 94,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\NBB\\NBB_2025_BCTN.pdf",
+      "labor": 74,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 11,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số lao động của Công ty tính đến ngày 31/12/2025 là 74 người",
+      "elapsed_sec": 0.6
+    },
+    {
+      "ticker": "NKG",
+      "year": 2025,
+      "pages": 95,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\NKG\\NKG_2025_BCTN.pdf",
+      "labor": 1575,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 46,
+      "strategy": "narrative_date_total",
+      "raw_text": "575 CÁN BỘ CÔNG NHÂN VIÊN TỔNG SỐ LAO ĐỘNG Tại thời điểm ngày 31/12/2025, Tôn Nam Kim có tổng số lượng người lao động đang làm việc là 1.575 cán bộ công nhân viên",
+      "elapsed_sec": 0.76
+    },
+    {
+      "ticker": "NT2",
+      "year": 2025,
+      "pages": 260,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\NT2\\NT2_2025_BCTN.pdf",
       "labor": null,
       "status": "NOT_FOUND",
       "confidence": 0.0,
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 1.25
+      "elapsed_sec": 0.12
+    },
+    {
+      "ticker": "NTC",
+      "year": 2025,
+      "pages": 30,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\NTC\\NTC_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.11
+    },
+    {
+      "ticker": "NVL",
+      "year": 2025,
+      "pages": 132,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\NVL\\NVL_2025_BCTN.pdf",
+      "labor": 2248,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 55,
+      "strategy": "narrative_comparison",
+      "raw_text": "Số lượng nhân sự từng năm 2015-2025 -> 1991 // 2210 // 1581 // 2193 // 2247 // 2248",
+      "elapsed_sec": 0.99
+    },
+    {
+      "ticker": "PAN",
+      "year": 2025,
+      "pages": 116,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PAN\\PAN_2025_BCTN.pdf",
+      "labor": 10349,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 84,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số nhân viên của Công ty và các công ty con tại ngày 31 tháng 12 năm 2025 là 10.349 người (tại ngày 31 tháng 12 năm 2024: 10",
+      "elapsed_sec": 0.9
+    },
+    {
+      "ticker": "PC1",
+      "year": 2025,
+      "pages": 121,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PC1\\PC1_2025_BCTN.pdf",
+      "labor": 1708,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 97,
+      "strategy": "narrative_direct_total",
+      "raw_text": "tháng 7 năm 2005. Theo Giấy chứng nhận đăng ký doanh nghiệp thay đổi lần gần nhất, lần thứ 27 ngày 11 tháng 12 // năm 2025, vốn điều lệ của Công ty là 4.112.853.430.000 VND, tương ứng với 411.285.343 ",
+      "elapsed_sec": 0.65
+    },
+    {
+      "ticker": "PET",
+      "year": 2025,
+      "pages": 58,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PET\\PET_2025_BCTN.pdf",
+      "labor": 3219,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 28,
+      "strategy": "narrative_date_total",
+      "raw_text": "50 TÌNH HÌNH HOẠT ĐỘNG TRONG NĂM 51 BÁO CÁO THƯỜNG NIÊN 2025 Tổng số người lao động trong toàn PETROSETCO tính đến thời điểm 31/12/2025 là 3.219 người",
+      "elapsed_sec": 0.47
+    },
+    {
+      "ticker": "PGV",
+      "year": 2025,
+      "pages": 106,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PGV\\PGV_2025_BCTN.pdf",
+      "labor": 2789,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 83,
+      "strategy": "table_breakdown_total_row",
+      "raw_text": "Tổng số nhân viên của Công ty mẹ và các công ty con tại ngày 31 tháng 12 năm 2025 là 2.789 người (tại ngày 31 tháng 12 năm 2024: 2",
+      "elapsed_sec": 0.7
+    },
+    {
+      "ticker": "PHP",
+      "year": 2024,
+      "pages": 15,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PHP\\PHP_2024_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.07
+    },
+    {
+      "ticker": "PHR",
+      "year": 2025,
+      "pages": 96,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PHR\\PHR_2025_BCTN.pdf",
+      "labor": 1725,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 11,
+      "strategy": "narrative_comparison",
+      "raw_text": "500 0,001% Tổng số cán bộ công nhân toàn công ty 31/12/2025 là 1.725 lao động 3",
+      "elapsed_sec": 0.33
+    },
+    {
+      "ticker": "PLX",
+      "year": 2025,
+      "pages": 114,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PLX\\PLX_2025_BCTN.pdf",
+      "labor": 26123,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 80,
+      "strategy": "narrative_comparison",
+      "raw_text": "phương pháp vốn chủ sở hữu trong báo cáo tài chính hợp nhất 7 Xem Phụ lục 5 87 Tại ngày 31 tháng 12 năm 2025, Tập đoàn có 26.123 nhân viên (1/1/2025: 25",
+      "elapsed_sec": 0.56
+    },
+    {
+      "ticker": "PNJ",
+      "year": 2025,
+      "pages": 133,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PNJ\\PNJ_2025_BCTN.pdf",
+      "labor": 8164,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 51,
+      "strategy": "narrative_comparison",
+      "raw_text": "tiếp tục khẳng định sức bền của mô hình vận hành và // chiến lược phát triển con người mà Công ty theo đuổi // trong nhiều năm qua. // Năm 2025, PNJ chủ động tái cân đối nguồn lực, điều // chỉnh quy m",
+      "elapsed_sec": 0.77
+    },
+    {
+      "ticker": "POM",
+      "year": 2011,
+      "pages": 33,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\POM\\POM_2011_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.2
+    },
+    {
+      "ticker": "POW",
+      "year": 2025,
+      "pages": 99,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\POW\\POW_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.04
+    },
+    {
+      "ticker": "PTB",
+      "year": 2025,
+      "pages": 107,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PTB\\PTB_2025_BCTN.pdf",
+      "labor": 6651,
+      "status": "SUCCESS",
+      "confidence": 0.9,
+      "source_page": 32,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Theo trình độ // 6.651 // 100,00% // 6.690 // 100,00% // 1 // Đại học và trên đại học // 540",
+      "elapsed_sec": 0.5
+    },
+    {
+      "ticker": "PVD",
+      "year": 2023,
+      "pages": 152,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PVD\\PVD_2023_BCTN.pdf",
+      "labor": 439,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 127,
+      "strategy": "narrative_date_total",
+      "raw_text": "(tiếp theo) Tổng số nhân viên của Công ty mẹ và các công ty con tại ngày 31 tháng 12 năm 2023 lần lượt là 439 người và 1",
+      "elapsed_sec": 1.06
+    },
+    {
+      "ticker": "PVS",
+      "year": 2025,
+      "pages": 172,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PVS\\PVS_2025_BCTN.pdf",
+      "labor": 8201,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 42,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tính đến cuối năm 2025, tổng số lao động của PTSC đạt 8.201 người",
+      "elapsed_sec": 1.08
+    },
+    {
+      "ticker": "PVT",
+      "year": 2025,
+      "pages": 182,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\PVT\\PVT_2025_BCTN.pdf",
+      "labor": 2794,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 118,
+      "strategy": "narrative_comparison",
+      "raw_text": "Tổng số lao động bình quân năm 2025 đạt 2.794 người",
+      "elapsed_sec": 1.08
+    },
+    {
+      "ticker": "QNS",
+      "year": 2025,
+      "pages": 81,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\QNS\\QNS_2025_BCTN.pdf",
+      "labor": 4050,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 43,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "TỔNG SỐ LAO ĐỘNG -> 4050",
+      "elapsed_sec": 0.46
+    },
+    {
+      "ticker": "QTP",
+      "year": 2022,
+      "pages": 26,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\QTP\\QTP_2022_BCTN.pdf",
+      "labor": 846,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 11,
+      "strategy": "narrative_date_total",
+      "raw_text": "ng trung bình đối với người lao động: - Số lượng lao động của Công ty tính đến 31/12/2022 là 846 người. - Mức lương bình quân toàn Công ty năm 2022 là 26,2 triệu  đồng/người/tháng.",
+      "elapsed_sec": 0.12
+    },
+    {
+      "ticker": "REE",
+      "year": 2025,
+      "pages": 81,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\REE\\REE_2025_BCTN.pdf",
+      "labor": 2001,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 55,
+      "strategy": "narrative_date_total",
+      "raw_text": "Số lượng công nhân viên của Nhóm Công ty vào ngày 31 tháng 12 năm 2025 là 2.001 người (ngày 31 tháng 12 năm 2024: 1",
+      "elapsed_sec": 0.88
+    },
+    {
+      "ticker": "SAB",
+      "year": 2025,
+      "pages": 101,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SAB\\SAB_2025_BCTN.pdf",
+      "labor": 7736,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 73,
+      "strategy": "narrative_comparison",
+      "raw_text": "Tại ngày 31 tháng 12 năm 2025, Tập đoàn có 7.736 nhân viên (1/1/2025: 7",
+      "elapsed_sec": 0.74
+    },
+    {
+      "ticker": "SBT",
+      "year": 2024,
+      "pages": 274,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SBT\\SBT_2024_BCTN.pdf",
+      "labor": 2648,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 221,
+      "strategy": "narrative_direct_total",
+      "raw_text": "Tổng cộng // 771 // Tổng số giờ đào tạo // 116.660 GIỜ // Tổng số nhân viên // 2.648 NGƯỜI // Số giờ đào tạo bình quân // 44,06 GIỜ/NGƯỜI // Mô hình hợp tác “5 Nhà” trong việc thu hút, thúc đẩy phát t",
+      "elapsed_sec": 4.13
+    },
+    {
+      "ticker": "SCS",
+      "year": 2025,
+      "pages": 87,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SCS\\SCS_2025_BCTN.pdf",
+      "labor": 645,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 21,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "i trường 3 a) Số lượng lao động, mức lương trung bình đối với người lao động: • Số lượng lao động bình quân trong năm: 645 người",
+      "elapsed_sec": 0.36
+    },
+    {
+      "ticker": "SIP",
+      "year": 2025,
+      "pages": 72,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SIP\\SIP_2025_BCTN.pdf",
+      "labor": 512,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 29,
+      "strategy": "table_breakdown_total_row",
+      "raw_text": "g không xác định thời hạn // 73 // 14,26% // C // Theo giới tính // 1 // Nam // 437 // 85,35% // 2 // Nữ // 75 // 14,65% // Tổng cộng: 512",
+      "elapsed_sec": 0.67
+    },
+    {
+      "ticker": "SLS",
+      "year": 2025,
+      "pages": 59,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SLS\\SLS_2025_BCTN.pdf",
+      "labor": 330,
+      "status": "SUCCESS",
+      "confidence": 0.9,
+      "source_page": 15,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Tỷ lệ (%) // I // Theo trình độ // 330 // 100,00% // 1 // Trình độ Đại học và trên Đại học // 47",
+      "elapsed_sec": 0.64
+    },
+    {
+      "ticker": "SNZ",
+      "year": 2025,
+      "pages": 118,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SNZ\\SNZ_2025_BCTN.pdf",
+      "labor": 71,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 58,
+      "strategy": "narrative_date_total",
+      "raw_text": "ƯƠNG 5: BÁO CÁO PHÁT TRIỂN BỀN VỮNG Các chính sách liên quan đến người lao động Số lượng cán bộ nhân viên Tổng số cán bộ - nhân viên tại Công ty mẹ - Tổng công ty Sonadezi đến ngày 31/12/2025 là 71 ng",
+      "elapsed_sec": 0.25
+    },
+    {
+      "ticker": "SSC",
+      "year": 2023,
+      "pages": 49,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SSC\\SSC_2023_BCTN.pdf",
+      "labor": 156,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 20,
+      "strategy": "table_breakdown_total_row",
+      "raw_text": "2,56% // 2 // Hợp đồng có thời hạn 1 đến 3 năm // 41 // 26,28% // 3 // Hợp đồng không xác định thời hạn // 111 // 71,15% // Tổng cộng: 156",
+      "elapsed_sec": 0.46
+    },
+    {
+      "ticker": "STB",
+      "year": 2020,
+      "pages": 117,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\STB\\STB_2020_BCTN.pdf",
+      "labor": 18646,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 76,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "ân hàng TNHH Sài Gòn Thương Tín Lào 15/NHNN Hoạt động ngân hàng 100% Nhân viên  Tổng số cán bộ công nhân viên của Ngân hàng và các công ty con vào ngày 31 tháng 12 năm 2020 là 18.646 người (ngày 31 th",
+      "elapsed_sec": 1.94
+    },
+    {
+      "ticker": "STK",
+      "year": 2025,
+      "pages": 231,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\STK\\STK_2025_BCTN.pdf",
+      "labor": 968,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 194,
+      "strategy": "narrative_date_total",
+      "raw_text": "Số lượng nhân viên của Công ty và công ty con (“Nhóm Công ty”) tại ngày 31 tháng 12 năm 2025 là 968 (ngày 31 tháng 12 năm 2024: 998)",
+      "elapsed_sec": 0.86
+    },
+    {
+      "ticker": "SZC",
+      "year": 2025,
+      "pages": 173,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\SZC\\SZC_2025_BCTN.pdf",
+      "labor": 263,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 53,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Theo trình độ lao động // 263 // 100% // 262 // 100% // 1 // Trình độ Đại học và trên Đại học // 139",
+      "elapsed_sec": 0.37
+    },
+    {
+      "ticker": "TCH",
+      "year": 2024,
+      "pages": 36,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TCH\\TCH_2024_BCTN.pdf",
+      "labor": 94,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 14,
+      "strategy": "narrative_direct_total",
+      "raw_text": "SỐ LƯỢNG CÁN BỘ, NHÂN VIÊN Tính đến thời điểm 31/03/2025, tổng số lao động trong Công ty (công ty mẹ) là 94 người (tại ngày 31/03/2024 là 68 người)",
+      "elapsed_sec": 0.36
+    },
+    {
+      "ticker": "TCL",
+      "year": 2016,
+      "pages": 113,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TCL\\TCL_2016_BCTN.pdf",
+      "labor": 311,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 38,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "Tỷ trọng // I // Theo trình độ lao động // 311 // 100% // 1 // Trình độ đại học, cao đẳng // 153",
+      "elapsed_sec": 0.35
+    },
+    {
+      "ticker": "TCM",
+      "year": 2025,
+      "pages": 113,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TCM\\TCM_2025_BCTN.pdf",
+      "labor": 5489,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 28,
+      "strategy": "narrative_date_total",
+      "raw_text": "000 Tính đến ngày 31/12/2025, số lượng cán bộ nhân viên là 5.489 người",
+      "elapsed_sec": 0.76
+    },
+    {
+      "ticker": "TDC",
+      "year": 2023,
+      "pages": 110,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TDC\\TDC_2023_BCTN.pdf",
+      "labor": 308,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 31,
+      "strategy": "narrative_comparison",
+      "raw_text": "Vềtình hình và chính sách đối với người lao động: - Tính đến thời điểm 31/12/2023 tổng sốlao động là 308 người",
+      "elapsed_sec": 0.53
+    },
+    {
+      "ticker": "TIP",
+      "year": 2021,
+      "pages": 68,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TIP\\TIP_2021_BCTN.pdf",
+      "labor": 34,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 19,
+      "strategy": "table_breakdown_100pct",
+      "raw_text": "18% // B // Theo tính chất hợp đồng lao động // 34 // 100% // 1 // Hợp đồng không thời hạn // 31",
+      "elapsed_sec": 0.66
+    },
+    {
+      "ticker": "TLG",
+      "year": 2023,
+      "pages": 91,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TLG\\TLG_2023_BCTN.pdf",
+      "labor": 3075,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 62,
+      "strategy": "narrative_date_total",
+      "raw_text": "ỒNG 11 TRÁCH NHIỆM ĐỐI VỚI NGƯỜI LAO ĐỘNG TỔNG SỐ LAO ĐỘNG NĂM 2023 Tính đến hết ngày 31/12/2023, tổng số nhân sự của toàn Tập đoàn là 3.075 người",
+      "elapsed_sec": 0.83
+    },
+    {
+      "ticker": "TNG",
+      "year": 2024,
+      "pages": 152,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TNG\\TNG_2024_BCTN.pdf",
+      "labor": 19052,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 131,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số nhân viên của Công ty tại ngày 31 tháng 12 năm 2024 là 19.052 (ngày 31 tháng 12 năm 2023: 18",
+      "elapsed_sec": 5.59
     },
     {
       "ticker": "TPP",
@@ -661,10 +1805,251 @@
       "source_page": null,
       "strategy": null,
       "raw_text": null,
-      "elapsed_sec": 1.48
+      "elapsed_sec": 0.62
+    },
+    {
+      "ticker": "TRA",
+      "year": 2025,
+      "pages": 113,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TRA\\TRA_2025_BCTN.pdf",
+      "labor": 280,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 49,
+      "strategy": "table_multiyear_row",
+      "raw_text": "03 TỔNG KHO 27 TRUNG TÂM PHÂN PHỐI Tính đến 31/12/2025, tổng số nhân sự của Công ty là 280 NGƯỜI Trong đó: Nhân viên chính thức: Cộng tác viên: 198 NGƯỜI 82",
+      "elapsed_sec": 2.06
+    },
+    {
+      "ticker": "TRC",
+      "year": 2024,
+      "pages": 71,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\TRC\\TRC_2024_BCTN.pdf",
+      "labor": 2,
+      "status": "SUCCESS",
+      "confidence": 0.86,
+      "source_page": 14,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "- Số lượng lao động, mức lương trung bình đối với người lao động: -> 1314 // 1 // 2",
+      "elapsed_sec": 0.22
+    },
+    {
+      "ticker": "VCF",
+      "year": 2025,
+      "pages": 77,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VCF\\VCF_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.25
+    },
+    {
+      "ticker": "VCG",
+      "year": 2025,
+      "pages": 167,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VCG\\VCG_2025_BCTN.pdf",
+      "labor": 7098,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 31,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "thưởng trong các ngày lễ tết với tổng giá trị tương đương // 3 tháng tiền lương/người/năm. Tổng công ty đảm bảo // chi trả tiền lương đầy đủ, kịp thời, không để xảy ra // 7.098 NGƯỜI // TỔNG SỐ LAO ĐỘ",
+      "elapsed_sec": 0.96
+    },
+    {
+      "ticker": "VCI",
+      "year": 2020,
+      "pages": 64,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VCI\\VCI_2020_BCTN.pdf",
+      "labor": 226,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 7,
+      "strategy": "table_plan_actual_metric",
+      "raw_text": "TỔNG SỐ NHÂN VIÊN (NGƯỜI) -> 245 // 245 // 226",
+      "elapsed_sec": 1.86
+    },
+    {
+      "ticker": "VGC",
+      "year": 2020,
+      "pages": 50,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VGC\\VGC_2020_BCTN.pdf",
+      "labor": 8221,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 20,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số lao động của Viglacera tính đến 31/12/2020 là 8.221 người",
+      "elapsed_sec": 0.71
+    },
+    {
+      "ticker": "VGI",
+      "year": 2021,
+      "pages": 36,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VGI\\VGI_2021_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.7
+    },
+    {
+      "ticker": "VHC",
+      "year": 2025,
+      "pages": 81,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VHC\\VHC_2025_BCTN.pdf",
+      "labor": null,
+      "status": "NOT_FOUND",
+      "confidence": 0.0,
+      "source_page": null,
+      "strategy": null,
+      "raw_text": null,
+      "elapsed_sec": 0.73
+    },
+    {
+      "ticker": "VHM",
+      "year": 2025,
+      "pages": 132,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VHM\\VHM_2025_BCTN.pdf",
+      "labor": 12799,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 94,
+      "strategy": "narrative_date_total",
+      "raw_text": "rong vòng 12 tháng. Số lượng nhân viên của Công ty tại ngày 31 tháng 12 năm 2025 là 12.799   (ngày 31 tháng 12 năm 2024: 11.815). Cơ cấu tổ chức Tạ",
+      "elapsed_sec": 0.74
+    },
+    {
+      "ticker": "VIC",
+      "year": 2025,
+      "pages": 167,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VIC\\VIC_2025_BCTN.pdf",
+      "labor": 286,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 110,
+      "strategy": "narrative_date_total",
+      "raw_text": "Chí Minh, Việt Nam. Số lượng nhân viên của Công ty tại ngày 31 tháng 12 năm 2025 là: 286 người (ngày 31 tháng 12 năm 2024: 367 người). Tại ngày 31",
+      "elapsed_sec": 0.76
+    },
+    {
+      "ticker": "VJC",
+      "year": 2025,
+      "pages": 123,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VJC\\VJC_2025_BCTN.pdf",
+      "labor": 7805,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 93,
+      "strategy": "narrative_comparison",
+      "raw_text": "309, cánh Tây, tầng 3, số 53 phố Shamei Bắc, quận Lệ Loan, thành phố Quảng Châu Tại ngày 31 tháng 12 năm 2025, Tập đoàn có 7.805 nhân viên (tại ngày 01 tháng 01 năm 2025: 6",
+      "elapsed_sec": 0.97
+    },
+    {
+      "ticker": "VNM",
+      "year": 2025,
+      "pages": 111,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VNM\\VNM_2025_BCTN.pdf",
+      "labor": 5593,
+      "status": "SUCCESS",
+      "confidence": 1.0,
+      "source_page": 77,
+      "strategy": "narrative_comparison",
+      "raw_text": "Tại ngày 31 tháng 12 năm 2025, Công ty có 5.593 nhân viên (1/1/2025: 5",
+      "elapsed_sec": 0.72
+    },
+    {
+      "ticker": "VPI",
+      "year": 2025,
+      "pages": 98,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VPI\\VPI_2025_BCTN.pdf",
+      "labor": 305,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 64,
+      "strategy": "narrative_date_total",
+      "raw_text": "rong vòng 12 tháng. Số lượng nhân viên của Công ty tại ngày 31 tháng 12 năm 2025 là 305 người (ngày 31 tháng 12 năm 2024: 246 người). Cơ cấu tổ c",
+      "elapsed_sec": 0.66
+    },
+    {
+      "ticker": "VRE",
+      "year": 2025,
+      "pages": 290,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VRE\\VRE_2025_BCTN.pdf",
+      "labor": 1679,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 258,
+      "strategy": "infographic_callout",
+      "raw_text": "Tổng số nhân viên của Công ty và các công ty con (“Nhóm Công ty”) tại ngày 31 tháng 12 năm 2025 là 1.679 người (ngày 31 tháng 12 năm 2024: 2",
+      "elapsed_sec": 1.16
+    },
+    {
+      "ticker": "VTP",
+      "year": 2025,
+      "pages": 99,
+      "pdf_path": "data/zenodo_cache\\gap_filler\\VTP\\VTP_2025_BCTN.pdf",
+      "labor": 15556,
+      "status": "SUCCESS",
+      "confidence": 0.99,
+      "source_page": 58,
+      "strategy": "narrative_date_total",
+      "raw_text": "Tổng số nhân viên của Tổng Công ty tại ngày 31 tháng 12 năm 2025 là 15.556 (tại ngày 31 tháng 12 năm 2024: 17",
+      "elapsed_sec": 0.71
     }
   ],
   "anomalies": [
+    {
+      "ticker": "ACV",
+      "year": 2023,
+      "type": "FALSE_POSITIVE_RISK",
+      "labor": 9820,
+      "page": 18,
+      "reasons": [
+        "Snippet contains currency/salary terms"
+      ],
+      "snippet": "định về môi trường: Không có. // 6.5.   Chính sách liên quan đến người lao động // a. // Số lượng lao động, quỹ tiền lương người lao động // - Tổng số lao động thực tế sử dụng bình quân năm 2023 là 9.820 người, // mức tiền lương bình quân là 26.810.000 đồng/người/tháng. // b. // Chính sách lao động nhằm đảm bảo sức khỏe, an toàn và phúc lợi của người // lao động.",
+      "path": "data/zenodo_cache\\gap_filler\\ACV\\ACV_2023_BCTN.pdf"
+    },
+    {
+      "ticker": "BSR",
+      "year": 2025,
+      "type": "FALSE_NEGATIVE_RISK",
+      "page": 28,
+      "kw": "tổng\\s+số\\s+lao\\s+động",
+      "candidate_num": 61,
+      "snippet": "kế thừa và nâng cao chất lượng nguồn nhân lực,  phù hợp với chiến lược phát triển trung và dài hạn. Tổng số lao động tăng 61 người,  trong đó có 03 cán bộ lãnh đạo được Tập đoàn Công nghiệp – Năng lượng Quốc  gia Việt Nam điều động và 58 nhân sự được tuyển dụng, tiếp nhận theo kế hoạch  bổ sung nguồn nhân lực dự phòng và tăng cường cho các ban chuyên môn; đồng  th",
+      "path": "data/zenodo_cache\\gap_filler\\BSR\\BSR_2025_BCTN.pdf"
+    },
+    {
+      "ticker": "BVH",
+      "year": 2023,
+      "type": "FALSE_POSITIVE_RISK",
+      "labor": 5,
+      "page": 122,
+      "reasons": [
+        "Suspiciously small headcount (5)"
+      ],
+      "snippet": "Số lượng lao động -> 5",
+      "path": "data/zenodo_cache\\gap_filler\\BVH\\BVH_2023_BCTN.pdf"
+    },
+    {
+      "ticker": "GVR",
+      "year": 2025,
+      "type": "FALSE_POSITIVE_RISK",
+      "labor": 79000,
+      "page": 11,
+      "reasons": [
+        "Snippet contains currency/salary terms"
+      ],
+      "snippet": "50 // 25 // Tổng doanh thu hợp nhất // Nộp ngân sách // Tổng số lao động // Lợi nhuận trước thuế hợp nhất // 32.431 Tỷ đồng // 4.977 Tỷ đồng // + 79.000 Lao động",
+      "path": "data/zenodo_cache\\gap_filler\\GVR\\GVR_2025_BCTN.pdf"
+    },
     {
       "ticker": "LEC",
       "year": 2022,
@@ -674,8 +2059,74 @@
       "reasons": [
         "Suspiciously small headcount (8)"
       ],
-      "snippet": ", mức lương trung bình đối với người lao động:  • Số lượng cán bộ công nhân viên lao động: Tổng số lao động tại công ty mẹ đến tháng 12/2022 là 8 người  • Mức lương trung bình: 8.000.000 đồng/người/tháng. Việc trả lương gắn liền với từng vị trí chức d",
+      "snippet": "lao động  – Số lượng lao động, mức lương trung bình đối với người lao động:  • Số lượng cán bộ công nhân viên lao động: Tổng số lao động tại công ty mẹ đến tháng 12/2022 là 8 người  • Mức lương trung bình: 8",
       "path": "data/bctn_new_extracted\\LEC\\LEC_2022_BCTN.pdf"
+    },
+    {
+      "ticker": "MSB",
+      "year": 2021,
+      "type": "FALSE_NEGATIVE_RISK",
+      "page": 45,
+      "kw": "tổng\\s+số\\s+lao\\s+động",
+      "candidate_num": 61,
+      "snippet": "i. Cơ  cấu lao động phân bổ khoảng 61% tại miền Bắc, 9% tại miền Trung và 30% tại miền Nam; gần  8% tổng số lao động làm tại vị trí quản lý và trong số các vị trí quản lý này, 43% vị trí quản lý do  nữ đảm nhiệm. Cơ cấu nhân sự có sự biến chuyển trong những năm gần đây thể hiện sự bình  quyền trong các vị trí quản trị. Mức lƣơng bình quân năm 2021 tăng gần 12% so",
+      "path": "data/zenodo_cache\\gap_filler\\MSB\\MSB_2021_BCTN.pdf"
+    },
+    {
+      "ticker": "PC1",
+      "year": 2025,
+      "type": "FALSE_POSITIVE_RISK",
+      "labor": 1708,
+      "page": 97,
+      "reasons": [
+        "Snippet contains currency/salary terms"
+      ],
+      "snippet": "tháng 7 năm 2005. Theo Giấy chứng nhận đăng ký doanh nghiệp thay đổi lần gần nhất, lần thứ 27 ngày 11 tháng 12 // năm 2025, vốn điều lệ của Công ty là 4.112.853.430.000 VND, tương ứng với 411.285.343 cổ phần. Cổ phiếu của // Công ty đang được niêm yết trên Sở Giao dịch Chứng khoán Thành phố Hồ Chí Minh (HOSE) với mã chứng khoán // là PC1. // Tổng số nhân viên của Công ty và các công ty con (gọi tắt là “Tập đoàn”) tại ngày cuối năm là 1.708 người (tại ngày // đầu năm: 1.625 người). // Ngành nghề kinh doanh và hoạt động chính // Ngành nghề kinh doanh và hoạt động chính của Tập đoàn là: // -",
+      "path": "data/zenodo_cache\\gap_filler\\PC1\\PC1_2025_BCTN.pdf"
+    },
+    {
+      "ticker": "QTP",
+      "year": 2022,
+      "type": "FALSE_POSITIVE_RISK",
+      "labor": 846,
+      "page": 11,
+      "reasons": [
+        "Snippet contains currency/salary terms"
+      ],
+      "snippet": "ng trung bình đối với người lao động: - Số lượng lao động của Công ty tính đến 31/12/2022 là 846 người. - Mức lương bình quân toàn Công ty năm 2022 là 26,2 triệu  đồng/người/tháng.",
+      "path": "data/zenodo_cache\\gap_filler\\QTP\\QTP_2022_BCTN.pdf"
+    },
+    {
+      "ticker": "TRC",
+      "year": 2024,
+      "type": "FALSE_POSITIVE_RISK",
+      "labor": 2,
+      "page": 14,
+      "reasons": [
+        "Suspiciously small headcount (2)"
+      ],
+      "snippet": "- Số lượng lao động, mức lương trung bình đối với người lao động: -> 1314 // 1 // 2",
+      "path": "data/zenodo_cache\\gap_filler\\TRC\\TRC_2024_BCTN.pdf"
+    },
+    {
+      "ticker": "VCF",
+      "year": 2025,
+      "type": "FALSE_NEGATIVE_RISK",
+      "page": 21,
+      "kw": "số\\s+lượng\\s+lao\\s+động",
+      "candidate_num": 19,
+      "snippet": "19      b) Số lượng lao động:  - Vinacafé Biên Hòa tự hào là nơi tập trung lực lượng lao động đa dạng với nhiều nhân tài có  cùng đam mê phục vụ người tiêu dùng và tạo ra các giá trị cho nền kinh tế, môi trường và xã  hội. Sự đa dạng này tập hợp những quan điểm, nền tảng, niềm",
+      "path": "data/zenodo_cache\\gap_filler\\VCF\\VCF_2025_BCTN.pdf"
+    },
+    {
+      "ticker": "VHC",
+      "year": 2025,
+      "type": "FALSE_NEGATIVE_RISK",
+      "page": 61,
+      "kw": "tổng\\s+số\\s+lao\\s+động",
+      "candidate_num": 153,
+      "snippet": "ính sách hỗ trợ lao động nữ, đồng thời mở rộng phạm vi theo dõi các  chỉ số liên quan đến thai sản. Tổng số lao động nữ nghỉ thai sản trong năm là 153 người. Tỷ lệ lao động nữ quay trở  lại làm việc sau thai sản đạt 78,2%, cho thấy khả năng duy trì việc làm của lao động nữ sau thời gian nghỉ chế độ  tiếp tục ở mức tích cực (số lao động còn lại nghỉ thai sản chưa q",
+      "path": "data/zenodo_cache\\gap_filler\\VHC\\VHC_2025_BCTN.pdf"
     }
   ]
 }
