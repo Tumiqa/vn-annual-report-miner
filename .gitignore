@@ -67,6 +67,7 @@ htmlcov/
 # Environment & Secrets
 .env
 .env.*
+!.env.example
 *.token
 
 

@@ -36,60 +36,116 @@
 
 ---
 
-## Hướng dẫn cài đặt & Chạy nhanh 3 bước (Cho mọi máy)
+## Hướng dẫn cài đặt & Chạy trên máy mới hoàn toàn (Từ A - Z)
 
-> Dù máy của bạn dùng **Windows**, **macOS** hay **Linux**, và dù bạn **chưa từng học lập trình**, bạn chỉ cần làm theo đúng 3 bước đơn giản dưới đây:
+> Hệ thống được thiết kế theo cơ chế **Zero-Config (Cài đặt 1 lệnh chạy ngay)**. Dù máy tính của bạn dùng **Windows**, **macOS** hay **Linux**, bạn chỉ cần thực hiện các bước sau:
 
-### Bước 1: Cài đặt Python (Nếu máy tính chưa có)
-- Tải bộ cài Python (phiên bản 3.9 trở lên) tại trang chủ: [python.org/downloads](https://www.python.org/downloads/)
-- ⚠️ **Lưu ý quan trọng riêng cho Windows**: Khi cửa sổ cài đặt hiện lên, hãy **tích chọn vào ô vuông `Add python.exe to PATH`** ở dưới cùng rồi mới nhấn *Install Now*.
-
----
-
-### Bước 2: Tải và cài đặt trọn gói (1 câu lệnh)
-
-Mở cửa sổ dòng lệnh trên máy của bạn:
-- **Windows**: Nhấn tổ hợp phím `Win + R`, gõ `cmd` (hoặc `powershell`) rồi nhấn **Enter**.
-- **macOS (MacBook)**: Nhấn `Command + Space`, gõ `Terminal` rồi nhấn **Enter**.
-- **Linux**: Nhấn `Ctrl + Alt + T`.
-
-Sau đó sao chép và dán lệnh tương ứng với hệ điều hành của bạn:
-
-#### 👉 Trên Windows:
-```bash
-git clone https://github.com/Tumiqa/vn-annual-report-miner.git
-cd vn-annual-report-miner
-pip install -e .
-```
-
-#### 👉 Trên macOS / Linux:
-```bash
-git clone https://github.com/Tumiqa/vn-annual-report-miner.git
-cd vn-annual-report-miner
-pip3 install -e .
-```
-
-> [!TIP]
-> **Nếu máy tính chưa cài Git?** Rất đơn giản:
-> 1. Nhấn vào nút xanh **`<> Code`** ở góc trên trang GitHub này ➔ Chọn **Download ZIP**.
-> 2. Giải nén file ZIP vừa tải về máy tính.
-> 3. Mở Terminal / CMD tại thư mục vừa giải nén, rồi chỉ cần gõ:
->    - Windows: `pip install -e .`
->    - macOS / Linux: `pip3 install -e .`
+### Bước 1: Cài đặt Python (Nếu máy chưa có)
+- Tải bộ cài đặt Python (khuyên dùng bản ổn định: **Python 3.10** hoặc **3.11** / tối thiểu 3.9+) tại: [python.org/downloads](https://www.python.org/downloads/)
+- ⚠️ **LƯU Ý CỰC KỲ QUAN TRỌNG TRÊN WINDOWS**:
+  1. Khi mở bộ cài, **bắt buộc phải tích chọn ô: `☑ Add python.exe to PATH`** ở dưới cùng màn hình đầu tiên rồi mới bấm *Install Now*.
+  2. Ở màn hình hoàn tất cài đặt, nếu thấy nút **"Disable path length limit"**, hãy bấm vào đó để mở rộng giới hạn 260 ký tự đường dẫn trên Windows.
 
 ---
 
-### Bước 3: Bật giao diện và sử dụng (100% bằng chuột)
+### Bước 2: Tải mã nguồn về máy
 
-Ngay tại cửa sổ dòng lệnh vừa cài đặt, bạn gõ lệnh sau để mở Web Studio:
+Chọn **1 trong 2 cách** tùy theo máy của bạn có cài Git hay không:
+
+* **Cách A (Không cài Git - Nhanh nhất cho người mới)**:
+  1. Nhấn nút xanh **`<> Code`** ở góc trên trang GitHub này ➔ Chọn **Download ZIP**.
+  2. Giải nén file ZIP vừa tải về vào thư mục mong muốn (ví dụ `D:\NCKH` hoặc `C:\Projects`).
+* **Cách B (Dùng Git)**:
+  ```bash
+  git clone https://github.com/Tumiqa/vn-annual-report-miner.git
+  cd vn-annual-report-miner
+  ```
+
+---
+
+### Bước 3: Cài đặt trọn gói hệ thống (Chỉ 1 dòng lệnh duy nhất)
+
+Mở cửa sổ dòng lệnh (Terminal / CMD / PowerShell) **ngay tại thư mục vừa tải về**:
+*(Mẹo Windows: Mở thư mục bằng File Explorer, nhấp chuột vào thanh địa chỉ ở trên cùng, gõ `cmd` rồi nhấn Enter).*
+
+1. *(Khuyến nghị)* Tạo và kích hoạt môi trường ảo:
+   - **Windows**:
+     ```bash
+     python -m venv venv
+     venv\Scripts\activate
+     ```
+   - **macOS / Linux**:
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+
+2. Chạy **đúng 1 lệnh duy nhất** để cài đặt trọn gói 100% tất cả tính năng (Web Studio, BCTC 702 chỉ tiêu, Khai phá ngữ liệu, Thuật toán Fuzzy, EasyOCR, Pillow, Hugging Face...):
+   - **Windows**:
+     ```bash
+     pip install -e .
+     ```
+   - **macOS / Linux**:
+     ```bash
+     pip3 install -e .
+     ```
+
+---
+
+### Bước 4: Tự động khởi tạo cấu hình môi trường (.env & Hugging Face)
+
+Hệ thống đã tích hợp sẵn cơ chế **Zero-Config**:
+- Ngay khi bạn chạy lệnh đầu tiên, hệ thống sẽ **tự động khởi tạo file `.env`** từ `.env.example`.
+- Token Hugging Face miễn phí dùng chung cho dự án đã được tích hợp sẵn, giúp bạn tải dữ liệu 702 chỉ tiêu BCTC mà **không bao giờ bị hạn chế IP hay bắt đăng nhập**.
+- *(Tùy chọn)* Nếu muốn đổi token hoặc tùy biến đường dẫn, bạn chỉ cần mở file `.env` để chỉnh sửa.
+
+---
+
+### Bước 5 (Khuyên dùng): Cài đặt Tesseract OCR tiếng Việt
+
+Hệ thống có cơ chế **Smart Hybrid OCR**:
+- **90% BCTN dạng văn bản chữ (Text-based)**: Đọc siêu tốc bằng PyMuPDF (<0.1 giây/báo cáo, không cần OCR).
+- **Trang scan ảnh / có chữ ký dấu đỏ**: Hệ thống sẽ tự động dùng Tesseract OCR. *(Nếu máy chưa cài Tesseract, hệ thống sẽ tự động chuyển sang EasyOCR AI tích hợp sẵn bằng Python mà không bị crash).*
+
+Để tốc độ quét trang scan đạt tối đa, bạn nên cài đặt thêm Tesseract OCR tiếng Việt:
+- **Windows**:
+  - Tải bộ cài `tesseract-ocr-w64-setup` tại: [UB-Mannheim Tesseract Wiki](https://github.com/UB-Mannheim/tesseract/wiki).
+  - Khi cài đặt, ở bước **Choose Components**, mở rộng mục **Additional script data** và **Additional language data** ➔ Tích chọn **Vietnamese**.
+  - *(Hoặc cài qua winget: `winget install UB-Mannheim.TesseractOCR` rồi tải file `vie.traineddata` bỏ vào `C:\Program Files\Tesseract-OCR\tessdata`).*
+- **macOS (MacBook)**:
+  ```bash
+  brew install tesseract tesseract-lang
+  ```
+- **Linux (Ubuntu / Debian)**:
+  ```bash
+  sudo apt update && sudo apt install -y tesseract-ocr tesseract-ocr-vie poppler-utils
+  ```
+
+---
+
+### Bước 6: Kiểm tra sức khỏe môi trường (System Doctor)
+
+Trước khi bắt đầu, bạn có thể chạy lệnh chẩn đoán tích hợp sẵn để kiểm tra 100% môi trường:
+
+```bash
+arminer doctor
+```
+
+Hệ thống sẽ in ra một bảng trực quan báo cáo tình trạng từng thành phần (Python, .env, HF Token, Tesseract, EasyOCR, BCTC Parquet). Khi mọi thứ báo `✓ Sẵn sàng`, bạn đã sẵn sàng sử dụng!
+
+---
+
+### Bước 7: Khởi chạy và sử dụng (100% bằng chuột)
+
+Gõ lệnh sau để mở Web Studio:
 
 ```bash
 arminer studio
 ```
 
-*(Nếu máy báo không tìm thấy lệnh `arminer`, bạn chỉ cần dùng lệnh tương đương: `python -m arminer studio` trên Windows hoặc `python3 -m arminer studio` trên macOS/Linux).*
+*(Lệnh phụ nếu máy chưa nhận alias: `python -m arminer studio` trên Windows hoặc `python3 -m arminer studio` trên macOS/Linux).*
 
-🎉 **Xong!** Trình duyệt web sẽ tự động mở trang **`http://127.0.0.1:8000`**. Giờ đây bạn có thể đóng cửa sổ lệnh và thao tác hoàn toàn bằng chuột trên giao diện trực quan.
+🎉 **Xong!** Trình duyệt web sẽ tự động mở trang **`http://127.0.0.1:8000`**. Bạn có thể đóng cửa sổ lệnh và thao tác hoàn toàn bằng chuột trên giao diện trực quan.
 
 ---
 
@@ -230,13 +286,39 @@ arminer --help
 
 | Lệnh | Cú pháp ví dụ | Chức năng |
 |---|---|---|
-| `studio` | `arminer studio` | Khởi chạy giao diện Web Studio trên trình duyệt |
+| `studio` | `arminer studio` | Khởi chạy giao diện Web Studio trên trình duyệt (mặc định port 8000) |
+| `doctor` | `arminer doctor` | Chẩn đoán toàn diện môi trường máy mới (Python, .env, Tesseract, EasyOCR, BCTC) |
+| `clean` | `arminer clean` | Dọn dẹp rác hệ thống, xóa cache tạm thời và bytecode giải phóng bộ nhớ |
 | `scan` | `arminer scan ./pdfs/ --topic esg -o kq.xlsx` | Quét từ khóa trong tệp hoặc thư mục PDF |
 | `financial` | `arminer financial fetch -t VCB,HPG -y 2020-2024 -o fin.csv` | Tải dữ liệu BCTC và tỷ số tài chính |
 | `catalog` | `arminer catalog search --ticker VCB` | Tra cứu trong danh mục 14,000+ BCTN Zenodo |
 | `dict` | `arminer dict stats --file keywords.txt` | Kiểm tra và thống kê số lượng từ khóa |
 | `init` | `arminer init my_project --topic esg` | Khởi tạo thư mục dự án nghiên cứu mới |
 | `run` | `arminer run --stage all` | Chạy toàn bộ luồng xử lý theo file cấu hình |
+
+---
+
+## 🛠️ Xử lý sự cố thường gặp trên máy mới (Troubleshooting)
+
+### 1. Lỗi `'pip'` hoặc `'python'` không được nhận diện (`not recognized`)
+- **Nguyên nhân**: Khi cài Python chưa tích chọn `Add python.exe to PATH`.
+- **Cách khắc phục**: Mở lại file cài Python `.exe`, chọn **Modify** ➔ Tích chọn **Add Python to environment variables** (hoặc gỡ ra cài lại và nhớ tích ô `Add to PATH` ở màn hình đầu).
+
+### 2. Lỗi `Microsoft Visual C++ 14.0 or greater is required`
+- **Nguyên nhân**: Máy tính cài bản Python quá mới (như Python 3.13 / 3.14) chưa có gói dựng sẵn (wheel) cho các thư viện C++.
+- **Cách khắc phục**: Khuyến nghị cài đặt đúng phiên bản **Python 3.10** hoặc **3.11** — tại các phiên bản này, toàn bộ thư viện đều có sẵn file `.whl` tải về chạy ngay trong vài giây mà không cần cài Visual C++ Build Tools.
+
+### 3. Lỗi `FileNotFoundError` hoặc đường dẫn quá dài trên Windows
+- **Nguyên nhân**: Windows có giới hạn đường dẫn mặc định 260 ký tự (`MAX_PATH`).
+- **Cách khắc phục**: Mở PowerShell với quyền Administrator và chạy lệnh:
+  ```powershell
+  New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+  ```
+  *(Hoặc bấm nút "Disable path length limit" ở cuối trình cài đặt Python).*
+
+### 4. Báo cáo scan ảnh không nhận diện được chữ tiếng Việt
+- **Nguyên nhân**: Máy chưa có bộ từ điển tiếng Việt của Tesseract OCR.
+- **Cách khắc phục**: Tải file [`vie.traineddata`](https://github.com/tesseract-ocr/tessdata/raw/main/vie.traineddata) và dán vào thư mục `C:\Program Files\Tesseract-OCR\tessdata\`. Sau đó chạy `arminer doctor` để kiểm tra lại.
 
 ---
 

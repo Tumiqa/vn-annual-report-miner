@@ -167,17 +167,15 @@ class OCREngine:
             self._resolved_backend = self.ocr_backend
             return self._resolved_backend
 
-        # Auto-detect: ưu tiên Tesseract (chính xác và ổn định hơn cho văn bản dài/document)
-        import shutil
-        import sys
-        if shutil.which("tesseract") or (sys.platform.startswith("win") and any(Path(p).exists() for p in [
-            "C:/Program Files/Tesseract-OCR/tesseract.exe",
-            "C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"
-        ])):
+        # Auto-detect: ưu tiên Tesseract nếu có binary và pytesseract
+        from arminer.utils.env import detect_tesseract_path, setup_tesseract
+        tess_bin = detect_tesseract_path()
+        if tess_bin:
             try:
                 import pytesseract  # noqa: F401
+                setup_tesseract()
                 self._resolved_backend = "tesseract"
-                logger.info("OCR backend: Tesseract (auto-detected, preferred)")
+                logger.info(f"OCR backend: Tesseract (auto-detected: {tess_bin})")
                 return self._resolved_backend
             except ImportError:
                 pass
@@ -495,21 +493,9 @@ class OCREngine:
             )
             return [""] * len(page_indices)
 
-        # Auto-configure tesseract binary path on Windows
-        import sys
-        import os
-        import shutil
-        if sys.platform.startswith("win") and not shutil.which("tesseract"):
-            win_candidates = [
-                Path("C:/Program Files/Tesseract-OCR/tesseract.exe"),
-                Path("C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"),
-                Path(os.environ.get("LOCALAPPDATA", "")) / "Tesseract-OCR/tesseract.exe",
-                Path(os.environ.get("LOCALAPPDATA", "")) / "Programs/Tesseract-OCR/tesseract.exe",
-            ]
-            for cand in win_candidates:
-                if cand.exists():
-                    pytesseract.pytesseract.tesseract_cmd = str(cand)
-                    break
+        # Auto-configure tesseract binary path & tessdata
+        from arminer.utils.env import setup_tesseract
+        setup_tesseract()
 
         os.environ["OMP_THREAD_LIMIT"] = "1"
 

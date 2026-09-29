@@ -17,9 +17,11 @@ __author__ = "Trương Minh Quân"
 
 from arminer.core.dictionary import Dictionary
 from arminer.core.config import ProjectConfig
+from arminer.utils import env  # Auto-bootstrap .env, tokens, and binary paths
 
 __all__ = [
     "__version__",
     "Dictionary",
     "ProjectConfig",
+    "env",
 ]
