@@ -71,6 +71,10 @@ class UnifiedCatalog:
         for p in p_dir.rglob("*"):
             if not p.is_file() or p.suffix.lower() not in (".pdf", ".txt"):
                 continue
+            if p.suffix.lower() == ".pdf":
+                from arminer.data.bctn_validator import is_valid_bctn_file
+                if not is_valid_bctn_file(p):
+                    continue
 
             parsed = PDFSource.parse_filename(p)
             if not parsed:

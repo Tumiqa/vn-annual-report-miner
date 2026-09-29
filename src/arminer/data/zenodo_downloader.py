@@ -51,22 +51,11 @@ DEFAULT_HEADERS = {
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ
 # Mọi file dưới 8 trang đều là công văn, nghị quyết, thông báo công bố thông tin, hoặc trang bìa ký số
-MIN_BCTN_PAGES = 8
-
-
-def is_valid_bctn_file(pdf_path: Union[str, Path], min_pages: int = MIN_BCTN_PAGES) -> bool:
-    """Kiểm tra file PDF có phải là BCTN thực thụ không (ít nhất min_pages trang)."""
-    try:
-        p = Path(pdf_path)
-        if not p.exists() or p.stat().st_size < 1000:
-            return False
-        import fitz
-        doc = fitz.open(p)
-        pg = len(doc)
-        doc.close()
-        return pg >= min_pages
-    except Exception:
-        return False
+from arminer.data.bctn_validator import (
+    MIN_BCTN_PAGES,
+    is_valid_bctn_file,
+    audit_bctn_file,
+)
 
 
 def _get_cache_root() -> Path:

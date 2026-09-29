@@ -91,6 +91,9 @@ class PDFSource:
             return self._index
 
         for pdf in self.source_dir.rglob("*.pdf"):
+            from arminer.data.bctn_validator import is_valid_bctn_file
+            if not is_valid_bctn_file(pdf):
+                continue
             parsed = self._parse_filename(pdf)
             if parsed:
                 ticker, year = parsed

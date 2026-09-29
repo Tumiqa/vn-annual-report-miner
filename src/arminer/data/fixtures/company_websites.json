@@ -607,7 +607,7 @@
     "name": "Tổng Công ty Phát triển Đô Thị Kinh Bắc – Công ty Cổ phần",
     "exchange": "HOSE",
     "website": "https://kinhbaccity.vn",
-    "ir_portal": "https://kinhbaccity.vn/quan-he-co-dong",
+    "ir_portal": "https://kinhbaccity.vn/bao-cao-thuong-nien.htm",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -1013,8 +1013,8 @@
     "ticker": "SBT",
     "name": "Công ty Cổ phần Thành Thành Công - Biên Hòa",
     "exchange": "HOSE",
-    "website": "https://ttcsugar.com.vn",
-    "ir_portal": "https://ttcsugar.com.vn/quan-he-co-dong",
+    "website": "https://ttcagris.com.vn",
+    "ir_portal": "https://ttcagris.com.vn/quan-he-nha-dau-tu/bao-cao-thuong-nien",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -1125,8 +1125,8 @@
     "ticker": "GAS",
     "name": "Tổng Công ty Khí Việt Nam - Công ty Cổ phần",
     "exchange": "HOSE",
-    "website": "https://pvgas.com.vn",
-    "ir_portal": "https://pvgas.com.vn/quan-he-co-dong",
+    "website": "https://www.pvgas.com.vn",
+    "ir_portal": "https://www.pvgas.com.vn/quan-he-co-%C4%91ong/tai-lieu-co-%C4%91ong",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -10658,8 +10658,8 @@
     "ticker": "IMP",
     "name": "Công ty Cổ phần Dược phẩm Imexpharm",
     "exchange": "HOSE",
-    "website": "http://imexpharm.com",
-    "ir_portal": "http://imexpharm.com/quan-he-co-dong",
+    "website": "https://imexpharm.com",
+    "ir_portal": "https://imexpharm.com/bao-cao-thuong-nien",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",
@@ -13027,8 +13027,8 @@
     "ticker": "PGV",
     "name": "Tổng Công ty Phát điện 3 - Công ty Cổ phần",
     "exchange": "HOSE",
-    "website": "https://genco3.com",
-    "ir_portal": "https://genco3.com/quan-he-co-dong",
+    "website": "https://www.genco3.com",
+    "ir_portal": "https://www.genco3.com/quan-he-nha-dau-tu/bao-cao-thuong-nien.html",
     "news_paths": [
       "/tin-tuc",
       "/bai-viet",

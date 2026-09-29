@@ -638,12 +638,17 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
         if txt_path.exists() and meta_path.exists():
             try:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                text = txt_path.read_text(encoding="utf-8", errors="replace")
                 n_pages = meta.get("pages", 1)
-                _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
-                if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
-                    _BCTN_MEMORY_CACHE.popitem(last=False)
-                return text, n_pages
+                if n_pages < MIN_BCTN_PAGES and file_path.suffix.lower() == ".pdf":
+                    # Cached text was from an invalid/short file -> purge disk cache
+                    txt_path.unlink(missing_ok=True)
+                    meta_path.unlink(missing_ok=True)
+                else:
+                    text = txt_path.read_text(encoding="utf-8", errors="replace")
+                    _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+                    if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
+                        _BCTN_MEMORY_CACHE.popitem(last=False)
+                    return text, n_pages
             except Exception:
                 pass
 
@@ -651,6 +656,26 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
     text = ""
     n_pages = 1
     if file_path.suffix.lower() == ".pdf":
+        if not is_valid_bctn_file(file_path):
+            # Tự động phát hiện và cào bù file chuẩn nếu phát hiện file bị cào nhầm (< 8 trang hoặc công văn)
+            try:
+                from arminer.data.pdf_source import PDFSource
+                from arminer.data.report_healer import ReportHealer
+                parsed = PDFSource.parse_filename(file_path)
+                if parsed:
+                    t_heal, y_heal = parsed
+                    if t_heal and y_heal:
+                        healer = ReportHealer()
+                        heal_res = healer.heal_report(t_heal, y_heal)
+                        if heal_res.get("status") == "healed":
+                            logger.info(f"Self-Healing: Đã tự động thay thế file cào lỗi {file_path.name} bằng bản đầy đủ {heal_res['new_pages']} trang!")
+            except Exception as e_heal:
+                logger.debug(f"Self-Healing attempt skipped: {e_heal}")
+
+        if not is_valid_bctn_file(file_path):
+            logger.warning(f"Bỏ qua file không phải BCTN hợp lệ (< {MIN_BCTN_PAGES} trang hoặc công văn): {file_path.name}")
+            return "", 0
+
         try:
             from arminer.ocr.engine import OCREngine
             ocr_engine = OCREngine()
@@ -663,24 +688,6 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
                 doc_probe.close()
             except Exception:
                 n_pages = 1
-
-            # Tự động phát hiện và cào bù file chuẩn nếu phát hiện file bị cào nhầm (<= 4 trang)
-            if n_pages <= 4:
-                try:
-                    from arminer.data.pdf_source import PDFSource
-                    from arminer.data.report_healer import ReportHealer
-                    parsed = PDFSource.parse_filename(file_path)
-                    if parsed:
-                        t_heal, y_heal = parsed
-                        if t_heal and y_heal:
-                            healer = ReportHealer()
-                            heal_res = healer.heal_report(t_heal, y_heal)
-                            if heal_res.get("status") == "healed":
-                                logger.info(f"Self-Healing: Đã tự động thay thế file cào lỗi {file_path.name} bằng bản đầy đủ {heal_res['new_pages']} trang!")
-                                text = ocr_engine.extract_text(file_path, ocr_mode="smart")
-                                n_pages = heal_res["new_pages"]
-                except Exception as e_heal:
-                    logger.debug(f"Self-Healing attempt skipped: {e_heal}")
         except Exception as e:
             logger.debug(f"Failed to extract PDF {file_path}: {e}")
             try:
@@ -696,8 +703,8 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
         except Exception as e:
             logger.debug(f"Failed to extract TXT {file_path}: {e}")
 
-    # Save to cache
-    if cache_key and text:
+    # Save to cache only if valid BCTN (>= MIN_BCTN_PAGES)
+    if cache_key and text and (n_pages >= MIN_BCTN_PAGES or file_path.suffix.lower() != ".pdf"):
         try:
             txt_path = _BCTN_CACHE_DIR / f"{cache_key}.txt"
             meta_path = _BCTN_CACHE_DIR / f"{cache_key}.meta"
@@ -1081,7 +1088,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
 
                 for r in downloaded:
                     lp = r.get("local_path")
-                    if lp and Path(lp).exists():
+                    if lp and Path(lp).exists() and is_valid_bctn_file(lp):
                         target_items.append({
                             "path": Path(lp),
                             "ticker": r.get("ticker", ""),
@@ -1091,11 +1098,13 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                             "icb_l1": r.get("icb_l1", "Khác"),
                             "icb_l2": r.get("icb_l2", "Khác"),
                         })
+                    elif lp and Path(lp).exists():
+                        logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {Path(lp).name}")
 
         if req.report_paths:
             for fp in req.report_paths:
                 p = Path(fp)
-                if p.exists():
+                if p.exists() and is_valid_bctn_file(p):
                     parsed = PDFSource.parse_filename(p)
                     t_val = parsed[0] if parsed else p.parent.name.replace("MST_", "").upper()
                     y_val = parsed[1] if parsed else None
@@ -1107,6 +1116,8 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                         "exchange": c_info.get("exchange", "HSX"),
                         "icb_l1": l1, "icb_l2": l2,
                     })
+                elif p.exists():
+                    logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {p.name}")
 
         if not target_items:
             err_msg = "Không có báo cáo nào khả dụng để quét."
@@ -1321,12 +1332,12 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                         archive_period=r.get("archive_period", ""),
                         relative_path=r.get("relative_path", ""),
                     )
-                    if lp and Path(lp).exists():
+                    if lp and Path(lp).exists() and is_valid_bctn_file(lp):
                         r["local_path"] = str(Path(lp).resolve())
                         target_records.append(r)
                         status_msg = f"[Sẵn sàng] Đã chuẩn bị {idx}/{total_rec}: {r.get('ticker', '?')} ({r.get('year', '?')})"
                     else:
-                        status_msg = f"[Bỏ qua] Không thể tải {idx}/{total_rec}: {r.get('ticker', '?')} ({r.get('year', '?')}) - Zenodo quá tải"
+                        status_msg = f"[Bỏ qua] {idx}/{total_rec}: {r.get('ticker', '?')} ({r.get('year', '?')}) - File không chuẩn BCTN hoặc không khả dụng"
 
                     yield {
                         "event": "progress",
@@ -1346,7 +1357,7 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
         if req.report_paths:
             for fp in req.report_paths:
                 p = Path(fp)
-                if p.exists():
+                if p.exists() and is_valid_bctn_file(p):
                     parsed = PDFSource.parse_filename(p)
                     t_val = parsed[0] if parsed else p.parent.name.replace("MST_", "").upper()
                     y_val = parsed[1] if parsed else None
@@ -1360,6 +1371,8 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                         "icb_l2": l2,
                         "source": "Local",
                     })
+                elif p.exists():
+                    logger.warning(f"Bỏ qua đóng gói file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {p.name}")
 
         if not target_records:
             err_msg = "Không có báo cáo nào khả dụng để tạo file ZIP."
@@ -1476,6 +1489,11 @@ async def scan_file(
         filename = file.filename
         content = await file.read()
         if filename.lower().endswith(".pdf"):
+            if not is_valid_bctn_file(content):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tài liệu '{filename}' không phải là Báo cáo Thường niên chuẩn (dưới {MIN_BCTN_PAGES} trang hoặc là công văn/thông báo hành chính)."
+                )
             # Save uploaded content to temp file to leverage full OCR engine & caching
             import tempfile
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_f:
@@ -1491,6 +1509,11 @@ async def scan_file(
     elif filepath and os.path.exists(filepath):
         p = Path(filepath)
         filename = p.name
+        if p.suffix.lower() == ".pdf" and not is_valid_bctn_file(p):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tài liệu '{filename}' không phải là Báo cáo Thường niên chuẩn (dưới {MIN_BCTN_PAGES} trang hoặc là công văn/thông báo hành chính)."
+            )
         text, n_pages = _extract_text_cached(p)
     else:
         raise HTTPException(status_code=400, detail="Vui lòng tải lên file hoặc cung cấp đường dẫn hợp lệ.")
@@ -1560,7 +1583,8 @@ async def scan_folder(
     calc = SmartVariableCalculator()
 
     supported_exts = {".pdf", ".txt"}
-    files = sorted([f for f in p_folder.rglob("*") if f.is_file() and f.suffix.lower() in supported_exts])
+    raw_files = sorted([f for f in p_folder.rglob("*") if f.is_file() and f.suffix.lower() in supported_exts])
+    files = [f for f in raw_files if f.suffix.lower() == ".txt" or is_valid_bctn_file(f)]
     if limit:
         files = files[:limit]
 

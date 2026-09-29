@@ -27,10 +27,19 @@ def test_create_reports_zip_archive_structures(tmp_path):
     doc2 = tmp_path / "VNM_2023_BCTN.pdf"
     doc3 = tmp_path / "FPT_2022_BCTN.pdf"
 
-    dummy_content = b"%PDF-1.4 simulated pdf content with sufficient bytes to exceed minimum size check" * 5
-    doc1.write_bytes(dummy_content)
-    doc2.write_bytes(dummy_content)
-    doc3.write_bytes(dummy_content)
+    import fitz
+
+    def _make_mock_pdf(p, t, y):
+        d = fitz.open()
+        for i in range(10):
+            page = d.new_page()
+            page.insert_text((50, 50), f"Bao cao thuong nien {t} {y} page {i+1}")
+        d.save(str(p))
+        d.close()
+
+    _make_mock_pdf(doc1, "SSI", 2023)
+    _make_mock_pdf(doc2, "VNM", 2023)
+    _make_mock_pdf(doc3, "FPT", 2022)
 
     reports = [
         {
@@ -76,7 +85,7 @@ def test_create_reports_zip_archive_structures(tmp_path):
         assert "Danh_Muc_Bao_Cao.csv" in namelist
 
         # Kiem tra noi dung file PDF trong ZIP khop chinh xac byte-for-byte
-        assert zf.read("SSI/SSI_2023_BCTN.pdf") == dummy_content
+        assert zf.read("SSI/SSI_2023_BCTN.pdf") == doc1.read_bytes()
 
         # Kiem tra file index Danh_Muc_Bao_Cao.csv
         csv_bytes = zf.read("Danh_Muc_Bao_Cao.csv")
@@ -116,8 +125,14 @@ def test_create_reports_zip_archive_structures(tmp_path):
 
 def test_create_reports_zip_duplicate_handling(tmp_path):
     # Kiem tra xu ly khi 2 bao cao trung ten trong cung 1 thu muc
+    import fitz
     doc = tmp_path / "Report.pdf"
-    doc.write_bytes(b"%PDF-1.4 file content dummy test" * 5)
+    d = fitz.open()
+    for i in range(10):
+        p = d.new_page()
+        p.insert_text((50, 50), f"Bao cao thuong nien trang {i+1}")
+    d.save(str(doc))
+    d.close()
 
     reports = [
         {"local_path": str(doc), "ticker": "SSI", "year": 2023, "file_name": "Report.pdf"},

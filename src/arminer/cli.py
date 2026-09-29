@@ -167,6 +167,10 @@ def _scan_single_file(pdf_file: Path, flex_dict, topic, fuzzy, threshold, output
     n_pages = 1
 
     if pdf_file.suffix.lower() == ".pdf":
+        from arminer.data.bctn_validator import is_valid_bctn_file
+        if not is_valid_bctn_file(pdf_file):
+            console.print(f"[red]Tệp {pdf_file.name} không phải là Báo cáo Thường niên (BCTN) hợp lệ (< 8 trang hoặc văn bản hành chính).[/]")
+            raise SystemExit(1)
         try:
             from arminer.ui.server import _extract_text_cached
             text, n_pages = _extract_text_cached(pdf_file)
@@ -281,6 +285,11 @@ def _scan_directory(dir_path: Path, flex_dict, topic, fuzzy, threshold, output=N
             text = ""
             n_pages = 1
             if f.suffix.lower() == ".pdf":
+                from arminer.data.bctn_validator import is_valid_bctn_file
+                if not is_valid_bctn_file(f):
+                    logger.warning(f"Bỏ qua file không phải BCTN hợp lệ: {f.name}")
+                    progress.advance(task)
+                    continue
                 try:
                     from arminer.ui.server import _extract_text_cached
                     text, n_pages = _extract_text_cached(f)
@@ -613,7 +622,8 @@ def _run_ocr(project, limit=None):
         console.print(f"[yellow]PDF dir not found: {pdf_dir}[/]")
         return
 
-    pdfs = sorted(pdf_dir.rglob("*.pdf"))
+    from arminer.data.bctn_validator import is_valid_bctn_file
+    pdfs = sorted([p for p in pdf_dir.rglob("*.pdf") if is_valid_bctn_file(p)])
     if limit:
         pdfs = pdfs[:limit]
     if not pdfs:

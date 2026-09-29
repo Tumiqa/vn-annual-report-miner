@@ -134,9 +134,9 @@ class LaborExtractor:
             re.IGNORECASE,
         )
 
-        # 4. Comparison in Parentheses: "(tại ngày 31/12/2023 là 2.928 người)" or "(tại ngày 31/12/2021: 1.241)"
+        # 4. Comparison in Parentheses: "(tại ngày 31/12/2023 là 2.928 người)" or "(tại ngày 31/12/2021: 1.241 người)"
         self.re_parenthesis = re.compile(
-            rf"(?:tại|vào|đến|tính\s+đến|năm)?\s*(?:thời\s+điểm|ngày)?\s*31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(?:năm\s+)?(?P<comp_yr>201\d|202\d)[^0-9\n]{{0,40}}?{verb_re}{num_re}{unit_opt}",
+            rf"(?:tại|vào|đến|tính\s+đến|năm)?\s*(?:thời\s+điểm|ngày)?\s*31[/.\s-]*(?:12|tháng\s*12)[/.\s-]*(?:năm\s+)?(?P<comp_yr>201\d|202\d)[^0-9\n]{{0,40}}?{verb_re}{num_re}\s*{unit_req}",
             re.IGNORECASE,
         )
 
@@ -185,6 +185,15 @@ class LaborExtractor:
         path = Path(pdf_path)
         if not path.exists():
             return LaborExtractionResult(ticker=ticker, year=year, status="NOT_FOUND", raw_text="File not found")
+
+        from arminer.data.bctn_validator import is_valid_bctn_file
+        if not is_valid_bctn_file(path):
+            return LaborExtractionResult(
+                ticker=ticker,
+                year=year,
+                status="NOT_FOUND",
+                raw_text=f"Bỏ qua: File {path.name} không phải BCTN hợp lệ (< 8 trang hoặc là văn bản hành chính)",
+            )
 
         pages: List[Tuple[int, str]] = []
         try:

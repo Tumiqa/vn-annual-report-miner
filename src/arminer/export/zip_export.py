@@ -82,8 +82,9 @@ def create_reports_zip_archive(
             if not local_path_str:
                 continue
             src_file = Path(local_path_str)
-            if not src_file.exists() or src_file.stat().st_size < 100:
-                logger.warning(f"File khong ton tai hoac rong: {src_file}")
+            from arminer.data.bctn_validator import is_valid_bctn_file
+            if not src_file.exists() or not is_valid_bctn_file(src_file):
+                logger.warning(f"Bỏ qua file không tồn tại hoặc không phải BCTN chuẩn: {src_file}")
                 continue
 
             ticker = sanitize_folder_name(r.get("ticker") or "KHAC").upper()
