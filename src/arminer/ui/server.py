@@ -627,8 +627,12 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
         cache_key = None
 
     if cache_key and cache_key in _BCTN_MEMORY_CACHE:
-        _BCTN_MEMORY_CACHE.move_to_end(cache_key)
-        return _BCTN_MEMORY_CACHE[cache_key]
+        cached_t, cached_p = _BCTN_MEMORY_CACHE[cache_key]
+        if file_path.suffix.lower() == ".pdf" and (cached_p < MIN_BCTN_PAGES or len(cached_t.strip()) < 300):
+            _BCTN_MEMORY_CACHE.pop(cache_key, None)
+        else:
+            _BCTN_MEMORY_CACHE.move_to_end(cache_key)
+            return cached_t, cached_p
 
     # Check disk cache
     if cache_key:
@@ -639,12 +643,13 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
             try:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
                 n_pages = meta.get("pages", 1)
-                if n_pages < MIN_BCTN_PAGES and file_path.suffix.lower() == ".pdf":
-                    # Cached text was from an invalid/short file -> purge disk cache
+                text = txt_path.read_text(encoding="utf-8", errors="replace")
+                # Nếu text rỗng hoặc quá ít (< 300 ký tự) đối với file BCTN chuẩn (>= 8 trang),
+                # đây là kết quả của lần trích xuất bị crash/lỗi OCR trước đó -> XÓA CACHE NGAY để OCR lại!
+                if file_path.suffix.lower() == ".pdf" and (n_pages < MIN_BCTN_PAGES or len(text.strip()) < 300):
                     txt_path.unlink(missing_ok=True)
                     meta_path.unlink(missing_ok=True)
                 else:
-                    text = txt_path.read_text(encoding="utf-8", errors="replace")
                     _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
                     if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
                         _BCTN_MEMORY_CACHE.popitem(last=False)
@@ -689,7 +694,7 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
             except Exception:
                 n_pages = 1
         except Exception as e:
-            logger.debug(f"Failed to extract PDF {file_path}: {e}")
+            logger.warning(f"OCREngine exception on {file_path.name}: {e}")
             try:
                 doc = fitz.open(file_path)
                 n_pages = len(doc)
@@ -703,18 +708,23 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
         except Exception as e:
             logger.debug(f"Failed to extract TXT {file_path}: {e}")
 
-    # Save to cache only if valid BCTN (>= MIN_BCTN_PAGES)
-    if cache_key and text and (n_pages >= MIN_BCTN_PAGES or file_path.suffix.lower() != ".pdf"):
-        try:
-            txt_path = _BCTN_CACHE_DIR / f"{cache_key}.txt"
-            meta_path = _BCTN_CACHE_DIR / f"{cache_key}.meta"
-            txt_path.write_text(text, encoding="utf-8", errors="replace")
-            meta_path.write_text(json.dumps({"pages": n_pages, "stem": file_path.stem}), encoding="utf-8")
-            _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
-            if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
-                _BCTN_MEMORY_CACHE.popitem(last=False)
-        except Exception:
+    # Save to cache only if valid BCTN text (>= 300 chars, never cache failed/empty scans)
+    if cache_key and text:
+        is_pdf = file_path.suffix.lower() == ".pdf"
+        if is_pdf and (n_pages < MIN_BCTN_PAGES or len(text.strip()) < 300):
+            # Không lưu cache các file scan bị hỏng/chưa OCR thành công
             pass
+        else:
+            try:
+                txt_path = _BCTN_CACHE_DIR / f"{cache_key}.txt"
+                meta_path = _BCTN_CACHE_DIR / f"{cache_key}.meta"
+                txt_path.write_text(text, encoding="utf-8", errors="replace")
+                meta_path.write_text(json.dumps({"pages": n_pages, "stem": file_path.stem}), encoding="utf-8")
+                _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+                if len(_BCTN_MEMORY_CACHE) > _BCTN_MEMORY_CACHE_MAX:
+                    _BCTN_MEMORY_CACHE.popitem(last=False)
+            except Exception:
+                pass
 
     return text, n_pages
 
