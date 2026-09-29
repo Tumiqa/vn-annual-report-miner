@@ -154,8 +154,8 @@ class GenericFuzzyMatcher:
         }
 
         logger.info(
-            f"GenericFuzzyMatcher: {len(self.keywords)} keywords, "
-            f"threshold={threshold}%"
+            f"KeywordMatcher: Đã tải {len(self.keywords)} từ khóa "
+            f"(Mặc định: 100% Exact Match chuẩn NCKH; fuzzy_threshold={threshold}%)"
         )
 
     # =========================================================================

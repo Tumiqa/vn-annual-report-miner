@@ -614,7 +614,7 @@ _BCTN_MEMORY_CACHE_MAX = 500
 _BCTN_CACHE_DIR = Path.home() / ".arminer" / "text_cache"
 
 
-def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
+def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[str, int]:
     """
     Extracts text from PDF/TXT with high-speed 2-tier caching.
     Subsequent reads take < 1ms instead of re-decoding heavy PDF streams.
@@ -678,10 +678,10 @@ def _extract_text_cached(file_path: Path) -> Tuple[str, int]:
 
         try:
             from arminer.ocr.engine import OCREngine
-            ocr_engine = OCREngine()
+            ocr_engine = OCREngine(dpi=dpi)
             # Trích xuất Smart Hybrid: Native PyMuPDF siêu tốc cho 100% trang có chữ,
             # chỉ OCR các trang scan thực sự (báo cáo kiểm toán, bảng biểu có dấu đỏ).
-            text = ocr_engine.extract_text(file_path, ocr_mode="smart")
+            text = ocr_engine.extract_text(file_path, ocr_mode="smart", dpi=dpi)
             try:
                 doc_probe = fitz.open(file_path)
                 n_pages = len(doc_probe)

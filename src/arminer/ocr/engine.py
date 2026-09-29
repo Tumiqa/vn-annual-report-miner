@@ -137,7 +137,12 @@ class OCREngine:
         self.tesseract_config = tesseract_config
         self.easyocr_langs = easyocr_langs or ["vi", "en"]
         self.min_text_per_page = min_text_per_page
-        self.dpi = dpi
+        # Resolve flexible DPI: passed argument > ARMINER_OCR_DPI env var > 200 (default)
+        if dpi is None or (isinstance(dpi, int) and dpi <= 0):
+            env_dpi = os.environ.get("ARMINER_OCR_DPI")
+            self.dpi = int(env_dpi) if env_dpi and env_dpi.isdigit() else 200
+        else:
+            self.dpi = int(dpi)
 
         # Auto-detect CUDA GPU for hardware acceleration (e.g. Google Colab / GPU servers)
         if use_gpu is None:
@@ -209,7 +214,7 @@ class OCREngine:
 
     # ── Main extraction ────────────────────────────────────────────────
 
-    def extract_text(self, pdf_path: str | Path, ocr_mode: str = "smart") -> str:
+    def extract_text(self, pdf_path: str | Path, ocr_mode: str = "smart", dpi: Optional[int] = None) -> str:
         """
         Extract text từ PDF file theo cơ chế Smart Hybrid thông minh:
         1. Trang nào có native text (>= 50 chars) -> Giữ nguyên 100% native text (tốc độ < 0.001s/trang).
@@ -319,12 +324,13 @@ class OCREngine:
                 pages_text.append(p_text)
 
         # Phase 2: Chạy OCR an toàn cho các trang scan thực sự
+        active_dpi = dpi or self.dpi
         if scanned_pages and ocr_mode != "fast":
             logger.info(
                 f"Smart Hybrid: PDF {pdf_path.name} có {len(scanned_pages)}/{len(pages_text)} "
-                f"trang scan thực sự cần OCR (DPI={self.dpi})"
+                f"trang scan thực sự cần OCR (DPI={active_dpi})"
             )
-            ocr_texts = self._ocr_pages(doc, pdf_path, scanned_pages)
+            ocr_texts = self._ocr_pages(doc, pdf_path, scanned_pages, dpi=active_dpi)
             for page_idx, ocr_text in zip(scanned_pages, ocr_texts):
                 orig = pages_text[page_idx]
                 if ocr_text and ocr_text.strip():
@@ -342,14 +348,15 @@ class OCREngine:
         )
         return full_text
 
-    def _ocr_pages(self, doc, pdf_path: Path, page_indices: List[int]) -> List[str]:
+    def _ocr_pages(self, doc, pdf_path: Path, page_indices: List[int], dpi: Optional[int] = None) -> List[str]:
         """OCR các trang scanned — tự động chọn backend."""
         backend = self._resolve_backend()
+        active_dpi = dpi or self.dpi
 
         if backend == "easyocr":
-            return self._ocr_easyocr(doc, page_indices)
+            return self._ocr_easyocr(doc, page_indices, dpi=active_dpi)
         elif backend == "tesseract":
-            return self._ocr_tesseract(doc, page_indices)
+            return self._ocr_tesseract(doc, page_indices, dpi=active_dpi)
         else:
             logger.warning(
                 f"No OCR backend — {len(page_indices)} scanned pages skipped. "
@@ -415,25 +422,21 @@ class OCREngine:
 
     # ── EasyOCR backend ────────────────────────────────────────────────
 
-    def _ocr_easyocr(self, doc, page_indices: List[int]) -> List[str]:
+    def _ocr_easyocr(self, doc, page_indices: List[int], dpi: Optional[int] = None) -> List[str]:
         """
         OCR bằng EasyOCR — với image preprocessing và Vietnamese post-processing.
-
-        - Dùng numpy array thay PNG bytes → nhanh hơn (bỏ encode/decode)
-        - Preprocessing tăng chất lượng nhận dạng dấu tiếng Việt
-        - Post-processing sửa lỗi OCR phổ biến
-        - Progress + ETA logging mỗi 5 trang
         """
         results: List[str] = []
         reader = self._get_easyocr_reader()
         start_time = time.time()
         total = len(page_indices)
+        active_dpi = dpi or self.dpi
 
         for i, page_idx in enumerate(page_indices):
             page_start = time.time()
             try:
                 page = doc[page_idx]
-                pix = page.get_pixmap(dpi=self.dpi)
+                pix = page.get_pixmap(dpi=active_dpi)
 
                 # Preprocessing
                 if self.preprocess:
@@ -480,7 +483,7 @@ class OCREngine:
 
     # ── Tesseract backend ──────────────────────────────────────────────
 
-    def _ocr_tesseract(self, doc, page_indices: List[int]) -> List[str]:
+    def _ocr_tesseract(self, doc, page_indices: List[int], dpi: Optional[int] = None) -> List[str]:
         """OCR bằng Tesseract — với image preprocessing."""
         results: List[str] = []
 
@@ -502,12 +505,13 @@ class OCREngine:
 
         start_time = time.time()
         total = len(page_indices)
+        active_dpi = dpi or self.dpi
 
         for i, page_idx in enumerate(page_indices):
             page_start = time.time()
             try:
                 page = doc[page_idx]
-                pix = page.get_pixmap(dpi=self.dpi)
+                pix = page.get_pixmap(dpi=active_dpi)
 
                 # Preprocessing
                 if self.preprocess:
