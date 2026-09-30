@@ -112,12 +112,14 @@ class FinancialDataProvider:
     Leverage (Total Debt / Total Assets).
     """
 
-    # Mapping item_name phổ biến (Đa ngành: Sản xuất/Thương mại, Ngân hàng, Chứng khoán, Bảo hiểm)
     ITEM_MAPPING = {
-        "total_assets": ["TỔNG TÀI SẢN", "TỔNG CỘNG TÀI SẢN", "Tổng tài sản"],
+        "total_assets": ["TỔNG TÀI SẢN", "TỔNG CỘNG TÀI SẢN", "Tổng tài sản", "TỔNG CỘNG NGUỒN VỐN", "NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU"],
         "total_equity": ["VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu", "TỔNG VỐN CHỦ SỞ HỮU", "Vốn và các quỹ"],
         "total_debt": ["NỢ PHẢI TRẢ", "Tổng nợ phải trả", "Nợ phải trả"],
-        "revenue": ["Doanh số thuần", "Doanh thu thuần", "Tổng thu nhập hoạt động", "Doanh thu hoạt động", "Thu nhập lãi thuần"],
+        "revenue": [
+            "Doanh số thuần", "Doanh thu thuần", "Tổng thu nhập hoạt động", "Doanh thu hoạt động",
+            "Thu nhập lãi thuần", "Doanh thu bán hàng và cung cấp dịch vụ", "Doanh thu thuần về bán hàng và cung cấp dịch vụ"
+        ],
         "net_income": [
             "Lãi/(lỗ) thuần sau thuế",
             "Lợi nhuận sau thuế",
@@ -125,6 +127,8 @@ class FinancialDataProvider:
             "Lợi nhuận sau thuế thu nhập doanh nghiệp",
             "Tổng lợi nhuận kế toán sau thuế",
             "Lợi nhuận sau thuế của cổ đông công ty mẹ",
+            "Lợi nhuận sau thuế phân bổ cho chủ sở hữu",
+            "Cổ đông của Công ty mẹ",
         ],
         "cash": ["Tiền và tương đương tiền", "Tiền mặt, vàng bạc, đá quý", "Tiền"],
         "ebit": ["EBIT", "Lợi nhuận trước thuế và lãi vay"],
