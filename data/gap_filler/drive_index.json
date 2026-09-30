@@ -12494,12 +12494,13 @@
   },
   "SSI_2018": {
     "file_name": "SSI_2018_BCTN.pdf",
-    "file_size": 22559002,
+    "file_size": 22394345,
     "pages": 141,
     "ticker": "SSI",
     "year": 2018,
     "is_gap": true,
-    "healed": true
+    "healed": true,
+    "healthy": true
   },
   "PIC_2025": {
     "file_id": "1e2bGzNT7U4UIexwzhM0IRIuOmS4GO1DU",
@@ -15182,14 +15183,18 @@
   "SSI_2014": {
     "file_id": "1Ia7pkycwqjg0_MqwnV3ZOLkupkIXY7yO",
     "file_name": "SSI_2014_BCTN.pdf",
-    "file_size": 7582490,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1Ia7pkycwqjg0_MqwnV3ZOLkupkIXY7yO"
+    "file_size": 7746468,
+    "direct_url": "https://drive.google.com/uc?export=download&id=1Ia7pkycwqjg0_MqwnV3ZOLkupkIXY7yO",
+    "pages": 109,
+    "healthy": true
   },
   "SSI_2016": {
     "file_id": "1WAOk_VfUWjoXR9_nEtyOc08822qHmRXR",
     "file_name": "SSI_2016_BCTN.pdf",
     "file_size": 9843246,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1WAOk_VfUWjoXR9_nEtyOc08822qHmRXR"
+    "direct_url": "https://drive.google.com/uc?export=download&id=1WAOk_VfUWjoXR9_nEtyOc08822qHmRXR",
+    "pages": 206,
+    "healthy": true
   },
   "SHS_2019": {
     "file_id": "1v7MdAsSpp2NmcXpP0jesfifYjgMx9HE0",
@@ -15275,7 +15280,9 @@
     "file_id": "1jJsnKeo3axyO9HFzLONKcrxKe_vl9HZ0",
     "file_name": "SSI_2022_BCTN.pdf",
     "file_size": 13577708,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1jJsnKeo3axyO9HFzLONKcrxKe_vl9HZ0"
+    "direct_url": "https://drive.google.com/uc?export=download&id=1jJsnKeo3axyO9HFzLONKcrxKe_vl9HZ0",
+    "pages": 132,
+    "healthy": true
   },
   "ST8_2018": {
     "file_id": "1hPuN1I-0RW_oWDe1YtGNlCMHvHmOtW2a",
@@ -15299,13 +15306,17 @@
     "file_id": "1EzArI35zfWy9BJXKycsAxugeuiFWGqjg",
     "file_name": "SSI_2024_BCTN.pdf",
     "file_size": 6515945,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1EzArI35zfWy9BJXKycsAxugeuiFWGqjg"
+    "direct_url": "https://drive.google.com/uc?export=download&id=1EzArI35zfWy9BJXKycsAxugeuiFWGqjg",
+    "pages": 131,
+    "healthy": true
   },
   "SSI_2020": {
     "file_id": "1INxBmdlWPNJaAyA3n-Me7zxNNfJ_SjxY",
     "file_name": "SSI_2020_BCTN.pdf",
     "file_size": 11432248,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1INxBmdlWPNJaAyA3n-Me7zxNNfJ_SjxY"
+    "direct_url": "https://drive.google.com/uc?export=download&id=1INxBmdlWPNJaAyA3n-Me7zxNNfJ_SjxY",
+    "pages": 129,
+    "healthy": true
   },
   "SSI_2023": {
     "file_id": "17T3XWxbUENjAwOKjJmgvSqm8ARzzLgWv",
