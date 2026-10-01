@@ -265,6 +265,16 @@ class LaborExtractor:
             return self.extract_from_pages(pages, ticker, year)
 
         # Fallback to OCR if PDF has no text layer (scanned report)
+        # BƯỚC 1: Kiểm tra cache trước để KHÔNG BAO GIỜ OCR lại file đã quét trước đó!
+        try:
+            from arminer.ui.server import _extract_text_cached
+            cached_text, _ = _extract_text_cached(path)
+            if cached_text and len(cached_text.strip()) >= 300:
+                return self.extract_from_text(cached_text, ticker, year)
+        except Exception:
+            pass
+
+        # BƯỚC 2: Chỉ khi chưa có trong cache mới OCR
         try:
             from arminer.ocr.engine import OCREngine
             ocr = OCREngine()

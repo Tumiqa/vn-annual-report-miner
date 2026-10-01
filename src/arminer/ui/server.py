@@ -787,14 +787,13 @@ def _process_one_bctn(
     if extract_labor:
         try:
             yr = int(item["year"]) if item.get("year") else 0
-            if p.exists() and p.suffix.lower() == ".pdf":
-                labor_res = labor_extractor.extract_from_pdf(p, item["ticker"], yr)
-                if (not labor_res or labor_res.labor is None) and text:
-                    text_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
-                    if text_res and text_res.labor is not None:
-                        labor_res = text_res
-            else:
+            # 1. ƯU TIÊN SỐ 1: Sử dụng ngay text đã nạp từ cache ở trên (0.001s, regex tức thì, KHÔNG bao giờ OCR lại!)
+            if text and len(text.strip()) >= 50:
                 labor_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
+            elif p.exists() and p.suffix.lower() == ".pdf":
+                labor_res = labor_extractor.extract_from_pdf(p, item["ticker"], yr)
+            else:
+                labor_res = None
 
             row["Labor"] = labor_res.labor
             row["Labor_Page"] = labor_res.source_page
