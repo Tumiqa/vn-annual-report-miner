@@ -149,8 +149,9 @@ SUBSET_SIGNALS_EN: List[str] = [
 # =========================================================================
 
 EXCLUSION_PATTERNS: List[str] = [
-    "giờ đào tạo", "giờ/nhân viên", "giờ/người",
+    "giờ đào tạo", "giờ/nhân viên", "giờ/người", "khóa đào tạo", "lượt đào tạo", "lượt người",
     "triệu đồng/người", "triệu đồng/nhân viên", "triệu đồng", "tỷ đồng", "nghìn đồng", "ngàn đồng",
+    "tr.đồng", "triệu vnđ", "tỷ vnđ", "vnd/người", "đồng/người", "usd/người",
     "vnd", "usd", "ca mắc", "cổ phần", "cổ phiếu",
     "doanh thu/nhân viên", "lợi nhuận/nhân viên",
     "năng suất lao động", "năng suất nhân viên",
@@ -161,15 +162,18 @@ EXCLUSION_PATTERNS: List[str] = [
     "productivity", "compensation per",
     "revenue per", "profit per", "income per",
     "tuyển dụng thêm", "tuyển mới", "thuê mới", "nghỉ việc", "thôi việc", "sa thải", "chấm dứt hđlđ",
+    "thăng tiến", "bổ nhiệm", "khen thưởng", "kỷ luật", "điều động", "luân chuyển",
     "turnover rate", "attrition", "hiring",
     "tăng thêm", "giảm bớt", "giảm đi",  # delta exclusions
-    "xuất khẩu lao động", "đi làm việc ở nước ngoài", "sang thị trường",
-    "cục quản lý lao động ngoài nước", "toàn ngành", "cả nước",
-    "không còn là nhân viên", "ban kiểm toán nội bộ", "nghỉ thai sản",
+    "xuất khẩu lao động", "đi làm việc ở nước ngoài", "sang thị trường", "lao động ngoài nước",
+    "cục quản lý lao động ngoài nước", "cục quản lý lao động", "bộ lao động", "toàn ngành", "cả nước", "thị trường lao động",
+    "không còn là nhân viên", "ban kiểm toán nội bộ", "nghỉ thai sản", "nghỉ thai", "thai sản", "maternity", "trở lại làm việc sau khi",
     "sáng kiến, giải pháp của", "sáng kiến của", "mua cổ phiếu của cbcnv",
-    "phát hành cổ phiếu theo chương trình", "lựa chọn người lao động", "esop",
+    "phát hành cổ phiếu theo chương trình", "lựa chọn người lao động", "esop", "được phân phối", "cổ phiếu thưởng",
     "khẩu trang", "tiêm ngừa", "tiêm chủng", "vắc xin", "vacxin", "covid", "mũi 1", "mũi 2", "mũi 3",
     "có trình độ từ", "trung cấp trở lên", "đại học trở lên", "sau đại học",
+    "thất nghiệp", "tai nạn lao động", "bảo hiểm thất nghiệp", "trợ cấp thất nghiệp",
+    "đội ngũ điều hành", "ban tổng giám đốc", "ban giám đốc", "ban kiểm soát",
 ]
 
 # Regex nhận diện các câu chỉ mức biến động (delta), bộ phận, hoặc quyết định chứ không phải tổng quy mô
@@ -333,12 +337,15 @@ def normalize_number(raw: str) -> int:
         if all(p.isdigit() for p in parts):
             return int("".join(parts))
 
-    # Trường hợp chỉ có dấu chấm: "9.960" → 9960
+    # Trường hợp chỉ có dấu chấm: "9.960" → 9960, hoặc "35.8783" (3 là footnote) → 35878
     if "." in s and "," not in s:
         parts = s.split(".")
         # Nếu tất cả phần sau dấu . đều có 3 chữ số → phân hàng nghìn
         if all(len(p) == 3 for p in parts[1:]):
             return int(s.replace(".", ""))
+        elif len(parts) == 2 and len(parts[1]) == 4 and parts[0].isdigit() and parts[1].isdigit():
+            # Trailing footnote attached (e.g. 35.8783 -> 35878)
+            return int(parts[0] + parts[1][:3])
         else:
             # Số thập phân thật → làm tròn
             try:
