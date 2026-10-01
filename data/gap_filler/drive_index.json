@@ -10196,12 +10196,13 @@
   },
   "PNJ_2023": {
     "file_name": "PNJ_2023_BCTN.pdf",
-    "file_size": 13214707,
+    "file_size": 7707099,
     "pages": 111,
     "ticker": "PNJ",
     "year": 2023,
     "is_gap": true,
-    "healed": true
+    "healed": true,
+    "healthy": true
   },
   "L14_2020": {
     "file_id": "1aGqWrjsfu8CIp3GnoOaGwDwB6MluExKo",
@@ -10229,12 +10230,13 @@
   },
   "PNJ_2022": {
     "file_name": "PNJ_2022_BCTN.pdf",
-    "file_size": 838241,
+    "file_size": 24302604,
     "pages": 125,
     "ticker": "PNJ",
     "year": 2022,
     "is_gap": true,
-    "healed": true
+    "healed": true,
+    "healthy": true
   },
   "MCC_2015": {
     "file_id": "191FnSEPR8zlFwE881VymOJd_UUCjVMAx",
@@ -15645,8 +15647,10 @@
   "TNG_2025": {
     "file_id": "1spE0YRB9k8842QV1C8ixpwUN23TCLW_E",
     "file_name": "TNG_2025_BCTN.pdf",
-    "file_size": 18095225,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1spE0YRB9k8842QV1C8ixpwUN23TCLW_E"
+    "file_size": 81748800,
+    "direct_url": "https://drive.google.com/uc?export=download&id=1spE0YRB9k8842QV1C8ixpwUN23TCLW_E",
+    "pages": 154,
+    "healthy": true
   },
   "TNG_2019": {
     "file_id": "1rb9dqXrYWwFFvBokWofMAe2ztZEE8bs7",
@@ -108272,7 +108276,9 @@
     "file_id": "16kE7daxlZkUG5stGVhnFu9TQBm9RcPih",
     "file_name": "VPI_2024_BCTN.pdf",
     "file_size": 10657859,
-    "direct_url": "https://drive.google.com/uc?export=download&id=16kE7daxlZkUG5stGVhnFu9TQBm9RcPih"
+    "direct_url": "https://drive.google.com/uc?export=download&id=16kE7daxlZkUG5stGVhnFu9TQBm9RcPih",
+    "pages": 101,
+    "healthy": true
   },
   "VRC_2023": {
     "file_id": "1hhXU59sCCccO1qpL0VWD8m6LdsquIO3a",
@@ -109785,5 +109791,13 @@
     "healthy": true,
     "direct_url": "",
     "file_id": ""
+  },
+  "GAS_2025": {
+    "file_id": "",
+    "file_name": "GAS_2025_BCTN.pdf",
+    "file_size": 19400816,
+    "pages": 115,
+    "healthy": true,
+    "direct_url": ""
   }
 }
