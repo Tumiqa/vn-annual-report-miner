@@ -109571,10 +109571,10 @@
   "HVH_2022": {
     "file_id": "",
     "file_name": "HVH_2022_BCTN.pdf",
-    "file_size": 40295025,
-    "pages": 28,
-    "healthy": true,
-    "direct_url": ""
+    "file_size": 353237,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
   },
   "KMT_2013": {
     "file_id": "",
@@ -109707,10 +109707,10 @@
   "VCI_2019": {
     "file_id": "",
     "file_name": "VCI_2019_BCTN.pdf",
-    "file_size": 18455044,
-    "pages": 111,
-    "healthy": true,
-    "direct_url": ""
+    "file_size": 85403,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
   },
   "TRA_2020": {
     "file_id": "",
@@ -109799,5 +109799,85 @@
     "pages": 115,
     "healthy": true,
     "direct_url": ""
+  },
+  "DP3_2025": {
+    "file_id": "",
+    "file_name": "DP3_2025_BCTN.pdf",
+    "file_size": 3499240,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "TV4_2025": {
+    "file_id": "",
+    "file_name": "TV4_2025_BCTN.pdf",
+    "file_size": 22108087,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "V21_2025": {
+    "file_id": "",
+    "file_name": "V21_2025_BCTN.pdf",
+    "file_size": 6383950,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "VC1_2025": {
+    "file_id": "",
+    "file_name": "VC1_2025_BCTN.pdf",
+    "file_size": 6833898,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "V12_2025": {
+    "file_id": "",
+    "file_name": "V12_2025_BCTN.pdf",
+    "file_size": 11513160,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "VC2_2025": {
+    "file_id": "",
+    "file_name": "VC2_2025_BCTN.pdf",
+    "file_size": 10193175,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "VC7_2025": {
+    "file_id": "",
+    "file_name": "VC7_2025_BCTN.pdf",
+    "file_size": 10886481,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "VE1_2025": {
+    "file_id": "",
+    "file_name": "VE1_2025_BCTN.pdf",
+    "file_size": 798557,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "TV3_2025": {
+    "file_id": "",
+    "file_name": "TV3_2025_BCTN.pdf",
+    "file_size": 19818116,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
+  },
+  "VE4_2025": {
+    "file_id": "",
+    "file_name": "VE4_2025_BCTN.pdf",
+    "file_size": 7030559,
+    "direct_url": "",
+    "pages": 0,
+    "healthy": true
   }
 }
