@@ -105,7 +105,7 @@ class LaborExtractor:
             r"cán\s*bộ\s*quản\s*lý\s*,?\s*người\s*lao\s*động|cán\s*bộ\s*,?\s*người\s*lao\s*động|"
             r"cán\s*bộ|cán\s*bộ\s*nhân\s*viên|cán\s*bộ\s*(?:,?\s*)?(?:công\s*nhân\s*)?viên|"
             r"người\s*lao\s*động|nhân\s*sự|lao\s*dng|lao\s*dqng|lao\s*tlqng|nhan\s*vien|"
-            r"can\s*b[oộe>]+|ngiroi|nguai|nguoi|employees?|workforce|staff|personnel|people|headcount)"
+            r"can\s*b[oộe>]+|ngiroi|nguai|nguoi|ngudi|ngucri|ngual|ngu'àl|employees?|workforce|staff|personnel|people|headcount)"
         )
         unit_opt = rf"(?:\s*(?P<unit>{self.unit_re}))?"
         unit_req = rf"\s*(?P<unit>{self.unit_re})"
@@ -123,13 +123,15 @@ class LaborExtractor:
         )
 
         lead_re = (
-            r"(?P<lead>(?:tổng\s+số|tổng\s+lượng|tổng\s+cộng|quy\s+mô|lực\s+lượng|đội\s+ngũ|số\s+lượng|sé\s+lượng|só\s+lượng|"
+            r"(?P<lead>(?:t[o0ô6d][nñ]g\s+s[o0ô6i5]|t[o0ô6d][nñ]g\s+st[i1]|tổng\s+số|tổng\s+lượng|tổng\s+cộng|quy\s+mô|lực\s+lượng|đội\s+ngũ|"
+            r"s[o0ô6][\s_]*l[uư][oợơ][nng][gq]|số\s+lượng|sé\s+lượng|só\s+lượng|"
             r"tổng\s+sé|tổng\s+só|"
-            r"so\s+luong|s6\s+luong|so\s+hrong|s6\s+hrong|s0luqng)\s+"
-            r"(?:cán\s*bộ\s*,?\s*|can\s*b[oộe>]+\s*,?\s*)?(?:công\s*nhân\s*)?"
-            r"(?:viên|nhân\s*viên|nhận\s*viên|lao\s*động|người\s*lao\s*động|nhân\s*sự|cbcnv|cbnv|cb\s*[-–]\s*cn|cb\s*[-–]\s*nv|"
+            r"so\s+luong|s6\s+luong|so\s+hrong|s6\s+hrong|s0luqng|sa\s+luirng|s61u)\s+"
+            r"(?:cán\s*bộ\s*,?\s*|can\s*b[oộe>r9]+\s*,?\s*)?(?:công\s*nhân\s*)?"
+            r"(?:viên|nhân\s*viên|nhận\s*viên|nh[aâ6d]n\s*vi[eê6]n|lao\s*động|lao\s*d[oóôQ]ng|người\s*lao\s*động|nhân\s*sự|cbcnv|cbnv|cb\s*[-–]\s*cn|cb\s*[-–]\s*nv|"
             r"lao\s*dng|nhan\s*vien|nguoi\s*lao\s*dong)|"
-            r"lao\s+động\s+(?:sử\s+dụng\s+)?bình\s+quân|nhân\s+sự\s+bình\s+quân|"
+            r"lao\s+động\s+(?:sử\s+dụng\s+)?b[ìi]nh\s+qu[âa6]n|nhân\s+sự\s+b[ìi]nh\s+qu[âa6]n|"
+            r"(?:sử\s+dụng|sri\s+d[ụup]+ng|sir\s+d[ụup]+ng)\s+b[ìi]nh\s+qu[âa6]n|"
             r"duy\s+trì\s+(?:ổn\s+định\s+)?(?:số\s+lượng\s+lao\s+động|việc\s+làm\s+cho)|"
             r"lực\s+lượng\s+cbcnv|lực\s+lượng\s+lao\s+động|đội\s+ngũ\s+nhân\s+sự|tổng\s+nhân\s+sự|tổng\s+lao\s+động|tổng\s+nhân\s+viên|"
             r"tong\s+so\s+lao\s+dong|tong\s+so\s+nhan\s+vien|so\s+hrong\s+cb-cn|so\s+hrong\s+cb-nv|"
@@ -137,7 +139,20 @@ class LaborExtractor:
             r"total\s+workforce|total\s+staff|total\s+personnel)"
         )
 
-        verb_re = r"(?:là|was|đạt|có|ở\s+mức|quy\s+mô\s+là|quy\s+mô|bình\s+quân\s+là|bình\s+quân|[:=─–-])\s*"
+        verb_re = r"(?:là|was|đạt|có|ở\s+mức|quy\s+mô\s+là|quy\s+mô|bình\s+quân\s+là|bình\s+quân|l[àad]|1[ad]|ldr|[:=─–-])\s*"
+
+        # Breakdown Total: "1.413 nguai, trong d6:" / "2.160 nguoi, trong do:"
+        self.re_breakdown_total = re.compile(
+            rf"{num_re}\s*(?P<unit>{self.unit_re})\s*,\s*trong\s*(?:đó|do|d6|cl6)",
+            re.IGNORECASE,
+        )
+
+        # Average labor utilized: "sử dụng bình quân năm 2018 là: 556 người"
+        self.re_avg_utilized = re.compile(
+            r"(?:sử\s+dụng|sri\s+d[ụup]+ng|sir\s+d[ụup]+ng)\s+b[ìi]nh\s+qu[âa6]n[^\n:]{0,50}?(?:(?:n[ăâa]m|ndm)\s+\d{4})?[^\n:]{0,30}?(?:là|1a|ld|ldr|:)\s*"
+            rf"{num_re}\s*{unit_opt}",
+            re.IGNORECASE,
+        )
 
         # 1. Date First: "Tại ngày 31 tháng 12 năm 2024 số lượng nhân viên công ty mẹ và các công ty con là 4.765 người"
         self.re_date_first = re.compile(
@@ -420,13 +435,14 @@ class LaborExtractor:
                 "so luong can bo", "so luong lao dong", "s6 luong can be", "s6 luong can bo",
                 "s6 luqng lao dng", "s6 hrong lao dqng", "s6 hrong can be", "so hrong cb-cn",
                 "so hrong cb-nv", "s0luqng lao tlqng", "ngudn nhin lgc", "tong so lao dong",
-                "cb-cn", "cb-nv", "cb-cnv", "lao dng", "ngiroi", "nguai", "nguoi",
+                "cb-cn", "cb-nv", "cb-cnv", "lao dng", "lao dqng", "nhdn vi6n", "ngiroi", "nguai", "nguoi", "ngudi", "ngucri",
+                "t6ng s6", "tdng s5", "t6ng sti", "bình quân", "binh quan", "binh qu6n",
             ]:
                 if kw in low:
                     score += 15
 
-            if any(w in low for w in ["nhân viên", "lao động", "nhân sự", "cbcnv", "workforce", "employees", "lao dng"]):
-                score += 5
+            if any(w in low for w in ["nhân viên", "lao động", "nhân sự", "cbcnv", "workforce", "employees", "lao dng", "lao dqng", "nhdn vi6n", "ngudi", "ngucri"]):
+                score += 10
 
             if any(corp in low for corp in ["tập đoàn có", "tập đòan có", "tổng công ty có"]) and any(u in low for u in ["nhân viên", "lao động", "người"]):
                 score += 35
@@ -465,6 +481,8 @@ class LaborExtractor:
             (self.re_date_first, "narrative_date_total", 0.98),
             (self.re_lead_first, "narrative_date_total", 0.98),
             (self.re_post_date, "narrative_post_date", 0.98),
+            (self.re_breakdown_total, "narrative_breakdown_total", 0.97),
+            (self.re_avg_utilized, "narrative_avg_utilized", 0.96),
             (self.re_bilingual_lead, "narrative_bilingual", 0.96),
             (self.re_general_lead, "narrative_direct_total", 0.94),
             (self.re_direct_colon, "narrative_direct_total", 0.94),
@@ -1016,6 +1034,7 @@ class LaborExtractor:
             "tỷ lệ", "chiếm", "nữ", "nam", "%", "trong tổng số", "tỷ trọng", "trực tiếp", "gián tiếp",
             "độ tuổi", "tuổi", "trình độ", "thời vụ", "bán thời gian", "xuất khẩu", "ngoài nước",
             "chính sách", "hoạt động", "đánh giá", "bảo vệ", "nghị quyết", "kế hoạch", "hđlđ",
+            "cơ cấu", "mục lục", "báo cáo", "nội dung",
         ]
 
         METRIC_ROW_REGEX = re.compile(
@@ -1036,6 +1055,9 @@ class LaborExtractor:
             if not METRIC_ROW_REGEX.match(line):
                 continue
             if any(bad in low for bad in SUBSET_ROW_REJECTS):
+                continue
+            # A table row label is never an unfinished sentence ending in a date or preposition
+            if any(w in low for w in ["tại ngày", "ngày 31", "thời điểm", "đến ngày", "trụ sở", "địa chỉ"]):
                 continue
 
             forward = lines[i + 1 : min(len(lines), i + 10)]
@@ -1060,6 +1082,12 @@ class LaborExtractor:
                         break
 
                 if any(bad in fl_low for bad in ["triệu", "tỷ", "đồng", "vnd", "usd", "lương", "thu nhập", "tuổi", "trình độ", "tỷ lệ"]) or fl_low.endswith("đ"):
+                    continue
+                # Reject document numbers and dispatch metadata (e.g. 'Số văn bản: 300/CPNT2-KHTH')
+                if "số văn bản" in fl_low or "ngày ban hành" in fl_low or re.search(r"\b\d+/[A-Za-z0-9_-]+\b", fl):
+                    continue
+                # Reject page number markers like '| 37' or '37 |'
+                if re.match(r"^\|\s*\d+\s*$", fl) or re.match(r"^\d+\s*\|\s*$", fl):
                     continue
                 # Reject decimal numbers (e.g. 19,76% or 12.5)
                 if re.search(r"\d+[,.]\d{1,2}\b", fl):
@@ -1228,11 +1256,20 @@ class LaborExtractor:
             "thai sản", "nghỉ thai", "nghỉ thai sản", "nuôi con nhỏ", "chế độ thai sản", "hết kỳ nghỉ thai", "sau khi hết kỳ nghỉ thai", "maternity",
             # Promotions, awards, ESOP
             "thăng tiến", "bổ nhiệm", "khen thưởng", "kỷ luật", "điều động", "luân chuyển",
-            "được phân phối", "phát hành cổ phiếu", "cổ phiếu thưởng", "esop",
+            "được phân phối", "phân phối là", "phát hành cổ phiếu", "cổ phiếu thưởng", "esop",
+            # Social sponsorships & donations
+            "an sinh xã hội", "tài trợ an sinh", "tài trợ", "ủng hộ", "hiến máu", "mái ấm", "nhà tình nghĩa",
+            # Historical sections (e.g. TCM 1967)
+            "giai đoạn hình thành", "tiền thân", "thành lập xí nghiệp", "1967", "1975", "1985",
             # Macro / National statistics
             "cục quản lý lao động", "bộ lao động", "lao động ngoài nước", "lao động ngòai nước", "xuất khẩu lao động", "thị trường lao động",
             "thất nghiệp", "tai nạn lao động", "bảo hiểm thất nghiệp",
         ]
+
+        has_group_candidate = any(
+            any(w in c.raw_snippet.lower() for w in ["tập đoàn", "tập đòan", "toàn tập đoàn", "toàn tổng công ty", "và các công ty con", "và công ty con", "nhóm công ty", "toàn hệ thống"])
+            for c in candidates
+        )
 
         for c in candidates:
             snippet_low = c.raw_snippet.lower()
@@ -1246,6 +1283,20 @@ class LaborExtractor:
 
             # 1. HARD DISQUALIFICATION: Subgroup or Delta or ESG Noise
             if any(term in cleaned_snip for term in DISQUALIFY_TERMS):
+                continue
+
+            # 1b. Disqualify Table of Contents page number collisions (e.g. NT2 37: "2.5 ... 37")
+            if re.search(r"(?:\.{3,}|-{3,})\s*" + re.escape(str(c.value)) + r"\b", snippet_low):
+                continue
+            if "mục lục" in snippet_low or "table of contents" in snippet_low:
+                continue
+
+            # 1c. Disqualify Street address collisions (e.g. IDC 151: "Trụ sở: 151 Ter Nguyễn Đình Chiểu")
+            if re.search(r"(?:trụ\s*sở|địa\s*chỉ|tầng|toà\s*nhà|đường|phường|quận)[^;,\n]{0,25}\b" + re.escape(str(c.value)) + r"\b", snippet_low):
+                continue
+
+            # 1d. Disqualify Chart Y-Axis tick sequences (e.g. HSG 1000: "9000 // 8000 // 7000 ... 1000")
+            if re.search(r"\b\d000\s*//\s*\d000\s*//\s*\d000\b", snippet_low):
                 continue
 
             score = c.confidence
@@ -1266,9 +1317,14 @@ class LaborExtractor:
             elif year_str in c.raw_snippet:
                 score += 0.20
 
-            # 4. Group / Consolidated bonus
-            if any(w in snippet_low for w in ["công ty con", "tập đoàn", "tập đòan", "toàn hệ thống", "hợp nhất"]):
-                score += 0.20
+            # 4. Group / Consolidated bonus vs Parent-only penalty
+            is_group = any(w in snippet_low for w in ["công ty con", "tập đoàn", "tập đòan", "toàn hệ thống", "toàn tập đoàn", "toàn tổng công ty", "nhóm công ty", "hợp nhất"])
+            is_parent_only = ("công ty mẹ" in snippet_low or "tổng công ty mẹ" in snippet_low) and not any(w in snippet_low for w in ["và các công ty con", "và công ty con", "toàn tổng công ty", "toàn tập đoàn"])
+            
+            if is_group:
+                score += 0.35
+            elif is_parent_only and has_group_candidate:
+                score -= 0.50
 
             # 5. Explicit total indicator bonus
             if any(
