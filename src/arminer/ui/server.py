@@ -123,7 +123,10 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 import pandas as pd
-import fitz
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz
 from loguru import logger
 
 from arminer.core.smart_mode import FlexibleDictionary, SmartVariableCalculator, ResearchOutputGenerator

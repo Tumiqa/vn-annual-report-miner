@@ -235,7 +235,10 @@ class OCREngine:
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
         try:
-            import fitz  # PyMuPDF
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                import fitz
         except ImportError:
             raise ImportError("PyMuPDF is required. Run: pip install PyMuPDF")
 

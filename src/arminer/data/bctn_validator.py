@@ -20,7 +20,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz
 from loguru import logger
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ

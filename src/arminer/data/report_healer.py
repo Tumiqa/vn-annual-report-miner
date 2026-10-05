@@ -14,7 +14,10 @@ Các nguồn cào bù chuẩn:
 from __future__ import annotations
 
 import io
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz
 import json
 import os
 from pathlib import Path

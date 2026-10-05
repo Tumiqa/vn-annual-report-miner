@@ -301,7 +301,10 @@ class LaborExtractor:
 
         pages: List[Tuple[int, str]] = []
         try:
-            import fitz
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                import fitz
             doc = fitz.open(path)
             for page_num in range(len(doc)):
                 t = doc[page_num].get_text()

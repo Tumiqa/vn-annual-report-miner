@@ -1,0 +1,103 @@
+name: Dti Bank
+version: 1.0.0
+categories:
+  congnghe:
+    description: Category congnghe
+    keywords:
+    - keyword: chuyển đổi số
+      weight: 1.0
+      variants:
+      - digital transformation
+      - số hóa
+      - nền tảng số
+      - công nghệ số
+      - chiến lược số
+      - nen tang so
+      - cong nghe so
+      - chien luoc so
+      language: vi
+    - keyword: trí tuệ nhân tạo
+      weight: 1.0
+      variants:
+      - ai
+      - artificial intelligence
+      - machine learning
+      - mô hình học máy
+      language: vi
+    - keyword: dữ liệu lớn
+      weight: 1.0
+      variants:
+      - big data
+      - du lieu lon
+      - kho du lieu
+      - kho dữ liệu
+      language: vi
+  ungdung:
+    description: Category ungdung
+    keywords:
+    - keyword: ngân hàng số
+      weight: 1.0
+      variants:
+      - ngan hang so
+      - ebanking
+      - e-banking
+      - ngân hàng điện tử
+      - ngan hang diẹn tu
+      language: vi
+  hatang:
+    description: Category hatang
+    keywords:
+    - keyword: điện toán đám mây
+      weight: 1.0
+      variants:
+      - cloud computing
+      - ha tang dam may
+      - cloud
+      - hạ tầng đám mây
+      language: vi
+  baomat:
+    description: Category baomat
+    keywords:
+    - keyword: chuỗi khối
+      weight: 1.0
+      variants:
+      - blockchain
+      - công nghệ chuỗi khối
+      - chuoi khoi
+      language: vi
+  taichinh:
+    description: Category taichinh
+    keywords:
+    - keyword: Internet vạn vật
+      weight: 1.0
+      variants:
+      - IoT
+      - vạn vật kết nối
+      - van vat ket noi
+      - Internet van vat
+      - Internet of Things
+      language: vi
+  esg:
+    description: Category esg
+    keywords:
+    - keyword: ERP
+      weight: 1.0
+      variants:
+      - tự động hoá
+      - tu dong hoa
+      - enterprise resource planning
+      language: vi
+  moitruong:
+    description: Category moitruong
+    keywords:
+    - keyword: thương mại điện tử
+      weight: 1.0
+      variants:
+      - thương mai dien tu
+      - e-commerce
+      - phần mềm
+      - phan mem
+      - electronic commerce
+      - digital commerce
+      - Internet commerce
+      language: vi

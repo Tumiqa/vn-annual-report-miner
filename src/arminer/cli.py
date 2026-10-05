@@ -295,7 +295,10 @@ def _scan_directory(dir_path: Path, flex_dict, topic, fuzzy, threshold, output=N
                     text, n_pages = _extract_text_cached(f)
                 except Exception:
                     try:
-                        import fitz
+                        try:
+                            import pymupdf as fitz
+                        except ImportError:
+                            import fitz
                         doc = fitz.open(f)
                         text = "\n".join(page.get_text() for page in doc)
                         n_pages = len(doc)
@@ -1221,7 +1224,7 @@ def doctor_cmd():
         if has_vie:
             table.add_row("Tesseract OCR", "[green]✓ Đầy đủ (vie)[/green]", f"{tess_path} ({lang_str})")
         else:
-            table.add_row("Tesseract OCR", "[yellow]! Thiếu vie[/yellow]", f"{tess_path} — Cần tải vie.traineddata vào tessdata")
+            table.add_row("Tesseract OCR", "[yellow]! Thiếu vie[/yellow]", f"{tess_path} — Chạy: arminer setup-ocr")
     else:
         table.add_row("Tesseract OCR", "[yellow]! Chưa cài[/yellow]", "Chưa phát hiện tesseract. Hệ thống sẽ tự động dùng EasyOCR thay thế")
 
@@ -1237,7 +1240,10 @@ def doctor_cmd():
 
     # 5. Native PDF Extraction (PyMuPDF)
     try:
-        import fitz
+        try:
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
         table.add_row("PyMuPDF (Text PDF)", "[green]✓ Sẵn sàng[/green]", f"PyMuPDF {fitz.__version__} (Xử lý 90% BCTN text dưới 0.1s/file)")
     except Exception:
         table.add_row("PyMuPDF", "[red]✗ Thiếu[/red]", "Chạy: pip install -e .")
@@ -1260,10 +1266,48 @@ def doctor_cmd():
         import trafilatura
         table.add_row("Khai phá & Báo chí", "[green]✓ Sẵn sàng[/green]", "Levenshtein + python-docx + BS4 + Trafilatura")
     except Exception as e:
-        table.add_row("Khai phá & Báo chí", "[yellow]! Thiếu gói[/yellow]", f"{e} (Chạy: pip install -e .)")
+        table.add_row("Khai phá & Báo chí", "[yellow]! Thiếu gói[/yellow]", f"{e} (Chạy: pip install lxml_html_clean)")
 
     console.print(table)
     console.print("\n[bold green]💡 Kết luận:[/bold green] Bạn có thể khởi chạy giao diện Web Studio ngay bằng lệnh: [bold cyan]arminer studio[/bold cyan]\n")
+
+
+@main.command("setup-ocr")
+def setup_ocr_cmd():
+    """Tự động tải gói ngôn ngữ tiếng Việt (vie.traineddata) cho Tesseract OCR."""
+    import urllib.request
+    import subprocess
+    from arminer.utils.env import detect_tesseract_path
+
+    tess_path = detect_tesseract_path()
+    target_dir = (tess_path.parent / "tessdata") if tess_path else Path("C:/Program Files/Tesseract-OCR/tessdata")
+    target_file = target_dir / "vie.traineddata"
+
+    if target_file.exists() and target_file.stat().st_size > 1000000:
+        console.print(f"[bold green]✓ vie.traineddata đã sẵn sàng tại:[/] {target_file}")
+        return
+
+    url = "https://github.com/tesseract-ocr/tessdata_fast/raw/main/vie.traineddata"
+    console.print(f"[cyan]Đang tải vie.traineddata về:[/] {target_file} ...")
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(url, target_file)
+        console.print("[bold green]✓ Tải thành công vie.traineddata![/bold green]")
+    except PermissionError:
+        console.print("[yellow]! Thư mục cài đặt yêu cầu quyền Administrator.[/yellow]")
+        console.print("[dim]Đang mở cửa sổ PowerShell Administrator để tải tự động...[/dim]")
+        ps_cmd = f'Invoke-WebRequest -Uri "{url}" -OutFile "{target_file}"'
+        try:
+            subprocess.run(
+                ["powershell", "-Command", f'Start-Process powershell -Verb RunAs -ArgumentList \'-NoExit -Command "{ps_cmd}; Write-Host `"`n[ARMINER] Đã tải xong vie.traineddata! Bấm phím bất kỳ để đóng...`"; $null = $Host.UI.RawUI.ReadKey(`"NoEcho,IncludeKeyDown`")\''],
+                check=True
+            )
+            console.print("[bold green]Đã kích hoạt cửa sổ Administrator để tải file. Hãy bấm Yes (UAC) nếu được hỏi.[/bold green]")
+        except Exception as e:
+            console.print(f"[red]Không thể tự động gọi quyền Admin: {e}[/red]")
+            console.print(f"Bạn vui lòng mở PowerShell bằng 'Run as Administrator' và chạy lệnh sau:\n[bold cyan]{ps_cmd}[/bold cyan]")
+    except Exception as e:
+        console.print(f"[red]Lỗi khi tải vie.traineddata: {e}[/red]")
 
 
 if __name__ == "__main__":

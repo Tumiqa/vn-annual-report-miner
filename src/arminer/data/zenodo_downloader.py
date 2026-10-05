@@ -399,7 +399,10 @@ class ZenodoDownloader:
         if not path or not path.exists() or not path.is_file():
             return False
         try:
-            import fitz
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                import fitz
             doc = fitz.open(path)
             pages = len(doc)
             doc.close()
