@@ -143,11 +143,15 @@ def _guess_number_format(col_name: str) -> Optional[str]:
         return "0"
     if cl in ("mention", "dummy", "substantive"):
         return "0"
+    if any(k in cl for k in ("density", "mat_do")):
+        return '0.0000"%"'
+    if cl == "coverage" or cl.endswith("_coverage"):
+        return "0.0000"
     if any(k in cl for k in ("pct", "ratio", "rate", "roa", "roe", "ros", "margin", "ty_le", "bien")):
         return "0.00%"
     if any(k in cl for k in ("log", "ln_", "log_frequency", "log_freq")):
         return "0.0000"
-    if any(k in cl for k in ("density", "mat_do", "coverage")):
+    if "coverage" in cl:
         return "0.0000"
     if cl in ("n", "obs", "n_obs", "observations", "so_luong", "total_words", "word_count", "hits", "total_articles", "articles_with_hits", "total_mentions", "unique_keywords"):
         return "#,##0"

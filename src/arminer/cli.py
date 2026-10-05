@@ -213,7 +213,10 @@ def _scan_single_file(pdf_file: Path, flex_dict, topic, fuzzy, threshold, output
     for name, val in variables.items():
         if name in ("total_words", "keyword_top5"):
             continue
-        display_val = f"{val}" if isinstance(val, int) else f"{val:.4f}"
+        if name == "Density" or name.endswith("_Density") or name.endswith("_density"):
+            display_val = f"{val:.4f}%" if isinstance(val, (int, float)) else f"{val}"
+        else:
+            display_val = f"{val}" if isinstance(val, int) else f"{val:.4f}"
         var_table.add_row(name, display_val)
 
     console.print(Panel.fit(
