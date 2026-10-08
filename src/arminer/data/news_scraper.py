@@ -895,7 +895,7 @@ class CompanyWebsiteScraper:
     def __init__(self, resolver: CompanyWebsiteResolver):
         self.resolver = resolver
 
-    def get_article_links(self, ticker: str, max_links: Optional[int] = None) -> List[str]:
+    def get_article_links(self, ticker: str, max_links: Optional[int] = None, keywords: Optional[List[str]] = None) -> List[str]:
         comp = self.resolver.get_company(ticker)
         website = self.resolver.resolve_website(ticker)
         if not website:
@@ -904,6 +904,7 @@ class CompanyWebsiteScraper:
 
         article_links: Set[str] = set()
         domain = urlparse(website).netloc.replace("www.", "").lower()
+        normalized_kws = [k.lower().strip() for k in keywords] if keywords else []
 
         # Phase 1: Try XML Sitemap Discovery (yields 100% of archived articles)
         sitemap_candidates = [
@@ -948,16 +949,34 @@ class CompanyWebsiteScraper:
                         except Exception:
                             pass
 
+                    priority_locs = []
+                    general_locs = []
                     for loc_url in raw_locs:
                         if loc_url.endswith(".xml"):
                             continue
                         p_lower = urlparse(loc_url).path.lower()
                         if any(k in p_lower for k in self.NEWS_KEYWORDS) and len(p_lower.rstrip("/").split("/")[-1]) > 8:
-                            article_links.add(loc_url)
-                            if max_links is not None and len(article_links) >= max_links:
-                                break
+                            # Check if matches topic keywords
+                            if normalized_kws and any(kw in p_lower for kw in normalized_kws):
+                                priority_locs.append(loc_url)
+                            else:
+                                general_locs.append(loc_url)
+
+                    # Add priority links first
+                    for l in priority_locs:
+                        article_links.add(l)
+                        if max_links is not None and len(article_links) >= max_links:
+                            break
+
+                    # Add general links up to quota or reasonable safety limit
+                    gen_limit = max_links if max_links is not None else 100
+                    for l in general_locs:
+                        if len(article_links) >= (gen_limit + len(priority_locs)):
+                            break
+                        article_links.add(l)
+
                     if len(article_links) > 0:
-                        logger.info(f"Sitemap auto-discovery for {ticker} ({sm_url}) found {len(article_links)} news URLs")
+                        logger.info(f"Sitemap auto-discovery for {ticker} ({sm_url}) selected {len(article_links)} news URLs (priority: {len(priority_locs)})")
                         break
             except Exception as e:
                 logger.debug(f"Sitemap parse skipped {sm_url}: {e}")
@@ -1224,7 +1243,7 @@ class MultiSourceNewsAggregator:
             progress_cb(f"Đang quét đồng thời {len(sources)} nguồn tin tức cho {t} ({company_name or 'DN niêm yết'})...", 0, target_articles or 0)
 
         def collect_portal_links(scraper_cls, portal_name: str) -> List[str]:
-            """Collect links by ticker first, then expand with clean company name for exhaustive recall."""
+            """Collect links by ticker, company name, and topic keywords for exhaustive recall."""
             links = scraper_cls.get_article_links(t, max_links=target_per_source)
             if clean_name and (target_per_source is None or len(links) < target_per_source):
                 rem = None if target_per_source is None else (target_per_source - len(links))
@@ -1232,6 +1251,23 @@ class MultiSourceNewsAggregator:
                 for u in extra:
                     if u not in links:
                         links.append(u)
+
+            # Topic keyword search expansion for historical recall (e.g. FPT blockchain, CMC blockchain)
+            if kw_list and (target_per_source is None or len(links) < target_per_source):
+                for kw in kw_list[:3]:
+                    if target_per_source is not None and len(links) >= target_per_source:
+                        break
+                    rem = None if target_per_source is None else (target_per_source - len(links))
+                    kw_links = scraper_cls.get_article_links(f"{t} {kw}", max_links=rem)
+                    for u in kw_links:
+                        if u not in links:
+                            links.append(u)
+                    if clean_name and (target_per_source is None or len(links) < target_per_source):
+                        rem = None if target_per_source is None else (target_per_source - len(links))
+                        kw_links2 = scraper_cls.get_article_links(f"{clean_name} {kw}", max_links=rem)
+                        for u in kw_links2:
+                            if u not in links:
+                                links.append(u)
             return links
 
         def _fetch_source_links(src_name: str) -> Tuple[str, List[str]]:
@@ -1239,7 +1275,7 @@ class MultiSourceNewsAggregator:
                 if src_name == "custom" and custom_urls:
                     return "custom", (custom_urls if target_articles is None else custom_urls[:target_articles * 2])
                 elif src_name == "company_website":
-                    return "company_website", self.company_scraper.get_article_links(t, max_links=target_per_source)
+                    return "company_website", self.company_scraper.get_article_links(t, max_links=target_per_source, keywords=kw_list)
                 elif src_name == "cafef":
                     return "cafef", collect_portal_links(CafeFScraper, "CafeF")
                 elif src_name == "tinnhanhchungkhoan":
