@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+from datetime import datetime
 from difflib import SequenceMatcher
 import json
 import os
@@ -26,6 +27,7 @@ import time
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple
 import urllib.parse
 from urllib.parse import urljoin, urlparse
+import xml.etree.ElementTree as ET
 
 try:
     from bs4 import BeautifulSoup
@@ -253,111 +255,215 @@ class CompanyWebsiteResolver:
 
 
 class UniversalNewsExtractor:
-    """Extracts article content, clean text, publication date, and title from any webpage."""
+    """
+    Extracts high-fidelity article content, clean text, publication date,
+    true title, sapo (lead), and preserves inline image captions while
+    thoroughly purging all related news boxes, recommended links, and extraneous boilerplate.
+    """
 
-    @staticmethod
-    def extract_from_html(html: str, url: str) -> Optional[Dict[str, Any]]:
+    SITE_BRANDING_PATTERN = re.compile(
+        r"\s*[-|–—]\s*(?:VnExpress|CafeF|CafeBiz|Tin nhanh chứng khoán|VnEconomy|VietnamNet|Dân trí|Báo Đầu tư|Vietstock|Tuổi Trẻ|Thanh Niên|Lao Động|Zing|Người Lao Động|.*?\.(?:vn|com|net)).*$",
+        re.I,
+    )
+
+    UNWANTED_DOM_SELECTORS = [
+        # Related news & recommended article boxes
+        "[class*='related']", "[class*='tinlienquan']", "[class*='tin-lien-quan']",
+        "[class*='tin-cung-chuyen-muc']", "[class*='tinkhac']", "[class*='box-tinkhac']",
+        "[class*='box-relate']", "[class*='react-relate']", "[class*='other-news']",
+        "[class*='more-news']", "[class*='link-content-footer']", "[class*='box_tinkhac']",
+        "[class*='connect-news']", "[class*='connect_news']", "[class*='box-embed']",
+        "[class*='box_embed']", "[class*='box-stream']",
+        # Metadata / tags / author / social / ads
+        "[class*='tag']", "[class*='author']", "[class*='social']", "[class*='share']",
+        "[class*='comment']", "[class*='banner']", "[class*='quangcao']", "[class*='ad-']",
+        "[class*='ads']", "[class*='bottom-info']", "[class*='newsletter']", "[class*='box-vote']",
+        "[class*='rating']", "[id*='related']", "[id*='tinlienquan']", "[id*='comment']",
+        "[id*='share']", "[id*='quangcao']",
+    ]
+
+    BOILERPLATE_PATTERNS = [
+        re.compile(r"^(?:tin|bài|video|ảnh)\s+(?:liên quan|cùng chuyên mục|khác|tương tự)\b", re.I),
+        re.compile(r"^(?:xem|đọc|tham khảo|theo dõi|bấm vào đây để xem)\s+(?:thêm|tiếp|ngay|chi tiết)\b", re.I),
+        re.compile(r"^có thể bạn quan tâm\b", re.I),
+        re.compile(r"^(?:từ khóa|tags?):\s*", re.I),
+        re.compile(r"^link\s+(?:gốc|bài viết):\s*", re.I),
+        re.compile(r"^(?:bản quyền thuộc về|copyright)\b", re.I),
+        re.compile(r"^mọi thắc mắc,?\s+vui lòng liên hệ\b", re.I),
+        re.compile(r"^theo\s+(?:cafef|cafebiz|vietstock|vneconomy|tin nhanh chứng khoán|báo đầu tư|doanh nghiệp & tiếp thị|vietnamnet|vnexpress)\b", re.I),
+        re.compile(r"^việt nam hàng ngày$", re.I),
+    ]
+
+    @classmethod
+    def extract_from_html(cls, html: str, url: str) -> Optional[Dict[str, Any]]:
         if not html or len(html.strip()) < 100:
             return None
 
-        # 1. Try Trafilatura with metadata
-        try:
-            extracted_json = trafilatura.extract(
-                html,
-                url=url,
-                output_format="json",
-                with_metadata=True,
-                include_comments=False,
-                include_tables=True,
-                favor_recall=True,
-            )
-            if extracted_json:
-                data = json.loads(extracted_json)
-                text = data.get("text") or ""
-                title = data.get("title") or ""
-                date = data.get("date") or ""
-                author = data.get("author") or ""
-
-                pub_year = UniversalNewsExtractor.parse_year(date, url, text)
-                if text and len(text.strip()) > 80:
-                    return {
-                        "url": url,
-                        "title": title.strip() or UniversalNewsExtractor._extract_title_soup(html),
-                        "text": text.strip(),
-                        "published_date": date,
-                        "published_year": pub_year,
-                        "author": author,
-                        "word_count": len(text.split()),
-                        "extractor": "trafilatura",
-                    }
-        except Exception as e:
-            logger.debug(f"Trafilatura extraction warning for {url}: {e}")
-
-        # 2. BeautifulSoup Fallback
         try:
             soup = BeautifulSoup(html, "html.parser")
-            # Remove scripts, styles, navigations, footers
-            for tag in soup(["script", "style", "nav", "footer", "header", "aside", "noscript"]):
+            # 1. Decompose global script/style/iframe tags
+            for tag in soup(["script", "style", "noscript", "iframe", "svg", "canvas", "audio", "video"]):
                 tag.decompose()
 
+            # 2. Extract true Title
             title = ""
-            h1 = soup.find("h1")
-            if h1 and h1.get_text(strip=True):
-                title = h1.get_text(strip=True)
-            elif soup.title and soup.title.get_text(strip=True):
+            for sel in [
+                "h1.title-detail", "h1.detail-title", "h1.article-title", "h1.title_post",
+                "h1[itemprop='headline']", "h1"
+            ]:
+                h1 = soup.select_one(sel)
+                if h1 and len(h1.get_text(strip=True)) > 5:
+                    title = h1.get_text(strip=True)
+                    break
+            if not title:
+                og_title = soup.find("meta", property="og:title") or soup.find("meta", attrs={"name": "twitter:title"})
+                if og_title and og_title.get("content"):
+                    title = og_title["content"].strip()
+            if not title and soup.title:
                 title = soup.title.get_text(strip=True)
 
-            # Look for common article body containers
-            candidates = soup.find_all(
-                ["article", "div", "section"],
-                class_=re.compile(r"content|article|detail|post-body|entry-content", re.IGNORECASE),
-            )
-            body_text = ""
-            if candidates:
-                # Pick the longest container
-                longest = max(candidates, key=lambda c: len(c.get_text(strip=True)))
-                body_text = longest.get_text(separator="\n", strip=True)
+            if title:
+                title = cls.SITE_BRANDING_PATTERN.sub("", title).strip()
+
+            # 3. Extract true Sapo / Lead (phần đầu bài viết)
+            sapo = ""
+            for sel in [
+                "h2.sapo", "div.sapo", "p.sapo", "p.description", "h2.description",
+                "div.detail__summary", "div.post-summary", "div.content-detail-sapo",
+                "h2.content-detail-sapo", "div.lead", "p.lead", "div.summary"
+            ]:
+                el = soup.select_one(sel)
+                if el and len(el.get_text(strip=True)) > 15:
+                    sapo = el.get_text(strip=True)
+                    break
+            if not sapo:
+                meta_desc = soup.find("meta", property="og:description") or soup.find("meta", attrs={"name": "description"})
+                if meta_desc and meta_desc.get("content") and len(meta_desc["content"].strip()) > 20:
+                    sapo = meta_desc["content"].strip()
+
+            # 4. Identify Primary Article Body Container
+            BODY_SELECTORS = [
+                "article.fck_detail", "div.fck_detail", "div.detail-content",
+                "div.content-detail", "div.maincontent", "div.detail__content",
+                "div.post-content", "div.contentdetail", "div#mainContent",
+                "div[itemprop='articleBody']", "article"
+            ]
+            body = None
+            for sel in BODY_SELECTORS:
+                found = soup.select_one(sel)
+                if found and len(found.get_text(strip=True)) > 80:
+                    body = found
+                    break
+            if not body:
+                body = soup.find("body") or soup
+
+            # 5. Scoped Cleaning inside Article Body
+            for sel in cls.UNWANTED_DOM_SELECTORS:
+                for tag in body.select(sel):
+                    tag.decompose()
+
+            # 6. Preserve Images & Captions inline
+            caption_count = 0
+            for fig in body.find_all(["figure", "div"], class_=re.compile(r"photo|image|figure|vcsortable|fig-picture", re.I)):
+                cap_text = ""
+                cap_tag = fig.find(["figcaption", "p", "div", "em", "span"], class_=re.compile(r"caption|photo_desc|desc", re.I))
+                if not cap_tag:
+                    cap_tag = fig.find("figcaption")
+                if cap_tag and len(cap_tag.get_text(strip=True)) > 5:
+                    cap_text = cap_tag.get_text(strip=True)
+                else:
+                    img = fig.find("img")
+                    if img:
+                        alt = (img.get("alt") or img.get("title") or "").strip()
+                        alt_clean = re.sub(r"[-–]\s*Ảnh\s*\d+\.?$", "", alt, flags=re.I).strip()
+                        if alt_clean and len(alt_clean) > 10 and not alt_clean.lower().endswith((".jpg", ".png", ".webp")):
+                            cap_text = alt_clean
+                if cap_text:
+                    fig.replace_with(soup.new_string(f"\n[Chú thích ảnh: {cap_text}]\n"))
+                    caption_count += 1
+                else:
+                    fig.decompose()
+
+            for img in body.find_all("img"):
+                alt = (img.get("alt") or img.get("title") or "").strip()
+                alt_clean = re.sub(r"[-–]\s*Ảnh\s*\d+\.?$", "", alt, flags=re.I).strip()
+                if alt_clean and len(alt_clean) > 10 and not alt_clean.lower().endswith((".jpg", ".png", ".webp")):
+                    img.replace_with(soup.new_string(f"\n[Chú thích ảnh: {alt_clean}]\n"))
+                    caption_count += 1
+                else:
+                    img.decompose()
+
+            # 7. Extract raw text & filter trailing boilerplate lines
+            raw_text = body.get_text(separator="\n", strip=True)
+            lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
+            cleaned_lines = []
+            for line in lines:
+                if any(p.search(line) for p in cls.BOILERPLATE_PATTERNS):
+                    continue
+                cleaned_lines.append(line)
+
+            final_body = "\n\n".join(cleaned_lines)
+
+            # 8. Sapo Guarantee: Prepend sapo if not already at start
+            if sapo and sapo not in final_body:
+                final_text = f"{sapo}\n\n{final_body}"
             else:
-                # Fallback to all paragraphs
-                paras = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 20]
-                body_text = "\n\n".join(paras)
+                final_text = final_body
 
-            if len(body_text.strip()) > 80:
-                # Look for meta date
-                date = ""
-                time_tag = soup.find("time")
-                if time_tag:
-                    date = time_tag.get("datetime") or time_tag.get_text(strip=True)
-                if not date:
-                    meta_date = soup.find("meta", property=re.compile(r"date|time", re.IGNORECASE))
-                    if meta_date:
-                        date = meta_date.get("content", "")
+            # 9. Fallback to Trafilatura if extracted body is too short
+            if len(final_text.strip()) < 80 and trafilatura:
+                try:
+                    traf_res = trafilatura.extract(
+                        html, url=url, output_format="json", with_metadata=True,
+                        include_comments=False, include_tables=True, favor_recall=True
+                    )
+                    if traf_res:
+                        d = json.loads(traf_res)
+                        t_text = d.get("text") or ""
+                        if len(t_text.strip()) > len(final_text.strip()):
+                            final_text = t_text.strip()
+                            if not title:
+                                title = d.get("title") or ""
+                except Exception:
+                    pass
 
-                pub_year = UniversalNewsExtractor.parse_year(str(date), url, body_text)
+            # 10. Publication Date & Year
+            date = ""
+            time_tag = soup.find("time")
+            if time_tag:
+                date = time_tag.get("datetime") or time_tag.get_text(strip=True)
+            if not date:
+                meta_date = soup.find("meta", property=re.compile(r"date|time|published", re.I))
+                if meta_date:
+                    date = meta_date.get("content", "")
+
+            pub_year = cls.parse_year(str(date), url, final_text)
+
+            if len(final_text.strip()) > 80:
                 return {
                     "url": url,
-                    "title": title.strip(),
-                    "text": body_text.strip(),
+                    "title": title.strip() or cls._extract_title_soup(html),
+                    "sapo": sapo.strip(),
+                    "text": final_text.strip(),
                     "published_date": str(date)[:10] if date else "",
                     "published_year": pub_year,
                     "author": "",
-                    "word_count": len(body_text.split()),
-                    "extractor": "beautifulsoup_fallback",
+                    "word_count": len(final_text.split()),
+                    "captions_count": caption_count,
+                    "extractor": "bs4_high_fidelity",
                 }
         except Exception as e:
-            logger.warning(f"Soup extraction failed for {url}: {e}")
+            logger.warning(f"Universal extraction failed for {url}: {e}")
 
         return None
 
     @staticmethod
     def parse_year(date_str: str = "", url: str = "", text: str = "") -> Optional[int]:
         """Extract publication year (e.g. 2024) from date string, URL, or lead text."""
-        # 1. Date string (e.g. 2024-03-15 or 15/03/2024)
         if date_str:
             m = re.search(r"\b(20[0-2]\d)\b", str(date_str))
             if m:
                 return int(m.group(1))
-        # 2. URL path (e.g. /2024/05/ or -2023.html)
         if url:
             m = re.search(r"/(20[0-2]\d)[/-]", url)
             if m:
@@ -365,7 +471,6 @@ class UniversalNewsExtractor:
             m2 = re.search(r"\b(20[0-2]\d)\b", url)
             if m2:
                 return int(m2.group(1))
-        # 3. Text opening (dateline e.g. "Hà Nội, 15/04/2024 -")
         if text:
             m = re.search(r"\b\d{1,2}[/-]\d{1,2}[/-](20[0-2]\d)\b", text[:500])
             if m:
@@ -379,24 +484,44 @@ class UniversalNewsExtractor:
     def _extract_title_soup(html: str) -> str:
         try:
             soup = BeautifulSoup(html, "html.parser")
+            h1 = soup.find("h1")
+            if h1 and h1.get_text(strip=True):
+                return h1.get_text(strip=True)
             if soup.title and soup.title.get_text(strip=True):
                 return soup.title.get_text(strip=True)
-            h1 = soup.find("h1")
-            if h1:
-                return h1.get_text(strip=True)
         except Exception:
             pass
         return "Không có tiêu đề"
 
 
 class CafeFScraper:
-    """Scrapes news articles related to a ticker from CafeF."""
+    """Scrapes news articles related to a ticker from CafeF with topic page, search, and sitemap fallback."""
 
     BASE_SEARCH_URL = "https://cafef.vn/tim-kiem.chn?keywords={ticker}&page={page}"
+    TOPIC_URL = "https://cafef.vn/{ticker}.html"
 
     @classmethod
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
+        t_clean = ticker.lower().strip()
+
+        # 1. Check dedicated Ticker Topic Page first (instant recent 40 articles)
+        try:
+            resp = safe_requests_get(cls.TOPIC_URL.format(ticker=t_clean), headers=DEFAULT_HEADERS, timeout=6)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", href=True):
+                    h = a["href"].strip()
+                    if re.search(r"-\d+\.chn$", h):
+                        full_url = h if h.startswith("http") else urljoin("https://cafef.vn", h)
+                        if full_url not in links:
+                            links.append(full_url)
+                            if max_links is not None and len(links) >= max_links:
+                                return links
+        except Exception as e:
+            logger.debug(f"CafeF topic page failed for {ticker}: {e}")
+
+        # 2. Paginated search
         page = 1
         max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
 
@@ -410,8 +535,7 @@ class CafeFScraper:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 found_in_page = 0
                 for a in soup.find_all("a", href=True):
-                    href = a["href"]
-                    # CafeF articles end with -[0-9]+.chn
+                    href = a["href"].strip()
                     if re.search(r"-\d+\.chn$", href):
                         full_url = href if href.startswith("http") else f"https://cafef.vn{href}"
                         if full_url not in links:
@@ -427,6 +551,29 @@ class CafeFScraper:
                 logger.warning(f"CafeF search failed for {ticker} page {page}: {e}")
                 break
 
+        # 3. Google News / Latest News sitemaps scan for breaking articles
+        if max_links is None or len(links) < max_links:
+            for sm_url in ["https://cafef.vn/google-news-sitemap.xml", "https://cafef.vn/latest-news-sitemap.xml"]:
+                try:
+                    r = safe_requests_get(sm_url, headers=DEFAULT_HEADERS, timeout=5)
+                    if r.status_code == 200:
+                        root = ET.fromstring(r.content)
+                        for url_elem in root.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}url'):
+                            loc = url_elem.find('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')
+                            if loc is None or not loc.text:
+                                continue
+                            u_text = loc.text.strip()
+                            t_elem = url_elem.find('.//{http://www.google.com/schemas/sitemap-news/0.9}title')
+                            title_text = (t_elem.text or "").strip() if t_elem is not None else ""
+                            comb = f"{u_text.lower()} {title_text.lower()}"
+                            if f"/{t_clean}-" in comb or f"-{t_clean}-" in comb or re.search(rf"\b{t_clean}\b", comb):
+                                if u_text not in links:
+                                    links.append(u_text)
+                                    if max_links is not None and len(links) >= max_links:
+                                        return links
+                except Exception:
+                    pass
+
         return links
 
 
@@ -434,10 +581,30 @@ class CafeBizScraper:
     """Scrapes news articles related to a ticker from CafeBiz."""
 
     BASE_SEARCH_URL = "https://cafebiz.vn/search.chn?keywords={ticker}&page={page}"
+    TOPIC_URL = "https://cafebiz.vn/{ticker}.html"
 
     @classmethod
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
+        t_clean = ticker.lower().strip()
+
+        # 1. Topic page
+        try:
+            resp = safe_requests_get(cls.TOPIC_URL.format(ticker=t_clean), headers=DEFAULT_HEADERS, timeout=6)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", href=True):
+                    h = a["href"].strip()
+                    if re.search(r"-\d+\.chn$", h):
+                        full_url = h if h.startswith("http") else urljoin("https://cafebiz.vn", h)
+                        if full_url not in links:
+                            links.append(full_url)
+                            if max_links is not None and len(links) >= max_links:
+                                return links
+        except Exception:
+            pass
+
+        # 2. Search
         page = 1
         max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
 
@@ -467,13 +634,36 @@ class CafeBizScraper:
                 logger.warning(f"CafeBiz search failed for {ticker} page {page}: {e}")
                 break
 
+        # 3. Google News sitemap scan
+        if max_links is None or len(links) < max_links:
+            try:
+                r = safe_requests_get("https://cafebiz.vn/google-news-sitemap.xml", headers=DEFAULT_HEADERS, timeout=5)
+                if r.status_code == 200:
+                    root = ET.fromstring(r.content)
+                    for url_elem in root.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}url'):
+                        loc = url_elem.find('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')
+                        if loc is None or not loc.text:
+                            continue
+                        u_text = loc.text.strip()
+                        t_elem = url_elem.find('.//{http://www.google.com/schemas/sitemap-news/0.9}title')
+                        title_text = (t_elem.text or "").strip() if t_elem is not None else ""
+                        comb = f"{u_text.lower()} {title_text.lower()}"
+                        if f"/{t_clean}-" in comb or f"-{t_clean}-" in comb or re.search(rf"\b{t_clean}\b", comb):
+                            if u_text not in links:
+                                links.append(u_text)
+                                if max_links is not None and len(links) >= max_links:
+                                    return links
+            except Exception:
+                pass
+
         return links
 
 
 class VnExpressScraper:
-    """Scrapes business news from VnExpress (Chuyên mục Kinh Doanh)."""
+    """Scrapes business and general news from VnExpress."""
 
     BASE_SEARCH_URL = "https://timkiem.vnexpress.net/?q={ticker}&cate_code=kinh-doanh&page={page}"
+    GENERAL_SEARCH_URL = "https://timkiem.vnexpress.net/?q={ticker}&page={page}"
 
     @classmethod
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
@@ -481,70 +671,104 @@ class VnExpressScraper:
         page = 1
         max_pages = 30 if max_links is None else max(1, (max_links + 14) // 15)
 
-        while (max_links is None or len(links) < max_links) and page <= max_pages:
-            url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
-            try:
-                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
-                if resp.status_code != 200:
+        for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
+            page = 1
+            while (max_links is None or len(links) < max_links) and page <= max_pages:
+                url = search_template.format(ticker=urllib.parse.quote(ticker), page=page)
+                try:
+                    resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
+                    if resp.status_code != 200:
+                        break
+
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    found_in_page = 0
+                    for a in soup.find_all("a", href=True):
+                        href = a["href"].strip()
+                        if re.search(r"-\d+\.html$", href) and "vnexpress.net" in href:
+                            if href not in links and not any(x in href for x in ["/video/", "/podcast/", "/anh/"]):
+                                links.append(href)
+                                found_in_page += 1
+                                if max_links is not None and len(links) >= max_links:
+                                    break
+
+                    if found_in_page == 0:
+                        break
+                    page += 1
+                except Exception as e:
+                    logger.warning(f"VnExpress search failed for {ticker} page {page}: {e}")
                     break
 
-                soup = BeautifulSoup(resp.text, "html.parser")
-                found_in_page = 0
-                for a in soup.find_all("a", href=True):
-                    href = a["href"].strip()
-                    if re.search(r"-\d+\.html$", href) and "vnexpress.net" in href:
-                        if href not in links and not any(x in href for x in ["/video/", "/podcast/", "/anh/"]):
-                            links.append(href)
-                            found_in_page += 1
-                            if max_links is not None and len(links) >= max_links:
-                                break
-
-                if found_in_page == 0:
-                    break
-                page += 1
-            except Exception as e:
-                logger.warning(f"VnExpress search failed for {ticker} page {page}: {e}")
+            if max_links is not None and len(links) >= max_links:
                 break
 
         return links
 
 
 class VietnamNetScraper:
-    """Scrapes business news from VietnamNet."""
+    """Scrapes business news from VietnamNet with sitemap scan."""
 
     BASE_SEARCH_URL = "https://vietnamnet.vn/tim-kiem?q={ticker}&c=kinh-doanh&page={page}"
+    GENERAL_SEARCH_URL = "https://vietnamnet.vn/tim-kiem?q={ticker}&page={page}"
 
     @classmethod
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
+        t_clean = ticker.lower().strip()
         page = 1
         max_pages = 30 if max_links is None else max(1, (max_links + 14) // 15)
 
-        while (max_links is None or len(links) < max_links) and page <= max_pages:
-            url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
-            try:
-                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
-                if resp.status_code != 200:
+        for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
+            page = 1
+            while (max_links is None or len(links) < max_links) and page <= max_pages:
+                url = search_template.format(ticker=urllib.parse.quote(ticker), page=page)
+                try:
+                    resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
+                    if resp.status_code != 200:
+                        break
+
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    found_in_page = 0
+                    for a in soup.find_all("a", href=True):
+                        href = a["href"].strip()
+                        if re.search(r"-\d+\.html$", href):
+                            full_url = href if href.startswith("http") else urljoin("https://vietnamnet.vn", href)
+                            if full_url not in links and not any(x in full_url for x in ["/video/", "/podcast/"]):
+                                links.append(full_url)
+                                found_in_page += 1
+                                if max_links is not None and len(links) >= max_links:
+                                    break
+
+                    if found_in_page == 0:
+                        break
+                    page += 1
+                except Exception as e:
+                    logger.warning(f"VietnamNet search failed for {ticker} page {page}: {e}")
                     break
 
-                soup = BeautifulSoup(resp.text, "html.parser")
-                found_in_page = 0
-                for a in soup.find_all("a", href=True):
-                    href = a["href"].strip()
-                    if re.search(r"-\d+\.html$", href):
-                        full_url = href if href.startswith("http") else urljoin("https://vietnamnet.vn", href)
-                        if full_url not in links and not any(x in full_url for x in ["/video/", "/podcast/"]):
-                            links.append(full_url)
-                            found_in_page += 1
-                            if max_links is not None and len(links) >= max_links:
-                                break
-
-                if found_in_page == 0:
-                    break
-                page += 1
-            except Exception as e:
-                logger.warning(f"VietnamNet search failed for {ticker} page {page}: {e}")
+            if max_links is not None and len(links) >= max_links:
                 break
+
+        # Sitemaps scan for breaking articles
+        if max_links is None or len(links) < max_links:
+            try:
+                r = safe_requests_get("https://vietnamnet.vn/sitemap-news.xml", headers=DEFAULT_HEADERS, timeout=5)
+                if r.status_code == 200:
+                    root = ET.fromstring(r.content)
+                    for url_elem in root.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}url'):
+                        loc = url_elem.find('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')
+                        if loc is None or not loc.text:
+                            continue
+                        u_text = loc.text.strip()
+                        t_elem = url_elem.find('.//{http://www.google.com/schemas/sitemap-news/0.9}title')
+                        title_text = (t_elem.text or "").strip() if t_elem is not None else ""
+                        comb = f"{u_text.lower()} {title_text.lower()}"
+                        if f"/{t_clean}-" in comb or f"-{t_clean}-" in comb or re.search(rf"\b{t_clean}\b", comb):
+                            if u_text not in links:
+                                links.append(u_text)
+                                if max_links is not None and len(links) >= max_links:
+                                    return links
+            except Exception:
+                pass
 
         return links
 
@@ -570,7 +794,7 @@ class TinNhanhCKScraper:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 found_in_page = 0
                 for a in soup.find_all("a", href=True):
-                    href = a["href"]
+                    href = a["href"].strip()
                     if re.search(r"-post\d+\.html$", href) or re.search(r"-\d+\.html$", href):
                         full_url = href if href.startswith("http") else urljoin("https://tinnhanhchungkhoan.vn", href)
                         if full_url not in links:
@@ -590,34 +814,83 @@ class TinNhanhCKScraper:
 
 
 class VnEconomyScraper:
-    """Scrapes news from VnEconomy."""
+    """Scrapes news from VnEconomy with pagination and sitemaps scan."""
 
-    BASE_SEARCH_URL = "https://vneconomy.vn/tim-kiem.htm?q={ticker}"
+    BASE_SEARCH_URL = "https://vneconomy.vn/tim-kiem.html?Text={ticker}&SortBy=newest&page={page}"
 
     @classmethod
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
-        url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker))
-        try:
-            resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
-            if resp.status_code == 200:
+        t_clean = ticker.lower().strip()
+        page = 1
+        max_pages = 10 if max_links is None else max(1, (max_links + 9) // 10)
+
+        # 1. Search with exact results container selection
+        while (max_links is None or len(links) < max_links) and page <= max_pages:
+            url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
+            try:
+                resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
+                if resp.status_code != 200:
+                    break
+
                 soup = BeautifulSoup(resp.text, "html.parser")
-                for a in soup.find_all("a", href=True):
-                    href = a["href"]
-                    if href.endswith(".htm") and not any(x in href for x in ["tim-kiem", "tag", "chuyen-muc"]):
-                        full_url = href if href.startswith("http") else urljoin("https://vneconomy.vn", href)
-                        if full_url not in links and len(full_url.split("/")[-1]) > 10:
-                            links.append(full_url)
-                            if max_links is not None and len(links) >= max_links:
-                                break
-        except Exception as e:
-            logger.warning(f"VnEconomy search failed for {ticker}: {e}")
+                found_in_page = 0
+                for art in soup.select("div.layout-article-feed article"):
+                    h3 = art.find("h3")
+                    if h3:
+                        a = h3.find("a", href=True)
+                        if a:
+                            full_url = urljoin("https://vneconomy.vn", a["href"].strip())
+                            if full_url not in links:
+                                links.append(full_url)
+                                found_in_page += 1
+                                if max_links is not None and len(links) >= max_links:
+                                    break
+
+                if found_in_page == 0:
+                    break
+                page += 1
+            except Exception as e:
+                logger.warning(f"VnEconomy search failed for {ticker} page {page}: {e}")
+                break
+
+        # 2. Sitemaps scan for breaking articles
+        if max_links is None or len(links) < max_links:
+            for sm_url in ["https://vneconomy.vn/sitemap/google-news.xml", "https://vneconomy.vn/sitemap/latest-news.xml"]:
+                try:
+                    r = safe_requests_get(sm_url, headers=DEFAULT_HEADERS, timeout=5)
+                    if r.status_code == 200:
+                        root = ET.fromstring(r.content)
+                        for url_elem in root.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}url'):
+                            loc = url_elem.find('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')
+                            if loc is None or not loc.text:
+                                continue
+                            u_text = loc.text.strip()
+                            t_elem = url_elem.find('.//{http://www.google.com/schemas/sitemap-news/0.9}title')
+                            title_text = (t_elem.text or "").strip() if t_elem is not None else ""
+                            comb = f"{u_text.lower()} {title_text.lower()}"
+                            if f"/{t_clean}-" in comb or f"-{t_clean}-" in comb or re.search(rf"\b{t_clean}\b", comb):
+                                if u_text not in links:
+                                    links.append(u_text)
+                                    if max_links is not None and len(links) >= max_links:
+                                        return links
+                except Exception:
+                    pass
 
         return links
 
 
 class CompanyWebsiteScraper:
-    """Scrapes news articles from official company website and IR portal."""
+    """
+    Scrapes news articles from official company website and IR portal
+    using XML Sitemap Auto-Discovery heuristic with recursive path fallback.
+    """
+
+    NEWS_KEYWORDS = [
+        "tin-tuc", "news", "bai-viet", "thong-bao", "su-kien",
+        "co-dong", "quan-he", "detail", "post", "article", "press",
+        "investor", "ir", "cong-bo-thong-tin", "bao-cao"
+    ]
 
     def __init__(self, resolver: CompanyWebsiteResolver):
         self.resolver = resolver
@@ -630,56 +903,108 @@ class CompanyWebsiteScraper:
             return []
 
         article_links: Set[str] = set()
-        news_paths = (comp.get("news_paths") if comp else None) or [
-            "/tin-tuc", "/bai-viet", "/news", "/quan-he-co-dong",
-            "/thong-bao", "/su-kien", "/press-release", "/quan-he-nha-dau-tu/tin-tuc"
-        ]
-
-        # Also check IR portal if available
-        ir_portal = comp.get("ir_portal") if comp else None
-        target_urls = [urljoin(website, p) for p in news_paths]
-        if ir_portal:
-            target_urls.insert(0, ir_portal)
-
         domain = urlparse(website).netloc.replace("www.", "").lower()
 
-        domain_failed = False
-        for target_url in target_urls:
-            if domain_failed or (max_links is not None and len(article_links) >= max_links):
+        # Phase 1: Try XML Sitemap Discovery (yields 100% of archived articles)
+        sitemap_candidates = [
+            urljoin(website, "/sitemap.xml"),
+            urljoin(website, "/sitemap_index.xml"),
+            urljoin(website, "/news-sitemap.xml"),
+            urljoin(website, "/post-sitemap.xml"),
+            urljoin(website, "/sitemap/sitemap.xml"),
+        ]
+        # Also check with www. if base has no www
+        if not website.startswith("http://www.") and not website.startswith("https://www."):
+            parsed = urlparse(website)
+            www_base = f"{parsed.scheme}://www.{parsed.netloc}"
+            sitemap_candidates.append(urljoin(www_base, "/sitemap.xml"))
+
+        for sm_url in sitemap_candidates:
+            if max_links is not None and len(article_links) >= max_links:
                 break
             try:
-                resp = safe_requests_get(target_url, headers=DEFAULT_HEADERS, timeout=5)
-                if resp.status_code != 200:
-                    continue
+                resp = safe_requests_get(sm_url, headers=DEFAULT_HEADERS, timeout=4)
+                if resp.status_code == 200 and ("xml" in resp.headers.get("content-type", "").lower() or resp.text.strip().startswith("<?xml")):
+                    root = ET.fromstring(resp.content)
+                    raw_locs = [
+                        loc.text.strip()
+                        for loc in root.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}loc')
+                        if loc.text
+                    ]
+                    # Check if sitemap index contains child news sitemaps
+                    child_news_sitemaps = [
+                        l for l in raw_locs
+                        if any(k in l.lower() for k in ["news", "tin-tuc", "post", "article", "thong-bao"])
+                        and l.endswith(".xml")
+                    ]
+                    for child_sm in child_news_sitemaps[:3]:
+                        try:
+                            r_c = safe_requests_get(child_sm, headers=DEFAULT_HEADERS, timeout=4)
+                            if r_c.status_code == 200:
+                                root_c = ET.fromstring(r_c.content)
+                                for loc_c in root_c.findall('.//{http://www.sitemaps.org/schemas/sitemap/0.9}loc'):
+                                    if loc_c.text:
+                                        raw_locs.append(loc_c.text.strip())
+                        except Exception:
+                            pass
 
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for a in soup.find_all("a", href=True):
-                    href = a["href"].strip()
-                    if not href or href.startswith("#") or "javascript:" in href:
-                        continue
-
-                    full_url = urljoin(target_url, href)
-                    full_domain = urlparse(full_url).netloc.replace("www.", "").lower()
-
-                    # Keep only links within the same domain
-                    if domain in full_domain or full_domain in domain:
-                        # Match news/article keywords in path or slug
-                        path_lower = urlparse(full_url).path.lower()
-                        is_news = any(k in path_lower for k in [
-                            "tin-tuc", "news", "bai-viet", "thong-bao", "su-kien",
-                            "co-dong", "quan-he", "detail", "post", "article", "press"
-                        ])
-                        slug = path_lower.rstrip("/").split("/")[-1]
-                        if is_news and len(slug) > 8 and full_url != target_url:
-                            article_links.add(full_url)
+                    for loc_url in raw_locs:
+                        if loc_url.endswith(".xml"):
+                            continue
+                        p_lower = urlparse(loc_url).path.lower()
+                        if any(k in p_lower for k in self.NEWS_KEYWORDS) and len(p_lower.rstrip("/").split("/")[-1]) > 8:
+                            article_links.add(loc_url)
                             if max_links is not None and len(article_links) >= max_links:
                                 break
-            except (requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as e:
-                logger.debug(f"Connection failed for {domain} ({e}), skipping remaining paths for this company.")
-                domain_failed = True
-                break
+                    if len(article_links) > 0:
+                        logger.info(f"Sitemap auto-discovery for {ticker} ({sm_url}) found {len(article_links)} news URLs")
+                        break
             except Exception as e:
-                logger.debug(f"Failed crawling {target_url} for {ticker}: {e}")
+                logger.debug(f"Sitemap parse skipped {sm_url}: {e}")
+
+        # Phase 2: Fallback / Expansion via standard news paths crawling
+        if max_links is None or len(article_links) < max_links:
+            news_paths = (comp.get("news_paths") if comp else None) or [
+                "/tin-tuc", "/bai-viet", "/news", "/quan-he-co-dong",
+                "/thong-bao", "/su-kien", "/press-release", "/quan-he-nha-dau-tu/tin-tuc"
+            ]
+            ir_portal = comp.get("ir_portal") if comp else None
+            target_urls = [urljoin(website, p) for p in news_paths]
+            if ir_portal:
+                target_urls.insert(0, ir_portal)
+
+            domain_failed = False
+            for target_url in target_urls:
+                if domain_failed or (max_links is not None and len(article_links) >= max_links):
+                    break
+                try:
+                    resp = safe_requests_get(target_url, headers=DEFAULT_HEADERS, timeout=5)
+                    if resp.status_code != 200:
+                        continue
+
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    for a in soup.find_all("a", href=True):
+                        href = a["href"].strip()
+                        if not href or href.startswith("#") or "javascript:" in href:
+                            continue
+
+                        full_url = urljoin(target_url, href)
+                        full_domain = urlparse(full_url).netloc.replace("www.", "").lower()
+
+                        if domain in full_domain or full_domain in domain:
+                            path_lower = urlparse(full_url).path.lower()
+                            is_news = any(k in path_lower for k in self.NEWS_KEYWORDS)
+                            slug = path_lower.rstrip("/").split("/")[-1]
+                            if is_news and len(slug) > 8 and full_url != target_url:
+                                article_links.add(full_url)
+                                if max_links is not None and len(article_links) >= max_links:
+                                    break
+                except (requests.exceptions.ConnectTimeout, requests.exceptions.ConnectionError) as e:
+                    logger.debug(f"Connection failed for {domain} ({e}), skipping remaining paths.")
+                    domain_failed = True
+                    break
+                except Exception as e:
+                    logger.debug(f"Failed crawling {target_url} for {ticker}: {e}")
 
         return list(article_links)
 
@@ -717,6 +1042,13 @@ def extract_company_brand_tokens(
     if "Vietcombank" in company_name or "Ngoại thương Việt Nam" in company_name:
         tokens.add("Vietcombank")
         tokens.add("Ngoại thương")
+    if "Thế giới Di động" in company_name or "Thế Giới Di Động" in company_name:
+        tokens.add("Thế giới Di động")
+        tokens.add("Bách Hóa Xanh")
+    if "FPT" in company_name:
+        tokens.add("FPT")
+        tokens.add("FPT Retail")
+        tokens.add("FPT Shop")
 
     # Domain brand extraction: e.g. "https://www.vinamilk.com.vn" -> "vinamilk"
     if website:
@@ -740,21 +1072,15 @@ def is_company_confirmed(
 ) -> bool:
     """
     Strictly verifies if the article actually pertains to the target company.
-    Rules:
-    1. Official company website articles are always confirmed.
-    2. Custom URLs provided by user are always confirmed.
-    3. For portal articles, title and text MUST mention either:
-       - The ticker code as a standalone token or with financial prefix (e.g. '(ACL)', 'mã ACL', 'cổ phiếu ACL', 'ACL')
-       - The full official company name
-       - The clean company name or recognizable brand tokens (e.g. 'Thủy sản Cửu Long', 'Vinamilk', 'Hòa Phát')
     """
     src = art.get("news_source", "")
     if src == "company_website" or "custom" in src:
         return True
 
     title = (art.get("title") or "").strip()
+    sapo = (art.get("sapo") or "").strip()
     text = (art.get("text") or "")[:4000]
-    combined = f"{title}\n{text}"
+    combined = f"{title}\n{sapo}\n{text}"
     combined_lower = combined.lower()
 
     t_upper = ticker.upper().strip()
@@ -798,14 +1124,14 @@ def is_keyword_confirmed(
 ) -> bool:
     """
     Verifies if the article contains at least one of the target keywords.
-    If keywords is None or empty, returns True (no keyword filter).
     """
     if not keywords:
         return True
 
     title = (art.get("title") or "").lower()
+    sapo = (art.get("sapo") or "").lower()
     text = (art.get("text") or "").lower()
-    combined = f"{title}\n{text}"
+    combined = f"{title}\n{sapo}\n{text}"
 
     for kw in keywords:
         k = kw.strip().lower()
@@ -817,8 +1143,8 @@ def is_keyword_confirmed(
 
 class MultiSourceNewsAggregator:
     """
-    Coordinates crawling across all sources with dynamic quota backfill
-    and strict company/keyword verification ("hết sức có thể").
+    Coordinates crawling across all sources with sitemap scanning,
+    dynamic quota backfill, and strict company/keyword verification.
     """
 
     def __init__(self, resolver: Optional[CompanyWebsiteResolver] = None):
@@ -858,7 +1184,7 @@ class MultiSourceNewsAggregator:
     ) -> List[Dict[str, Any]]:
         """
         Gathers articles for a ticker across requested sources without limits (when target_articles is None).
-        Strictly confirms exact company identity and validates keywords ("có từ khóa chuẩn là lụm thôi").
+        Strictly confirms exact company identity and validates keywords.
         Optionally filters by publication year range [year_from, year_to].
         """
         t = ticker.upper().strip()
@@ -892,7 +1218,7 @@ class MultiSourceNewsAggregator:
         target_per_source = None
         if target_articles is not None and target_articles > 0:
             multiplier = 2 if (year_from or year_to) else 1
-            target_per_source = max(5, ((target_articles * multiplier) // max(1, len(sources))) + 4)
+            target_per_source = max(8, ((target_articles * multiplier) // max(1, len(sources))) + 6)
 
         if progress_cb:
             progress_cb(f"Đang quét đồng thời {len(sources)} nguồn tin tức cho {t} ({company_name or 'DN niêm yết'})...", 0, target_articles or 0)
@@ -930,7 +1256,6 @@ class MultiSourceNewsAggregator:
                 logger.warning(f"Lỗi tìm kiếm nguồn {src_name} cho {t}: {exc}")
             return src_name, []
 
-        # Execute link collection in parallel across all requested sources
         req_sources = [s for s in sources if s in [
             "custom", "company_website", "cafef", "tinnhanhchungkhoan",
             "vneconomy", "vnexpress", "cafebiz", "vietnamnet"
@@ -947,7 +1272,7 @@ class MultiSourceNewsAggregator:
                         logger.warning(f"Lỗi hoàn tất thu thập link từ {future_to_src[fut]}: {e}")
 
         # Interleave links from sources to achieve a balanced and diverse aggregation
-        all_candidate_links: List[Tuple[str, str]] = []  # (url, source_name)
+        all_candidate_links: List[Tuple[str, str]] = []
         seen_urls: Set[str] = set()
         source_keys = list(links_by_source.keys())
         max_len = max([len(v) for v in links_by_source.values()]) if links_by_source else 0
@@ -961,13 +1286,15 @@ class MultiSourceNewsAggregator:
                         seen_urls.add(u)
                         all_candidate_links.append((u, s_key))
 
-        # Backfill expansion only if target_articles is specifically configured
+        # Dynamic backfill expansion if target_articles is specified and candidate links are low
         if target_articles is not None and len(all_candidate_links) < (target_articles * 2):
             needed = (target_articles * 2) - len(all_candidate_links)
             for backfill_src, scraper_fn in [
                 ("cafef", lambda: CafeFScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
                 ("cafebiz", lambda: CafeBizScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
                 ("vnexpress", lambda: VnExpressScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
+                ("vneconomy", lambda: VnEconomyScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
+                ("vietnamnet", lambda: VietnamNetScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
             ]:
                 if backfill_src in sources:
                     extra_links = scraper_fn()
@@ -1019,7 +1346,7 @@ class MultiSourceNewsAggregator:
                             logger.debug(f"Article dropped (unconfirmed company): {art.get('title')}")
                             continue
 
-                        # 2. Keyword Confirmation ("có từ khóa chuẩn là lụm thôi")
+                        # 2. Keyword Confirmation
                         if not is_keyword_confirmed(art, kw_list):
                             logger.debug(f"Article dropped (missing required keywords): {art.get('title')}")
                             continue
@@ -1028,12 +1355,11 @@ class MultiSourceNewsAggregator:
                         collected_articles.append(art)
                         if progress_cb:
                             progress_cb(
-                                f"Đã lụm [{len(collected_articles)}]: {art['title'][:40]}... ({src})",
+                                f"Đã thu thập [{len(collected_articles)}]: {art['title'][:40]}... ({src})",
                                 len(collected_articles),
                                 target_articles or total_links,
                             )
 
-                        # Only break if an explicit quota limit was requested
                         if target_articles is not None and target_articles > 0:
                             if len(collected_articles) >= target_articles:
                                 break
@@ -1042,3 +1368,4 @@ class MultiSourceNewsAggregator:
 
         logger.info(f"Finished crawling for {t}: collected {len(collected_articles)} verified articles")
         return collected_articles
+
