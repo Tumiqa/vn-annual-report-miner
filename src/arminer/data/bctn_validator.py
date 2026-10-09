@@ -40,44 +40,32 @@ def strip_accents(text: str) -> str:
     return "".join(c for c in nfkd if unicodedata.category(c) != "Mn").replace("đ", "d").replace("Đ", "D")
 
 
-# Từ khóa công văn hành chính (nếu trang ít và tiêu đề thuộc nhóm này -> loại trừ)
+# Từ khóa chỉ loại trừ khi tài liệu rõ ràng là Nghị quyết / Biên bản họp ĐHĐCĐ / Điều lệ thuần túy
 ADMINISTRATIVE_DISCLOSURE_PATTERNS = [
-    "công bố thông tin định kỳ",
-    "cong bo thong tin dinh ky",
-    "bản công bố thông tin",
-    "ban cong bo thong tin",
-    "công bố thông tin",
-    "cong bo thong tin",
-    "thông tin định kỳ",
-    "thong tin dinh ky",
-    "kính gửi: ủy ban chứng khoán",
-    "kinh gui: uy ban chung khoan",
-    "kính gửi ủy ban chứng khoán",
-    "kinh gui uy ban chung khoan",
-    "sở giao dịch chứng khoán",
-    "so giao dich chung khoan",
-    "giải trình chênh lệch",
-    "giai trinh chenh lech",
-    "chứng thư số",
-    "chung thu so",
-    "digitally signed by",
     "nghị quyết đại hội đồng cổ đông",
     "nghi quyet dai hoi dong co dong",
     "biên bản họp đại hội đồng cổ đông",
     "bien ban hop dai hoi dong co dong",
     "nghị quyết đhđcđ",
     "nghi quyet dhdcd",
+    "biên bản đhđcđ",
+    "bien ban dhdcd",
     "điều lệ công ty",
     "dieu le cong ty",
-    "quy chế nội bộ",
-    "quy che noi bo",
+    "quy chế nội bộ về quản trị",
+    "quy che noi bo ve quan tri",
+    "báo cáo kết quả kiểm phiếu",
+    "bao cao ket qua kiem phieu",
 ]
 
-# Từ khóa xác nhận BCTN hợp lệ
+# Từ khóa xác nhận BCTN hợp lệ (hỗ trợ nhiều biến thể và định dạng)
 GENUINE_BCTN_PATTERNS = [
     "báo cáo thường niên",
     "bao cao thuong nien",
+    "bctn",
     "annual report",
+    "thường niên",
+    "thuong nien",
     "báo cáo tổng kết",
     "bao cao tong ket",
     "báo cáo tình hình hoạt động",
@@ -90,6 +78,18 @@ GENUINE_BCTN_PATTERNS = [
     "bao cao ban giam doc",
     "báo cáo ban tổng giám đốc",
     "bao cao ban tong giam doc",
+    "báo cáo tài chính",
+    "bao cao tai chinh",
+    "hoạt động sản xuất kinh doanh",
+    "hoat dong san xuat kinh doanh",
+    "kết quả sản xuất kinh doanh",
+    "ket qua san xuat kinh doanh",
+    "báo cáo ban kiểm soát",
+    "bao cao ban kiem soat",
+    "thông tư 155",
+    "thong tu 155",
+    "thông tư 96",
+    "thong tu 96",
 ]
 
 
@@ -126,21 +126,25 @@ def is_valid_bctn_file(
             doc.close()
             return False
 
-        # Nếu số trang vừa phải (8 - 15 trang), kiểm tra xem có phải là nghị quyết hoặc công văn dài không
+        # Nếu số trang vừa phải (8 - 15 trang), kiểm tra xem có phải là nghị quyết ĐHĐCĐ/Điều lệ thuần túy không
         if strict_content_check and pages <= 15:
-            # Lấy text trang 1 và 2
+            # Lấy text 3 trang đầu
             text_probe = ""
-            for i in range(min(2, pages)):
-                text_probe += " " + doc[i].get_text()[:600]
+            for i in range(min(3, pages)):
+                text_probe += " " + doc[i].get_text()[:1000]
 
             doc.close()
+
+            # Nếu là file scan ảnh hoàn toàn (không có text layer) và >= 8 trang -> chấp nhận
+            if len(text_probe.strip()) < 50:
+                return True
 
             probe_low = text_probe.lower()
             probe_unacc = strip_accents(probe_low)
             has_genuine_kw = any(k in probe_low or k in probe_unacc for k in GENUINE_BCTN_PATTERNS)
             has_admin_kw = any(k in probe_low or k in probe_unacc for k in ADMINISTRATIVE_DISCLOSURE_PATTERNS)
 
-            # Nếu tiêu đề là công văn/nghị quyết mà không có chữ Báo cáo thường niên -> loại trừ
+            # Chỉ loại trừ khi tài liệu rõ ràng là Nghị quyết ĐHĐCĐ / Điều lệ mà hoàn toàn không có nội dung báo cáo
             if has_admin_kw and not has_genuine_kw:
                 return False
 
@@ -213,14 +217,14 @@ def audit_bctn_file(pdf_path: Union[str, Path, bytes]) -> Dict[str, Any]:
             res["valid"] = False
             return res
 
-        # Kiểm tra nội dung văn bản hành chính
-        if pages <= 15:
+        # Kiểm tra nội dung văn bản hành chính (Nghị quyết ĐHĐCĐ / Điều lệ thuần túy)
+        if pages <= 15 and len(title_sample.strip()) >= 50:
             text_lower = title_sample.lower()
             text_unacc = strip_accents(text_lower)
             has_genuine_kw = any(k in text_lower or k in text_unacc for k in GENUINE_BCTN_PATTERNS)
             has_admin_kw = any(k in text_lower or k in text_unacc for k in ADMINISTRATIVE_DISCLOSURE_PATTERNS)
             if has_admin_kw and not has_genuine_kw:
-                res["reason"] = f"Văn bản hành chính/nghị quyết ({pages} trang, không phải BCTN)"
+                res["reason"] = f"Văn bản hành chính/nghị quyết ĐHĐCĐ ({pages} trang, không phải BCTN)"
                 res["is_valid"] = False
                 res["valid"] = False
                 return res

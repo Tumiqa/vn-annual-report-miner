@@ -411,15 +411,16 @@ class ZenodoDownloader:
             return False
 
     def _check_and_return_path(self, path: Path) -> Optional[Path]:
-        """Xác thực file tồn tại và đủ số trang chuẩn BCTN, tự động loại bỏ nếu là công văn 1-2 trang."""
+        """Xác thực file tồn tại và đủ số trang chuẩn BCTN, chỉ loại bỏ khỏi cache nếu là file đệm tạm thời."""
         if path.exists() and path.is_file() and path.stat().st_size > 1000:
             if self._is_valid_bctn_file(path):
                 return path.resolve()
             else:
-                # File cào lỗi / công văn 1-2 trang -> loại bỏ khỏi cache để không trả về kết quả sai
+                # File cào lỗi / công văn 1-2 trang -> chỉ loại bỏ nếu nằm trong cache tạm thời
                 try:
-                    logger.warning(f"Phát hiện file sai quy cách (< {MIN_BCTN_PAGES} trang): {path.name}. Đã loại bỏ khỏi cache.")
-                    path.unlink(missing_ok=True)
+                    if self.cache_root in path.resolve().parents:
+                        logger.warning(f"Phát hiện file cache sai quy cách (< {MIN_BCTN_PAGES} trang): {path.name}. Đã loại bỏ khỏi cache.")
+                        path.unlink(missing_ok=True)
                 except Exception:
                     pass
         return None

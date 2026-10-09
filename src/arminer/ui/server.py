@@ -1112,7 +1112,8 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                             "icb_l2": r.get("icb_l2", "Khác"),
                         })
                     elif lp and Path(lp).exists():
-                        logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {Path(lp).name}")
+                        audit = audit_bctn_file(lp)
+                        logger.warning(f"Bỏ qua file không đạt chuẩn BCTN: {Path(lp).name} ({audit.get('reason', 'Không hợp lệ')})")
 
         if req.report_paths:
             for fp in req.report_paths:
@@ -1130,7 +1131,8 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                         "icb_l1": l1, "icb_l2": l2,
                     })
                 elif p.exists():
-                    logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {p.name}")
+                    audit = audit_bctn_file(p)
+                    logger.warning(f"Bỏ qua file không đạt chuẩn BCTN: {p.name} ({audit.get('reason', 'Không hợp lệ')})")
 
         if not target_items:
             err_msg = "Không có báo cáo nào khả dụng để quét."
@@ -1338,13 +1340,17 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                 await asyncio.sleep(0)
 
                 for idx, r in enumerate(records, 1):
-                    lp = await asyncio.to_thread(
-                        zenodo_downloader.get_pdf_path,
-                        ticker=r.get("ticker", ""),
-                        year=r.get("year", 0),
-                        archive_period=r.get("archive_period", ""),
-                        relative_path=r.get("relative_path", ""),
-                    )
+                    raw_lp = r.get("local_path")
+                    if raw_lp and Path(raw_lp).exists() and is_valid_bctn_file(raw_lp):
+                        lp = Path(raw_lp)
+                    else:
+                        lp = await asyncio.to_thread(
+                            zenodo_downloader.get_pdf_path,
+                            ticker=r.get("ticker", ""),
+                            year=r.get("year", 0),
+                            archive_period=r.get("archive_period", ""),
+                            relative_path=r.get("relative_path", ""),
+                        )
                     if lp and Path(lp).exists() and is_valid_bctn_file(lp):
                         r["local_path"] = str(Path(lp).resolve())
                         target_records.append(r)
