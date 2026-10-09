@@ -54,10 +54,15 @@
          =================================================================== -->
     <section id="tab-catalog" class="tab-panel active">
       <div class="card" style="margin-bottom: 20px;">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <h2 class="card-title">Kho Báo Cáo Thường Niên (14,528 Báo Cáo)</h2>
+            <h2 class="card-title">Kho Báo Cáo Thường Niên (<span id="totalCatalogCountBadge">19,827</span> Báo Cáo)</h2>
             <p class="card-desc">Lọc theo mã cổ phiếu, phân ngành ICB và khoảng thời gian. Chọn các báo cáo cần nghiên cứu và bấm "Khai Phá".</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnReindexCatalog" class="btn btn-secondary btn-sm" type="button" title="Làm mới chỉ mục từ Google Drive H:, ổ F: và local" style="white-space: nowrap;">
+              <span id="reindexIcon">🔄</span> Cập Nhật Chỉ Mục
+            </button>
           </div>
         </div>
 

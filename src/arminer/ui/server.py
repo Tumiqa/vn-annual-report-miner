@@ -315,6 +315,19 @@ def add_catalog_folder(req: AddFolderRequest):
     }
 
 
+@app.post("/api/catalog/reindex")
+def reindex_catalog_endpoint():
+    """Làm mới toàn bộ chỉ mục báo cáo (quét lại local, drive H:, cache) và tái cấu trúc Inverted Indices tức thì."""
+    res = catalog.reindex()
+    return {
+        "success": True,
+        "total_records": res["total_records"],
+        "total_local": res["total_local"],
+        "unique_tickers": res["unique_tickers"],
+        "message": f"Đã cập nhật chỉ mục thành công! Tổng cộng {res['total_records']:,} báo cáo ({res['total_local']:,} file sẵn sàng).",
+    }
+
+
 
 @app.get("/api/companies/master-dataset")
 def get_companies_master_dataset(

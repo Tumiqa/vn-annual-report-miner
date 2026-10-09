@@ -374,8 +374,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryEl = document.getElementById('catalogResultSummary');
     if (summaryEl) {
       const totalStr = (totalMatched !== undefined ? totalMatched : currentReports.length).toLocaleString();
-      summaryEl.innerHTML = `Hiển thị: <strong>${currentReports.length}</strong> / <strong>${totalStr}</strong> báo cáo trong Zenodo`;
+      summaryEl.innerHTML = `Hiển thị: <strong>${currentReports.length}</strong> / <strong>${totalStr}</strong> báo cáo`;
+      const badgeEl = document.getElementById('totalCatalogCountBadge');
+      if (badgeEl && totalMatched && (!catTickerInput.value.trim() && !catSectorL1.value && !catYearFrom.value && !catYearTo.value)) {
+        badgeEl.textContent = totalMatched.toLocaleString();
+      }
     }
+  }
+
+  // Handle Manual Re-index Button
+  const btnReindexCatalog = document.getElementById('btnReindexCatalog');
+  if (btnReindexCatalog) {
+    btnReindexCatalog.addEventListener('click', async () => {
+      const icon = document.getElementById('reindexIcon');
+      btnReindexCatalog.disabled = true;
+      if (icon) icon.textContent = '⏳';
+      try {
+        const res = await fetch('/api/catalog/reindex', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert(`✅ ${data.message}`);
+          await loadSectors();
+          await loadCatalog();
+          const badgeEl = document.getElementById('totalCatalogCountBadge');
+          if (badgeEl && data.total_records) {
+            badgeEl.textContent = data.total_records.toLocaleString();
+          }
+        } else {
+          alert('Không thể làm mới chỉ mục: ' + (data.detail || 'Lỗi không xác định'));
+        }
+      } catch (err) {
+        alert('Lỗi kết nối khi cập nhật chỉ mục: ' + err.message);
+      } finally {
+        btnReindexCatalog.disabled = false;
+        if (icon) icon.textContent = '🔄';
+      }
+    });
   }
 
   function updateSelectionState() {

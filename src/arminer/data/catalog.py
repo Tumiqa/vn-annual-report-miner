@@ -61,6 +61,34 @@ class UnifiedCatalog:
             self._build_inverted_indices()
             self._initialized = True
 
+    def reindex(self) -> Dict[str, Any]:
+        """Làm mới toàn bộ chỉ mục (local, Google Drive H:, cache) và tái cấu trúc Inverted Indices."""
+        with self._init_lock:
+            self._initialized = False
+            self._local_index.clear()
+            self._zenodo_df = None
+            self._records_cache.clear()
+            self._ticker_index.clear()
+            self._unique_tickers.clear()
+            self._sector_index.clear()
+            self._icb_l1_index.clear()
+            self._icb_l2_index.clear()
+            self._icb_l3_index.clear()
+            self._icb_l4_index.clear()
+            self._year_index.clear()
+            self._exchange_index.clear()
+            self._sectors_tree_cache = None
+            self.initialize()
+            logger.info(
+                f"UnifiedCatalog: Re-indexing complete -> {len(self._records_cache)} total records, "
+                f"{len(self._local_index)} local PDFs"
+            )
+            return {
+                "total_records": len(self._records_cache),
+                "total_local": len(self._local_index),
+                "unique_tickers": len(self._unique_tickers),
+            }
+
     def index_directory(self, directory: str | Path, source_name: str = "custom_local"):
         """Chủ động lập chỉ mục cho một thư mục PDF bất kỳ trên máy tính người dùng."""
         p_dir = Path(directory).resolve()
