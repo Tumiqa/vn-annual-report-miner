@@ -131015,5 +131015,29 @@
     "direct_url": "",
     "pages": 44,
     "healthy": true
+  },
+  "BCG_2022": {
+    "file_id": "",
+    "file_name": "BCG_2022_BCTN.pdf",
+    "file_size": 53712268,
+    "pages": 56,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "CID_2007": {
+    "file_id": "",
+    "file_name": "CID_2007_BCTN.pdf",
+    "file_size": 545884,
+    "pages": 21,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "DHP_2016": {
+    "file_id": "",
+    "file_name": "DHP_2016_BCTN.pdf",
+    "file_size": 5144781,
+    "pages": 37,
+    "healthy": true,
+    "direct_url": ""
   }
 }
