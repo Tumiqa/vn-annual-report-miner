@@ -1,0 +1,602 @@
+name: AI Dictionary (Vietnamese Corporate Panel)
+version: '1.0'
+description: Bộ từ điển Trí tuệ Nhân tạo (AI) 3 phân cấp (3-Tier) chuẩn hóa cho nghiên
+  cứu Báo cáo thường niên Việt Nam
+categories:
+  core_anchor:
+    display_name: Thuật ngữ AI cốt lõi & Biến thể trực tiếp (Core Anchors)
+    keywords:
+    - keyword: ai-driven
+      language: vi,en
+      weight: 1.0
+      variants: AI explicit variants|AI driven|AI-powered|AI powered|AI-based|AI based|AI-enabled|AI
+        enabled|trí thông minh nhân tạo|tri thong minh nhan tao|trí tuệ thông minh
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai
+      language: vi,en
+      weight: 1.0
+      variants: A.I.|A1|Al|artificial intelligence|trí tuệ nhân tạo|tri tue nhan tao
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  methods_models:
+    display_name: Mô hình & Phương pháp kỹ thuật AI (Methods & Models)
+    keywords:
+    - keyword: neural network
+      language: vi,en
+      weight: 1.0
+      variants: AI networks and data science|neural networks|mạng nơ-ron|mạng noron|mạng
+        thần kinh|data science|khoa học dữ liệu|predictive AI|narrow AI
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: computer vision
+      language: vi,en
+      weight: 1.0
+      variants: thị giác máy tính|thi giac may tinh
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: deep learning
+      language: vi,en
+      weight: 1.0
+      variants: học sâu|hoc sau
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: generative ai
+      language: vi,en
+      weight: 1.0
+      variants: generative artificial intelligence|GenAI|Gen A.I.|AI tạo sinh|AI tao
+        sinh
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: large language model
+      language: vi,en
+      weight: 1.0
+      variants: LLM|large language models|mô hình ngôn ngữ lớn|mo hinh ngon ngu lon
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: machine learning
+      language: vi,en
+      weight: 1.0
+      variants: học máy|hoc may|ML|A.I./ML|AI/ML
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: natural language processing
+      language: vi,en
+      weight: 1.0
+      variants: NLP|xử lý ngôn ngữ tự nhiên|xu ly ngon ngu tu nhien
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai agent
+      language: en
+      weight: 1.0
+      variants: AI Agents|agentic AI|AgenticAI
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  applications_solutions:
+    display_name: Ứng dụng & Giải pháp AI chuyên ngành (Applications & Solutions)
+    keywords:
+    - keyword: nhận diện giấy tờ và khuôn mặt
+      language: vi,en
+      weight: 1.0
+      variants: document and face recognition|identity-document verification|xác minh
+        giấy tờ tuỳ thân
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: nhận diện hình ảnh
+      language: vi,en
+      weight: 1.0
+      variants: image recognition|nhận dạng hình ảnh|nhận diện ảnh|nhận dạng ảnh
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: chatbot
+      language: en
+      weight: 0.8
+      variants: AI Chatbot|Chatbot AI
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: nhận diện khuôn mặt
+      language: vi,en
+      weight: 0.8
+      variants: face recognition|nhận dạng khuôn mặt|facial recognition
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fraud detection
+      language: vi,en
+      weight: 0.8
+      variants: Fraud Document Detection|phát hiện gian lận|phát hiện gian lận bằng
+        AI|gian lận
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: trợ lý ảo
+      language: vi,en
+      weight: 0.8
+      variants: virtual assistant|tro ly ao|virtual agent|trợ lý thông minh
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: voicebot
+      language: en
+      weight: 0.8
+      variants: AI Voice Agents|AI voice agent|voice assistant
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  products_platforms:
+    display_name: Nền tảng, Sản phẩm & Công cụ AI (Products & Platforms)
+    keywords:
+    - keyword: agentic ai
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai adjust
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai camera agent
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai claim
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai factory
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai voice agents
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: akabot
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: data360x
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: deepsearchx
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: esightx
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fine-tuning models
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fornix
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: xmainframe
+      language: en
+      weight: 1.0
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai center
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai coe
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai mentor
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai mentoring
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai platform
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai recommendation
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ai smarty
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: akaminds machine translation
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: camera ai
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fdd
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt ai engage
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt.ai
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt.ai conversation
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt.ai reader
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt.ai speech
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt.ai ver 3
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: fpt.ai vision
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: landing ai
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: landinglens
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: mila
+      language: en
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: sáng kiến ai
+      language: vi
+      weight: 0.8
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  governance_policy:
+    display_name: Quản trị & Chính sách AI (Governance & Policy)
+    keywords:
+    - keyword: ai governance
+      language: vi,en
+      weight: 1.0
+      variants: quản trị AI|governance AI|AI policy|chính sách sử dụng trí tuệ nhân
+        tạo|AI strategy|chiến lược AI|AI risk|rủi ro AI|AI-First|AI first
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  skills_training:
+    display_name: Đào tạo & Kỹ năng AI (Skills & Training)
+    keywords:
+    - keyword: ai training
+      language: vi,en
+      weight: 1.0
+      variants: AI training and skills|AI training program|đào tạo AI|đào tạo trí
+        tuệ nhân tạo|ứng dụng GenAI trong doanh nghiệp|AI skill|AI skills|AI competency|AI
+        capability|AI upskilling|AI reskilling|AI hiring|tuyển dụng bằng AI|sàng lọc
+        hồ sơ bằng AI
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  actions_implementation:
+    display_name: Hành động triển khai AI (Actions & Implementation)
+    keywords:
+    - keyword: triển khai ai
+      language: vi,en
+      weight: 0.8
+      variants: AI implementation action|ứng dụng AI|tích hợp AI|xây dựng hệ thống
+        AI|đưa vào vận hành|đưa vào sử dụng|đã triển khai|đã ứng dụng|đã áp dụng|implemented|deployed|integrated|in
+        production|rolled out|pilot|thử nghiệm AI|ứng dụng thử nghiệm
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  compounds_ecosystem:
+    display_name: Cụm danh từ ghép & Hệ sinh thái AI (Compounds & Ecosystem)
+    keywords:
+    - keyword: ai camera
+      language: vi,en
+      weight: 0.8
+      variants: AI technology compounds|camera AI|smart camera AI|AI engine|AI hub|AI
+        hóa|AI hoá|AI/Big Data|Big Data và AI|IoT và AI|Cloud và AI|Blockchain và
+        AI
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: công nghệ ai
+      language: vi
+      weight: 0.8
+      variants: AI compound business phrases|ứng dụng AI|giải pháp AI|hệ thống AI|nền
+        tảng AI|dự án AI|mô hình AI|thuật toán AI|chiến lược AI|phần mềm AI|trợ lý
+        AI|tính năng AI|năng lực AI|trung tâm AI|phòng lab AI|viện AI|tích hợp AI|triển
+        khai AI|phát triển AI|nghiên cứu AI|đầu tư AI|đào tạo AI|khóa học AI|khoá
+        học AI|nhân sự AI
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: chatgpt
+      language: en
+      weight: 0.8
+      variants: AI ecosystem references|Chat GPT|OpenAI|Copilot|Co-pilot
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: ocr
+      language: vi,en
+      weight: 0.8
+      variants: OCR with AI context|IDP|intelligent document processing|xử lý tài
+        liệu thông minh
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+  context_outcomes:
+    display_name: Tín hiệu ngữ cảnh, Tiêu chuẩn & Kết quả (Context & Outcomes)
+    keywords:
+    - keyword: fine-tuning
+      language: vi,en
+      weight: 0.5
+      variants: AI outcome signal|fine-tuning models|fine-tuned models|tinh chỉnh
+        mô hình|độ chính xác|accuracy|giảm thời gian|tiết kiệm thời gian|tiết kiệm
+        chi phí|tăng năng suất|cá nhân hóa|personalization|số lượt gọi|customers|khách
+        hàng
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: dự đoán khách hàng rời bỏ
+      language: vi
+      weight: 0.5
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: flezipt
+      language: en
+      weight: 0.5
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: giám sát chuồng trại
+      language: vi
+      weight: 0.5
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: iso/iec 42001
+      language: en
+      weight: 0.5
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+    - keyword: tư vấn tài chính
+      language: vi
+      weight: 0.5
+      is_ambiguous: true
+      ambiguity_note: Không được kết luận AI chỉ từ hit; phải đọc passage, chủ thể,
+        cơ chế, giai đoạn và evidence.
+exclusions:
+- keyword: ai (đại từ nghi vấn/bất định)
+  note: 'Loại các cụm: ai cũng, ai nấy, ai đó, ai biết, ai muốn, ai làm, ai có, ai
+    được, bất kỳ ai, bất cứ ai, cho ai, với ai'
+- keyword: adtech
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: agentops
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: ai-native
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: ban kiểm soát
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: bancassurance
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: big data
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: bảo hiểm
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: canh tác thông minh
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: churn prediction
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: chuyển đổi số
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: chuỗi cung ứng
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: chăn nuôi
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: chẩn đoán bệnh
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: cloud
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: crm
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: công nghệ tiếp thị
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: cảnh báo thị trường
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: data analytics
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: dữ liệu
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: dữ liệu lớn
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: dự báo
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: dự báo nhu cầu
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: ekyc
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: giao dịch thuật toán
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: giám sát hoạt động
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: hoạt động hàng ngày
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: hoạt động ngân hàng
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: hệ thống máy chủ
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: iot
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: its
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: lowcode
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: made by fpt
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: mobile ads
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: ngân hàng số
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: năng suất
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: nền tảng công nghệ mới
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: phát hiện rủi ro
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: phát triển khách hàng
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: phân tích dữ liệu
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: phân tích nội dung
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quản lý
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quản lý sản xuất
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quản lý vận hành
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quản trị rủi ro
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quản trị rủi ro tài chính
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quản trị tài chính
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: quỹ đầu tư khởi nghiệp
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: robot
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: rpa
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: sap s/4hana cloud
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: smart factory
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: smart farming
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: sản phẩm bảo hiểm
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: sản xuất
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: sức khỏe vật nuôi
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: tìm kiếm thông tin sản phẩm dịch vụ
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: tự động hóa
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: đào tạo cán bộ
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: đào tạo người lao động
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: đào tạo nhân sự
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: đào tạo nội bộ
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+- keyword: đào tạo xuất nhập khẩu
+  note: Không tính là AI nếu không có liên kết AI/model rõ trong cùng ngữ cảnh.
+classification_rules:
+  tier_1:
+    name: 'Tier 1: High Recall Core & Foundational AI'
+    description: Nhắc đến AI trực tiếp, mô hình học máy, học sâu, AI tạo sinh, LLM,
+      thị giác máy tính
+  tier_2:
+    name: 'Tier 2: Applied AI, Tools & Ecosystem'
+    description: Ứng dụng chuyên ngành (chatbot, eKYC/nhận diện, trợ lý ảo, Copilot,
+      ChatGPT, FPT.AI)
+  tier_3:
+    name: 'Tier 3: Context Signals & Standards'
+    description: Tín hiệu kết quả, chuẩn ISO/IEC 42001, tinh chỉnh mô hình
