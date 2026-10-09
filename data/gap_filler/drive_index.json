@@ -131039,5 +131039,26 @@
     "pages": 37,
     "healthy": true,
     "direct_url": ""
+  },
+  "DCM_2020": {
+    "ticker": "DCM",
+    "year": 2020,
+    "file_name": "DCM_2020_BCTN.pdf",
+    "file_size": 67437737,
+    "local_path": "H:\\My Drive\\arminer_bctn_gap\\DCM\\DCM_2020_BCTN.pdf"
+  },
+  "AAT_2019": {
+    "ticker": "AAT",
+    "year": 2019,
+    "file_name": "AAT_2019_BCTN.pdf",
+    "file_size": 41030939,
+    "local_path": "H:\\My Drive\\arminer_bctn_gap\\AAT\\AAT_2019_BCTN.pdf"
+  },
+  "AAT_2018": {
+    "ticker": "AAT",
+    "year": 2018,
+    "file_name": "AAT_2018_BCTN.pdf",
+    "file_size": 16949191,
+    "local_path": "H:\\My Drive\\arminer_bctn_gap\\AAT\\AAT_2018_BCTN.pdf"
   }
 }
