@@ -436,22 +436,22 @@ class UnifiedCatalog:
         try:
             gap_records = pd.DataFrame(rows)
             if self._zenodo_df is not None:
-                existing_keys = set(
-                    zip(self._zenodo_df["ticker_folder"].str.upper(),
-                        self._zenodo_df["year_full"])
+                # Ưu tiên tuyệt đối dữ liệu Google Drive: Ghi đè các bản ghi cũ của Zenodo
+                drive_keys = set(
+                    zip(gap_records["ticker_folder"].str.upper(),
+                        gap_records["year_full"])
                 )
-                gap_new = gap_records[
-                    ~gap_records.apply(
-                        lambda row: (str(row["ticker_folder"]).upper(), row["year_full"]) in existing_keys,
+                zenodo_kept = self._zenodo_df[
+                    ~self._zenodo_df.apply(
+                        lambda row: (str(row["ticker_folder"]).upper(), row["year_full"]) in drive_keys,
                         axis=1
                     )
                 ]
-                if len(gap_new) > 0:
-                    self._zenodo_df = pd.concat([self._zenodo_df, gap_new], ignore_index=True)
-                    logger.info(
-                        f"UnifiedCatalog: Merged {len(gap_new)} gap-filler records "
-                        f"→ total {len(self._zenodo_df)} records"
-                    )
+                self._zenodo_df = pd.concat([zenodo_kept, gap_records], ignore_index=True)
+                logger.info(
+                    f"UnifiedCatalog: Merged {len(gap_records)} Google Drive records "
+                    f"(đã ưu tiên ghi đè Zenodo) → total {len(self._zenodo_df)} records"
+                )
             else:
                 self._zenodo_df = gap_records
                 logger.info(f"UnifiedCatalog: Loaded {len(gap_records)} gap-filler records")
@@ -504,22 +504,30 @@ class UnifiedCatalog:
             row_arch = str(row.get("archive_period", ""))
             rec_id = str(row.get("record_id", ""))
 
-            if row_status == "gap_filler" or row_arch == "gap_filler" or "GAP_" in rec_id:
-                src = "gap_filler"
-            elif row_arch == "supplement" or "SUPP_" in rec_id:
-                src = "supplement"
-            else:
-                src = "zenodo"
-
             # Check local file existence in Google Drive or local index
             is_local = False
             local_path = ""
             if (t, y) in gdrive_map:
                 is_local = True
                 local_path = gdrive_map[(t, y)]
+                src = "gdrive_gap_filler"
+                row_arch = "gap_filler"
+            elif f"LOCAL_{t}_{y}" in self._local_index:
+                is_local = True
+                local_path = self._local_index[f"LOCAL_{t}_{y}"].get("local_path", "")
+                src = "gdrive_gap_filler"
+                row_arch = "gap_filler"
             elif f"{t}_{y}" in self._local_index:
                 is_local = True
                 local_path = self._local_index[f"{t}_{y}"].get("local_path", "")
+                src = "gdrive_gap_filler"
+                row_arch = "gap_filler"
+            elif row_status == "gap_filler" or row_arch == "gap_filler" or "GAP_" in rec_id:
+                src = "gap_filler"
+            elif row_arch == "supplement" or "SUPP_" in rec_id:
+                src = "supplement"
+            else:
+                src = "zenodo"
 
             rec = {
                 "record_id": rec_id,

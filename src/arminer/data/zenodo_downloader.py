@@ -527,9 +527,28 @@ class ZenodoDownloader:
             if hf_result and self._is_valid_bctn_file(hf_result):
                 return hf_result
 
-        # Destination in cache
-        period_dir = self.cache_root / archive_period
-        cached_pdf = period_dir / relative_path
+        # Ưu tiên dự phòng: Nếu chưa có trong local hay Cloud Drive, tự động gọi ReportHealer để tải BCTN chuẩn từ Vietstock/IR Portal
+        try:
+            from arminer.data.report_healer import ReportHealer
+            healer = ReportHealer()
+            healed = healer.heal_report(ticker, year)
+            if healed and healed.get("status") == "healed":
+                local_after = self._find_local_pdf(ticker, year, archive_period, relative_path)
+                if local_after and self._is_valid_bctn_file(local_after):
+                    return local_after
+        except Exception as e_heal:
+            logger.debug(f"ReportHealer auto-heal fallback error for {ticker} ({year}): {e_heal}")
+
+        # KHÔNG KẾT NỐI ZENODO REMOTE ARCHIVE ZIP:
+        # Toàn bộ kho dữ liệu đã được hợp nhất và quy chuẩn trên Google Drive & Local Cache.
+        # Bỏ qua hoàn toàn việc kết nối tải stream remote ZIP 20GB từ châu Âu để đảm bảo 0ms và không nghẽn mạng.
+        enable_zenodo = os.environ.get("ARMINER_ENABLE_ZENODO_STREAM", "0") == "1"
+        if not enable_zenodo:
+            logger.debug(
+                f"Zenodo remote ZIP stream is bypassed (Google Drive is primary repository). "
+                f"File not found on Drive/Local for {ticker} ({year})."
+            )
+            return None
 
         # --- STAGE 2: CIRCUIT BREAKER CHECK ---
         if not self.circuit_breaker.can_attempt():
@@ -539,7 +558,7 @@ class ZenodoDownloader:
             )
             return None
 
-        # --- STAGE 3: REMOTE EXTRACTION ---
+        # --- STAGE 3: REMOTE EXTRACTION (Chỉ chạy khi ARMINER_ENABLE_ZENODO_STREAM=1) ---
         zf = self._get_zip_handle(archive_period)
         if not zf:
             return None
@@ -863,15 +882,21 @@ class ZenodoDownloader:
         total = len(reports)
         to_download: List[Tuple[int, Dict[str, Any]]] = []
 
-        # Stage 1: Resolve all available local files first
+        # Stage 1: Resolve all available local files first (Fast 0ms check)
         for idx, r in enumerate(reports, 1):
             rel_path = r.get("relative_path", "")
             period = r.get("archive_period", "")
             ticker = r.get("ticker", "")
             year = r.get("year", 0)
 
-            local_found = self._find_local_pdf(ticker, year, period, rel_path)
-            if local_found:
+            raw_lp = r.get("local_path")
+            local_found = None
+            if raw_lp and Path(raw_lp).exists():
+                local_found = Path(raw_lp)
+            else:
+                local_found = self._find_local_pdf(ticker, year, period, rel_path)
+
+            if local_found and local_found.exists():
                 r["local_path"] = str(local_found.resolve())
                 r["download_status"] = "local_ready"
                 if progress_callback:
@@ -895,18 +920,9 @@ class ZenodoDownloader:
                 ticker = r.get("ticker", "")
                 year = r.get("year", 0)
 
-                if not self.circuit_breaker.can_attempt():
-                    r["local_path"] = None
-                    r["download_status"] = "circuit_open"
-                    with lock:
-                        completed_remote += 1
-                        if progress_callback:
-                            progress_callback(base_done + completed_remote, total, f"Zenodo quá tải: {ticker} ({year})")
-                    return r
-
                 with lock:
                     if progress_callback:
-                        progress_callback(base_done + completed_remote, total, f"Đang tải: {ticker} ({year})...")
+                        progress_callback(base_done + completed_remote, total, f"Đang chuẩn bị: {ticker} ({year})...")
 
                 p = self.get_pdf_path(
                     ticker=ticker,

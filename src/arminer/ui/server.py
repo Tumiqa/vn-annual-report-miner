@@ -927,10 +927,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
                 logger.warning(f"Bỏ qua file thông báo/công văn ngắn (< {MIN_BCTN_PAGES} trang): {p.name}")
 
     if not target_items:
-        err_msg = "Không có báo cáo nào khả dụng để quét."
-        if zenodo_downloader.circuit_breaker.is_open:
-            err_msg += f" Máy chủ Zenodo (Châu Âu) hiện đang quá tải ({zenodo_downloader.circuit_breaker.last_error})."
-        err_msg += " Bạn có thể đặt file PDF vào thư mục 'data/reports/' để quét offline siêu tốc không phụ thuộc mạng."
+        err_msg = "Không có báo cáo nào khả dụng để quét. Vui lòng kiểm tra lại bộ lọc hoặc kết nối Google Drive."
         raise HTTPException(status_code=400, detail=err_msg)
 
     is_pure_labor = (req.topic in ("none", "", None)) and req.extract_labor
@@ -1332,7 +1329,7 @@ async def download_reports_zip_stream(req: DownloadReportsZipRequest):
                             "phase": "download",
                             "current": 0,
                             "total": total_rec,
-                            "message": f"Đang chuẩn bị tải {total_rec} file gốc từ kho Zenodo...",
+                            "message": f"Đang chuẩn bị {total_rec} file gốc từ kho Google Drive / Cục bộ...",
                         },
                         ensure_ascii=False,
                     ),
