@@ -678,22 +678,6 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
     n_pages = 1
     if file_path.suffix.lower() == ".pdf":
         if not is_valid_bctn_file(file_path):
-            # Tự động phát hiện và cào bù file chuẩn nếu phát hiện file bị cào nhầm (< 8 trang hoặc công văn)
-            try:
-                from arminer.data.pdf_source import PDFSource
-                from arminer.data.report_healer import ReportHealer
-                parsed = PDFSource.parse_filename(file_path)
-                if parsed:
-                    t_heal, y_heal = parsed
-                    if t_heal and y_heal:
-                        healer = ReportHealer()
-                        heal_res = healer.heal_report(t_heal, y_heal)
-                        if heal_res.get("status") == "healed":
-                            logger.info(f"Self-Healing: Đã tự động thay thế file cào lỗi {file_path.name} bằng bản đầy đủ {heal_res['new_pages']} trang!")
-            except Exception as e_heal:
-                logger.debug(f"Self-Healing attempt skipped: {e_heal}")
-
-        if not is_valid_bctn_file(file_path):
             logger.warning(f"Bỏ qua file không phải BCTN hợp lệ (< {MIN_BCTN_PAGES} trang hoặc công văn): {file_path.name}")
             return "", 0
 

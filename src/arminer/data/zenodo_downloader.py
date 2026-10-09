@@ -508,22 +508,6 @@ class ZenodoDownloader:
         if local_found and self._is_valid_bctn_file(local_found):
             return local_found
 
-        # If not found or was invalid, trigger auto-healing from official corporate IR
-        try:
-            from arminer.data.report_healer import ReportHealer
-            healer = ReportHealer()
-            heal_res = healer.heal_report(ticker, year)
-            if heal_res.get("status") == "healed":
-                healed_candidate = self.cache_root / "gap_filler" / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
-                if healed_candidate.exists() and self._is_valid_bctn_file(healed_candidate):
-                    return healed_candidate
-                if healer.gdrive_root:
-                    healed_file = healer.gdrive_root / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
-                    if healed_file.exists() and self._is_valid_bctn_file(healed_file):
-                        return healed_file
-        except Exception as e_heal:
-            logger.debug(f"Self-Healing check failed: {e_heal}")
-
         # --- STAGE 1.2: GOOGLE DRIVE CLOUD HTTP STREAM (0.5s) ---
         # Ưu tiên tải trực tiếp từ Google Drive Cloud qua HTTP nếu có trong drive_index.json
         gdrive_cloud = self._try_gap_filler_download(ticker, year)
@@ -587,18 +571,8 @@ class ZenodoDownloader:
                 logger.info(f"Successfully cached: {cached_pdf} ({cached_pdf.stat().st_size / (1024*1024):.1f} MB)")
                 return cached_pdf
             else:
-                logger.warning(f"File {entry_name} from Zenodo {archive_period} is a short filing (< {MIN_BCTN_PAGES} pages). Quarantining and triggering heal...")
+                logger.warning(f"File {entry_name} from Zenodo {archive_period} is a short filing (< {MIN_BCTN_PAGES} pages). Quarantining.")
                 cached_pdf.unlink(missing_ok=True)
-                try:
-                    from arminer.data.report_healer import ReportHealer
-                    healer = ReportHealer()
-                    heal_res = healer.heal_report(ticker, year)
-                    if heal_res.get("status") == "healed":
-                        healed_cand = self.cache_root / "gap_filler" / ticker.upper() / f"{ticker.upper()}_{year}_BCTN.pdf"
-                        if healed_cand.exists() and self._is_valid_bctn_file(healed_cand):
-                            return healed_cand
-                except Exception:
-                    pass
                 return None
         except Exception as e:
             self.circuit_breaker.record_failure(str(e))
@@ -769,17 +743,6 @@ class ZenodoDownloader:
                                     cached_pdf.unlink(missing_ok=True)
             except Exception:
                 continue
-
-        # 3. Kích hoạt cào chuẩn từ chuyên trang Quan hệ cổ đông (IR Portal) chính thức
-        try:
-            from arminer.data.report_healer import ReportHealer
-            healer = ReportHealer()
-            heal_res = healer.heal_report(ticker, year)
-            if heal_res.get("status") == "healed":
-                if cached_pdf.exists() and self._is_valid_bctn_file(cached_pdf):
-                    return cached_pdf
-        except Exception:
-            pass
 
         return None
 
