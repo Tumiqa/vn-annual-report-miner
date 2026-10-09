@@ -239,8 +239,8 @@ class OCREngine:
                 import pymupdf as fitz
             except ImportError:
                 import fitz
-        except ImportError:
-            raise ImportError("PyMuPDF is required. Run: pip install PyMuPDF")
+        if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
+            fitz.TOOLS.mupdf_display_errors(False)
 
         doc = fitz.open(str(pdf_path))
         pages_text: List[str] = []

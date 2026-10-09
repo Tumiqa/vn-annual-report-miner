@@ -403,6 +403,8 @@ class ZenodoDownloader:
                 import pymupdf as fitz
             except ImportError:
                 import fitz
+            if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
+                fitz.TOOLS.mupdf_display_errors(False)
             doc = fitz.open(path)
             pages = len(doc)
             doc.close()

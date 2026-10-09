@@ -24,6 +24,9 @@ try:
     import pymupdf as fitz
 except ImportError:
     import fitz
+
+if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
+    fitz.TOOLS.mupdf_display_errors(False)
 from loguru import logger
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ

@@ -127,6 +127,9 @@ try:
     import pymupdf as fitz
 except ImportError:
     import fitz
+
+if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
+    fitz.TOOLS.mupdf_display_errors(False)
 from loguru import logger
 
 from arminer.core.smart_mode import FlexibleDictionary, SmartVariableCalculator, ResearchOutputGenerator
