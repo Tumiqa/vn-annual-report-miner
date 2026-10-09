@@ -60938,10 +60938,10 @@
     "direct_url": "https://drive.google.com/uc?export=download&id=1IrcVUzsb34OFqWebDo0nbF7Znj0MP7In"
   },
   "CHP_2019": {
-    "file_id": "1Jd-9VnrU0DaWWS1q5qjrd_uCnBw-il31",
     "file_name": "CHP_2019_BCTN.pdf",
-    "file_size": 1621919,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1Jd-9VnrU0DaWWS1q5qjrd_uCnBw-il31"
+    "file_size": 18249777,
+    "pages": 97,
+    "healthy": true
   },
   "CHS_2017": {
     "file_id": "1r1lb_102iCiT_XLmZaA2GcRMYGJh85h4",
@@ -77019,10 +77019,10 @@
     "direct_url": "https://drive.google.com/uc?export=download&id=1GJLC4aQlb9wS_ykhWorNIMfvqtH3S3by"
   },
   "TCT_2018": {
-    "file_id": "1SRHYYVOUdyPIiK549UzaBjRD2IkxmGve",
     "file_name": "TCT_2018_BCTN.pdf",
     "file_size": 19240482,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1SRHYYVOUdyPIiK549UzaBjRD2IkxmGve"
+    "pages": 10,
+    "healthy": true
   },
   "TCO_2016": {
     "file_id": "1qM5mDQ5p0KZeYVcUEh1ksfoInJtsnLvu",
@@ -80394,10 +80394,10 @@
     "healthy": true
   },
   "VGP_2018": {
-    "file_id": "1tNrKoyWjPR6CiZ7xlcTAB4c5ciQ4V3xW",
     "file_name": "VGP_2018_BCTN.pdf",
     "file_size": 1186357,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1tNrKoyWjPR6CiZ7xlcTAB4c5ciQ4V3xW"
+    "pages": 6,
+    "healthy": true
   },
   "VGS_2016": {
     "file_id": "1vRQZ_IDNu4H5TOO5-oqJWoIz73G4JKPT",
@@ -126347,7 +126347,6 @@
     "healthy": true
   },
   "AMC_2025": {
-    "direct_url": "https://static2.vietstock.vn/vietstock/2026/3/16/1_amc_2026_3_16_47c93d0_vi_baocaothuongnien_2025.pdf",
     "file_name": "AMC_2025_BCTN.pdf",
     "file_size": 24228459,
     "pages": 62,
@@ -130530,6 +130529,66 @@
     "file_name": "VKP_2007_BCTN.pdf",
     "file_size": 475565,
     "pages": 30,
+    "healthy": true
+  },
+  "GAS_2024": {
+    "file_name": "GAS_2024_BCTN.pdf",
+    "file_size": 32180869,
+    "pages": 96,
+    "healthy": true
+  },
+  "PGD_2024": {
+    "file_name": "PGD_2024_BCTN.pdf",
+    "file_size": 27384353,
+    "pages": 78,
+    "healthy": true
+  },
+  "CHP_2024": {
+    "file_name": "CHP_2024_BCTN.pdf",
+    "file_size": 86443788,
+    "pages": 88,
+    "healthy": true
+  },
+  "STB_2021": {
+    "file_name": "STB_2021_BCTN.pdf",
+    "file_size": 19428589,
+    "pages": 127,
+    "healthy": true
+  },
+  "STB_2022": {
+    "file_name": "STB_2022_BCTN.pdf",
+    "file_size": 12959985,
+    "pages": 127,
+    "healthy": true
+  },
+  "GDT_2024": {
+    "file_name": "GDT_2024_BCTN.pdf",
+    "file_size": 8958279,
+    "pages": 57,
+    "healthy": true
+  },
+  "NSC_2023": {
+    "file_name": "NSC_2023_BCTN.pdf",
+    "file_size": 3146004,
+    "pages": 46,
+    "healthy": true
+  },
+  "HVH_2023": {
+    "file_name": "HVH_2023_BCTN.pdf",
+    "file_size": 8672753,
+    "pages": 47,
+    "healthy": true
+  },
+  "HU1_2019": {
+    "file_name": "HU1_2019_BCTN.pdf",
+    "file_size": 5837995,
+    "pages": 9,
+    "healthy": true
+  },
+  "VGP_2019": {
+    "file_name": "VGP_2019_BCTN.pdf",
+    "file_size": 1158428,
+    "pages": 6,
     "healthy": true
   }
 }

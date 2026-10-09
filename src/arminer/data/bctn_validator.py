@@ -27,7 +27,7 @@ except ImportError:
 from loguru import logger
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ
-MIN_BCTN_PAGES = 8
+MIN_BCTN_PAGES = 6
 
 
 import unicodedata
