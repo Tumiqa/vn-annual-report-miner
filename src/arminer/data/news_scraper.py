@@ -343,17 +343,45 @@ class UniversalNewsExtractor:
 
             # 4. Identify Primary Article Body Container
             BODY_SELECTORS = [
-                "article.fck_detail", "div.fck_detail", "div.detail-content",
-                "div.content-detail", "div.maincontent", "div.detail__content",
-                "div.post-content", "div.contentdetail", "div#mainContent",
-                "div[itemprop='articleBody']", "article"
+                # VnEconomy specific containers
+                "main.article-editor", "main.ct-edtior-web", "div.article-editor",
+                "div.detail__body", "div.detail__content",
+                # CafeF / CafeBiz / Vietstock
+                "div.contentdetail", "div.fck_detail", "div.detail-content", "div.w640",
+                # VnExpress
+                "article.fck_detail",
+                # VietnamNet
+                "div.maincontent", "div.content-detail",
+                # TinNhanhCK
+                "div.post-content", "div.detail-content",
+                # CMS & Standard News Selectors
+                "div.entry-content", "div.article-body", "div.article__body",
+                "div.article-content", "div.news-detail", "div.news-content",
+                "div#mainContent", "div[itemprop='articleBody']", "section.article-content",
+                "main", "article"
             ]
             body = None
+            best_len = 0
+            # Evaluate matching candidates and select container with the most substantial paragraph text
             for sel in BODY_SELECTORS:
-                found = soup.select_one(sel)
-                if found and len(found.get_text(strip=True)) > 80:
-                    body = found
+                for candidate in soup.select(sel):
+                    p_len = sum(len(p.get_text(strip=True)) for p in candidate.find_all(["p", "div", "li", "h2", "h3", "h4", "blockquote"]))
+                    if p_len > best_len:
+                        best_len = p_len
+                        body = candidate
+                if body and best_len > 400:
                     break
+
+            # Largest Text Block Heuristic fallback if standard selectors yield < 200 chars
+            if not body or best_len < 200:
+                for cand in soup.find_all(["main", "article", "section", "div"]):
+                    if cand.name in ["body", "html"]:
+                        continue
+                    p_len = sum(len(p.get_text(strip=True)) for p in cand.find_all(["p", "blockquote"]))
+                    if p_len > best_len:
+                        best_len = p_len
+                        body = cand
+
             if not body:
                 body = soup.find("body") or soup
 
@@ -433,11 +461,20 @@ class UniversalNewsExtractor:
             if time_tag:
                 date = time_tag.get("datetime") or time_tag.get_text(strip=True)
             if not date:
-                meta_date = soup.find("meta", property=re.compile(r"date|time|published", re.I))
-                if meta_date:
-                    date = meta_date.get("content", "")
+                for attr in ["name", "property", "itemprop"]:
+                    meta_date = soup.find("meta", attrs={attr: re.compile(r"date|time|published|pubdate", re.I)})
+                    if meta_date and meta_date.get("content"):
+                        date = meta_date["content"]
+                        break
+            if not date:
+                for sel in ["span.date", "span.pdate", "span.published-date", "span.time", "div.date", "p.date"]:
+                    el = soup.select_one(sel)
+                    if el and len(el.get_text(strip=True)) > 5:
+                        date = el.get_text(strip=True)
+                        break
 
-            pub_year = cls.parse_year(str(date), url, final_text)
+            clean_date = cls.parse_clean_date(date)
+            pub_year = cls.parse_year(str(clean_date or date), url, final_text)
 
             if len(final_text.strip()) > 80:
                 return {
@@ -445,7 +482,7 @@ class UniversalNewsExtractor:
                     "title": title.strip() or cls._extract_title_soup(html),
                     "sapo": sapo.strip(),
                     "text": final_text.strip(),
-                    "published_date": str(date)[:10] if date else "",
+                    "published_date": clean_date,
                     "published_year": pub_year,
                     "author": "",
                     "word_count": len(final_text.split()),
@@ -457,25 +494,43 @@ class UniversalNewsExtractor:
 
         return None
 
+    @classmethod
+    def parse_clean_date(cls, raw: Any) -> str:
+        """Extract clean YYYY-MM-DD or DD/MM/YYYY from date string."""
+        if not raw:
+            return ""
+        raw_str = str(raw).strip()
+        # 1. ISO format: 2026-10-07 or 2026-10-07T11:05:00
+        m_iso = re.search(r"\b(199\d|20[0-3]\d)-([0-1]?\d)-([0-3]?\d)", raw_str)
+        if m_iso:
+            y, m, d = m_iso.groups()
+            return f"{y}-{int(m):02d}-{int(d):02d}"
+        # 2. VN format: 06/05/2026 or 6/5/2026
+        m_vn = re.search(r"\b([0-3]?\d)[/-]([0-1]?\d)[/-](199\d|20[0-3]\d)\b", raw_str)
+        if m_vn:
+            d, m, y = m_vn.groups()
+            return f"{int(d):02d}/{int(m):02d}/{y}"
+        return raw_str[:12].strip()
+
     @staticmethod
     def parse_year(date_str: str = "", url: str = "", text: str = "") -> Optional[int]:
         """Extract publication year (e.g. 2024) from date string, URL, or lead text."""
         if date_str:
-            m = re.search(r"\b(20[0-2]\d)\b", str(date_str))
+            m = re.search(r"\b(199\d|20[0-3]\d)\b", str(date_str))
             if m:
                 return int(m.group(1))
         if url:
-            m = re.search(r"/(20[0-2]\d)[/-]", url)
+            m = re.search(r"/(199\d|20[0-3]\d)[/-]", url)
             if m:
                 return int(m.group(1))
-            m2 = re.search(r"\b(20[0-2]\d)\b", url)
+            m2 = re.search(r"\b(199\d|20[0-3]\d)\b", url)
             if m2:
                 return int(m2.group(1))
         if text:
-            m = re.search(r"\b\d{1,2}[/-]\d{1,2}[/-](20[0-2]\d)\b", text[:500])
+            m = re.search(r"\b\d{1,2}[/-]\d{1,2}[/-](199\d|20[0-3]\d)\b", text[:600])
             if m:
                 return int(m.group(1))
-            m_year = re.search(r"\b(20[0-2]\d)\b", text[:200])
+            m_year = re.search(r"\b(199\d|20[0-3]\d)\b", text[:300])
             if m_year:
                 return int(m_year.group(1))
         return None
@@ -523,7 +578,7 @@ class CafeFScraper:
 
         # 2. Paginated search
         page = 1
-        max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = 50 if max_links is None else max(1, (max_links + 19) // 20)
 
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
@@ -606,7 +661,7 @@ class CafeBizScraper:
 
         # 2. Search
         page = 1
-        max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = 50 if max_links is None else max(1, (max_links + 19) // 20)
 
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
@@ -669,7 +724,7 @@ class VnExpressScraper:
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = 30 if max_links is None else max(1, (max_links + 14) // 15)
+        max_pages = 50 if max_links is None else max(1, (max_links + 14) // 15)
 
         for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
             page = 1
@@ -715,7 +770,7 @@ class VietnamNetScraper:
         links: List[str] = []
         t_clean = ticker.lower().strip()
         page = 1
-        max_pages = 30 if max_links is None else max(1, (max_links + 14) // 15)
+        max_pages = 50 if max_links is None else max(1, (max_links + 14) // 15)
 
         for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
             page = 1
@@ -782,7 +837,7 @@ class TinNhanhCKScraper:
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = 30 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = 50 if max_links is None else max(1, (max_links + 19) // 20)
 
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
@@ -814,7 +869,7 @@ class TinNhanhCKScraper:
 
 
 class VnEconomyScraper:
-    """Scrapes news from VnEconomy with pagination and sitemaps scan."""
+    """Scrapes news from VnEconomy with deep pagination and sitemaps scan."""
 
     BASE_SEARCH_URL = "https://vneconomy.vn/tim-kiem.html?Text={ticker}&SortBy=newest&page={page}"
 
@@ -823,7 +878,8 @@ class VnEconomyScraper:
         links: List[str] = []
         t_clean = ticker.lower().strip()
         page = 1
-        max_pages = 10 if max_links is None else max(1, (max_links + 9) // 10)
+        # Deep pagination: up to 50 pages if max_links is None, or until max_links is reached
+        max_pages = 50 if max_links is None else max(1, (max_links + 9) // 10)
 
         # 1. Search with exact results container selection
         while (max_links is None or len(links) < max_links) and page <= max_pages:
@@ -1160,10 +1216,28 @@ def is_keyword_confirmed(
     return False
 
 
+def tokenize_shingles(text: str, n: int = 2) -> Set[str]:
+    """Generates word n-grams for semantic shingling and content overlap detection."""
+    words = re.findall(r"\w+", (text or "").lower())
+    if len(words) < n:
+        return set(words)
+    return {" ".join(words[i:i + n]) for i in range(len(words) - n + 1)}
+
+
+def compute_content_similarity(text1: str, text2: str) -> float:
+    """Computes bigram Jaccard similarity between two texts."""
+    s1 = tokenize_shingles(text1, n=2)
+    s2 = tokenize_shingles(text2, n=2)
+    if not s1 or not s2:
+        return 0.0
+    return len(s1 & s2) / len(s1 | s2)
+
+
 class MultiSourceNewsAggregator:
     """
     Coordinates crawling across all sources with sitemap scanning,
-    dynamic quota backfill, and strict company/keyword verification.
+    exhaustive query expansion, and strict company/keyword verification with
+    cross-source semantic content deduplication.
     """
 
     def __init__(self, resolver: Optional[CompanyWebsiteResolver] = None):
@@ -1205,10 +1279,10 @@ class MultiSourceNewsAggregator:
         Gathers articles for a ticker across requested sources without limits (when target_articles is None).
         Strictly confirms exact company identity and validates keywords.
         Optionally filters by publication year range [year_from, year_to].
+        Performs 3-tier semantic cross-source deduplication (Title, Sapo, Body).
         """
         t = ticker.upper().strip()
         collected_articles: List[Dict[str, Any]] = []
-        seen_titles: List[str] = []
 
         comp = self.resolver.get_company(t)
         company_name = (comp.get("name") or "") if comp else ""
@@ -1223,51 +1297,80 @@ class MultiSourceNewsAggregator:
             elif isinstance(keywords, (list, tuple, set)):
                 kw_list = [str(k).strip() for k in keywords if str(k).strip()]
 
-        def is_duplicate(title: str) -> bool:
-            t_clean = re.sub(r"[^\w\s]", "", title.lower()).strip()
-            for prev in seen_titles:
-                ratio = SequenceMatcher(None, t_clean, prev).ratio()
-                if ratio > 0.75:
-                    return True
-            seen_titles.append(t_clean)
-            return False
+        def find_existing_duplicate(candidate: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+            """
+            Checks if candidate article is a duplicate of any previously accepted article
+            via 3 tiers:
+            1. Title exact/fuzzy match (SequenceMatcher > 0.68)
+            2. Sapo/lead fingerprint match (SequenceMatcher > 0.60)
+            3. Body text 2-gram shingle Jaccard overlap (> 0.28)
+            """
+            c_title = (candidate.get("title") or "").strip().lower()
+            c_sapo = (candidate.get("sapo") or "").strip().lower()
+            c_text = (candidate.get("text") or "")[:2500].lower()
+
+            for existing in collected_articles:
+                e_title = (existing.get("title") or "").strip().lower()
+                e_sapo = (existing.get("sapo") or "").strip().lower()
+                e_text = (existing.get("text") or "")[:2500].lower()
+
+                # 1. Title Similarity
+                if SequenceMatcher(None, c_title, e_title).ratio() > 0.68:
+                    return existing
+
+                # 2. Sapo / Lead Similarity
+                if c_sapo and e_sapo and len(c_sapo) > 30 and len(e_sapo) > 30:
+                    if SequenceMatcher(None, c_sapo, e_sapo).ratio() > 0.60:
+                        return existing
+
+                # 3. Cross-source Text Content Shingle Similarity
+                if len(c_text) > 150 and len(e_text) > 150:
+                    sim = compute_content_similarity(c_text, e_text)
+                    if sim > 0.28:
+                        return existing
+
+            return None
 
         # Phase 1: Collect article links per source IN PARALLEL
         links_by_source: Dict[str, List[str]] = {}
         target_per_source = None
         if target_articles is not None and target_articles > 0:
-            multiplier = 2 if (year_from or year_to) else 1
-            target_per_source = max(8, ((target_articles * multiplier) // max(1, len(sources))) + 6)
+            multiplier = 3 if (year_from or year_to) else 2
+            # Do NOT choke individual sources: provide generous candidate buffer
+            target_per_source = max(40, target_articles * multiplier)
 
         if progress_cb:
             progress_cb(f"Đang quét đồng thời {len(sources)} nguồn tin tức cho {t} ({company_name or 'DN niêm yết'})...", 0, target_articles or 0)
 
         def collect_portal_links(scraper_cls, portal_name: str) -> List[str]:
-            """Collect links by ticker, company name, and topic keywords for exhaustive recall."""
-            links = scraper_cls.get_article_links(t, max_links=target_per_source)
-            if clean_name and (target_per_source is None or len(links) < target_per_source):
-                rem = None if target_per_source is None else (target_per_source - len(links))
-                extra = scraper_cls.get_article_links(clean_name, max_links=rem)
-                for u in extra:
-                    if u not in links:
-                        links.append(u)
+            """Collect links by ticker, company name, brand tokens, and topic keywords for exhaustive recall."""
+            links: List[str] = []
+            seen_local: Set[str] = set()
 
-            # Topic keyword search expansion for historical recall (e.g. FPT blockchain, CMC blockchain)
-            if kw_list and (target_per_source is None or len(links) < target_per_source):
-                for kw in kw_list[:3]:
-                    if target_per_source is not None and len(links) >= target_per_source:
-                        break
-                    rem = None if target_per_source is None else (target_per_source - len(links))
-                    kw_links = scraper_cls.get_article_links(f"{t} {kw}", max_links=rem)
-                    for u in kw_links:
-                        if u not in links:
-                            links.append(u)
-                    if clean_name and (target_per_source is None or len(links) < target_per_source):
-                        rem = None if target_per_source is None else (target_per_source - len(links))
-                        kw_links2 = scraper_cls.get_article_links(f"{clean_name} {kw}", max_links=rem)
-                        for u in kw_links2:
-                            if u not in links:
-                                links.append(u)
+            queries = [t]
+            if clean_name and clean_name.lower() != t.lower():
+                queries.append(clean_name)
+            if brand_tokens:
+                for bt in brand_tokens[:2]:
+                    if bt.lower() not in [q.lower() for q in queries]:
+                        queries.append(bt)
+            if kw_list:
+                for kw in kw_list[:2]:
+                    combo = f"{t} {kw}"
+                    if combo.lower() not in [q.lower() for q in queries]:
+                        queries.append(combo)
+
+            for q in queries:
+                if target_per_source is not None and len(links) >= target_per_source:
+                    break
+                rem = None if target_per_source is None else max(15, target_per_source - len(links))
+                q_links = scraper_cls.get_article_links(q, max_links=rem)
+                for u in q_links:
+                    if u not in seen_local:
+                        seen_local.add(u)
+                        links.append(u)
+                        if target_per_source is not None and len(links) >= target_per_source:
+                            break
             return links
 
         def _fetch_source_links(src_name: str) -> Tuple[str, List[str]]:
@@ -1359,7 +1462,7 @@ class MultiSourceNewsAggregator:
                 url, src = future_to_meta[future]
                 try:
                     art = future.result()
-                    if art and art.get("title") and not is_duplicate(art["title"]):
+                    if art and art.get("title") and art.get("text"):
                         # Year range filter check
                         art_year = art.get("published_year")
                         if not art_year:
@@ -1387,6 +1490,19 @@ class MultiSourceNewsAggregator:
                             logger.debug(f"Article dropped (missing required keywords): {art.get('title')}")
                             continue
 
+                        # 3. Cross-Source Semantic Content Deduplication
+                        existing_dup = find_existing_duplicate(art)
+                        if existing_dup:
+                            existing_sources = existing_dup.setdefault("syndicated_sources", [existing_dup.get("news_source", "")])
+                            if src not in existing_sources:
+                                existing_sources.append(src)
+                            # Retain the version with richer content length
+                            if len(art.get("text", "")) > len(existing_dup.get("text", "")) + 150:
+                                existing_dup["text"] = art["text"]
+                                existing_dup["word_count"] = art.get("word_count", existing_dup.get("word_count", 0))
+                            logger.debug(f"Article deduplicated: '{art.get('title')[:40]}' ({src} -> {existing_dup.get('news_source')})")
+                            continue
+
                         art["company_confirmed"] = True
                         collected_articles.append(art)
                         if progress_cb:
@@ -1398,6 +1514,9 @@ class MultiSourceNewsAggregator:
 
                         if target_articles is not None and target_articles > 0:
                             if len(collected_articles) >= target_articles:
+                                for rem_fut in future_to_meta:
+                                    if not rem_fut.done():
+                                        rem_fut.cancel()
                                 break
                 except Exception as e:
                     logger.debug(f"Error processing article {url}: {e}")
