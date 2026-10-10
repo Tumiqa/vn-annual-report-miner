@@ -949,8 +949,10 @@
   "AAV_2020": {
     "file_id": "1kOr0m7GdMndU8l5plwNBeZ3v4uYKoP-P",
     "file_name": "AAV_2020_BCTN.pdf",
-    "file_size": 11604694,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1kOr0m7GdMndU8l5plwNBeZ3v4uYKoP-P"
+    "file_size": 4358926,
+    "direct_url": "https://drive.google.com/uc?export=download&id=1kOr0m7GdMndU8l5plwNBeZ3v4uYKoP-P",
+    "pages": 54,
+    "healthy": true
   },
   "AAS_2020": {
     "file_id": "1ppq8R4RrooJVZ6iEv2amWUhW-CR8YT55",
@@ -1024,7 +1026,9 @@
     "file_id": "1auWGooFNzaUUEWPjbW7t5Yivx7MRCcXT",
     "file_name": "AAV_2023_BCTN.pdf",
     "file_size": 2695751,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1auWGooFNzaUUEWPjbW7t5Yivx7MRCcXT"
+    "direct_url": "https://drive.google.com/uc?export=download&id=1auWGooFNzaUUEWPjbW7t5Yivx7MRCcXT",
+    "pages": 51,
+    "healthy": true
   },
   "ABI_2018": {
     "file_id": "1Jby1je7fS2zjkFQfAFFQXe1llkSBQ7d6",
@@ -2558,12 +2562,6 @@
     "file_size": 6719836,
     "direct_url": "https://drive.google.com/uc?export=download&id=1xMewLPrLO2hojyfCeidUoQ8RTaYsx3OW"
   },
-  "BII_2017": {
-    "file_id": "1rVF4m2fPwuP1-rL9gcAD98pzqTZLz0t-",
-    "file_name": "BII_2017_BCTN.pdf",
-    "file_size": 26166172,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1rVF4m2fPwuP1-rL9gcAD98pzqTZLz0t-"
-  },
   "CTT_2019": {
     "file_id": "1-2YVDw_AZu57NtoBBAh8Eb2fF_N9_Tj1",
     "file_name": "CTT_2019_BCTN.pdf",
@@ -3115,12 +3113,6 @@
     "file_name": "CET_2020_BCTN.pdf",
     "file_size": 5339297,
     "direct_url": "https://drive.google.com/uc?export=download&id=1UhieAZK0tbfk_4E9gaYomZJg63rjZwwr"
-  },
-  "CAP_2017": {
-    "file_id": "13p95XKpkeUd5lBFqKXtNRZ6Zg0HC3WpR",
-    "file_name": "CAP_2017_BCTN.pdf",
-    "file_size": 13870705,
-    "direct_url": "https://drive.google.com/uc?export=download&id=13p95XKpkeUd5lBFqKXtNRZ6Zg0HC3WpR"
   },
   "CAN_2019": {
     "file_id": "1b2I5J2BXd9Y9ZDxr7-izHfMiYlEb1ynH",
@@ -5335,12 +5327,6 @@
     "file_name": "DCH_2022_BCTN.pdf",
     "file_size": 6660678,
     "direct_url": "https://drive.google.com/uc?export=download&id=1mncIzN5LW7i68PsL8xfAwdh2NetzoaZK"
-  },
-  "DNC_2016": {
-    "file_id": "1w0i26DCRxYZ44W9bPns8BkwjrsmHRk5G",
-    "file_name": "DNC_2016_BCTN.pdf",
-    "file_size": 6078236,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1w0i26DCRxYZ44W9bPns8BkwjrsmHRk5G"
   },
   "DC2_2025": {
     "file_id": "1elAwjtFT7i9ExQSZb0Hdiw5Wi3KwaOUa",
@@ -40512,7 +40498,9 @@
     "file_id": "11PQRo4qj31NGkzNaOBLYVLgUOOIFCqBj",
     "file_name": "HDB_2009_BCTN.pdf",
     "file_size": 31480656,
-    "direct_url": "https://drive.google.com/uc?export=download&id=11PQRo4qj31NGkzNaOBLYVLgUOOIFCqBj"
+    "direct_url": "https://drive.google.com/uc?export=download&id=11PQRo4qj31NGkzNaOBLYVLgUOOIFCqBj",
+    "pages": 58,
+    "healthy": true
   },
   "HAP_2009": {
     "file_id": "10ahE95xLoBqwylJQasdYJ-fF_4zOtFQv",
@@ -42960,8 +42948,10 @@
   "SSB_2006": {
     "file_id": "1EeaNeu4spbXfv3UGkTJ0m9_TthgLwMN_",
     "file_name": "SSB_2006_BCTN.pdf",
-    "file_size": 1204209,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1EeaNeu4spbXfv3UGkTJ0m9_TthgLwMN_"
+    "file_size": 26164841,
+    "direct_url": "https://drive.google.com/uc?export=download&id=1EeaNeu4spbXfv3UGkTJ0m9_TthgLwMN_",
+    "pages": 44,
+    "healthy": true
   },
   "SSB_2008": {
     "file_id": "1wFrCvK2iVHxag260rT3UrOCZ2iG_urpt",
@@ -45623,8 +45613,10 @@
   "BVS_2013": {
     "file_id": "1Un5Bw-vy4Dx4jc5fS0tDp9zf8UkmwKSw",
     "file_name": "BVS_2013_BCTN.pdf",
-    "file_size": 11408584,
-    "direct_url": "https://drive.google.com/uc?export=download&id=1Un5Bw-vy4Dx4jc5fS0tDp9zf8UkmwKSw"
+    "file_size": 11576361,
+    "direct_url": "https://drive.google.com/uc?export=download&id=1Un5Bw-vy4Dx4jc5fS0tDp9zf8UkmwKSw",
+    "pages": 79,
+    "healthy": true
   },
   "CAD_2014": {
     "file_id": "1H3-7HoEEtxCBdlMR0YK4B8iIdGJMKgOp",
@@ -131060,5 +131052,305 @@
     "file_name": "AAT_2018_BCTN.pdf",
     "file_size": 16949191,
     "local_path": "H:\\My Drive\\arminer_bctn_gap\\AAT\\AAT_2018_BCTN.pdf"
+  },
+  "LPS_2025": {
+    "ticker": "LPS",
+    "year": 2025,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06",
+    "pages": 39,
+    "file_size": 12593821
+  },
+  "LPS_2024": {
+    "ticker": "LPS",
+    "year": 2024,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2023": {
+    "ticker": "LPS",
+    "year": 2023,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2022": {
+    "ticker": "LPS",
+    "year": 2022,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2021": {
+    "ticker": "LPS",
+    "year": 2021,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2020": {
+    "ticker": "LPS",
+    "year": 2020,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2019": {
+    "ticker": "LPS",
+    "year": 2019,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2018": {
+    "ticker": "LPS",
+    "year": 2018,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2017": {
+    "ticker": "LPS",
+    "year": 2017,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "LPS_2016": {
+    "ticker": "LPS",
+    "year": 2016,
+    "status": "ready",
+    "source": "lpbs_website",
+    "updated_at": "2026-10-11 00:08:06"
+  },
+  "ANI_2019": {
+    "ticker": "ANI",
+    "year": 2019,
+    "status": "ready",
+    "source": "ani_website",
+    "updated_at": "2026-10-11 00:08:06",
+    "pages": 14,
+    "file_size": 4923535
+  },
+  "DTR_2025": {
+    "ticker": "DTR",
+    "year": 2025,
+    "status": "ready",
+    "source": "dongtayland_website",
+    "updated_at": "2026-10-11 00:08:06",
+    "pages": 46,
+    "file_size": 12799959
+  },
+  "PCB_2025": {
+    "file_name": "PCB_2025_BCTN.pdf",
+    "file_size": 9704249,
+    "pages": 58,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2024": {
+    "file_name": "PCB_2024_BCTN.pdf",
+    "file_size": 7644530,
+    "pages": 68,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2023": {
+    "file_name": "PCB_2023_BCTN.pdf",
+    "file_size": 5196767,
+    "pages": 52,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2022": {
+    "file_name": "PCB_2022_BCTN.pdf",
+    "file_size": 6302723,
+    "pages": 51,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2020": {
+    "file_name": "PCB_2020_BCTN.pdf",
+    "file_size": 8190291,
+    "pages": 50,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2018": {
+    "file_name": "PCB_2018_BCTN.pdf",
+    "file_size": 2715601,
+    "pages": 40,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2017": {
+    "file_name": "PCB_2017_BCTN.pdf",
+    "file_size": 6817007,
+    "pages": 79,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "PCB_2016": {
+    "file_name": "PCB_2016_BCTN.pdf",
+    "file_size": 6997540,
+    "pages": 76,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2025": {
+    "file_name": "KAI_2025_BCTN.pdf",
+    "file_size": 34926768,
+    "pages": 51,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2024": {
+    "file_name": "KAI_2024_BCTN.pdf",
+    "file_size": 32299615,
+    "pages": 86,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2023": {
+    "file_name": "KAI_2023_BCTN.pdf",
+    "file_size": 15820006,
+    "pages": 103,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2022": {
+    "file_name": "KAI_2022_BCTN.pdf",
+    "file_size": 26644239,
+    "pages": 94,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2021": {
+    "file_name": "KAI_2021_BCTN.pdf",
+    "file_size": 10025533,
+    "pages": 63,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2020": {
+    "file_name": "KAI_2020_BCTN.pdf",
+    "file_size": 10210993,
+    "pages": 60,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2019": {
+    "file_name": "KAI_2019_BCTN.pdf",
+    "file_size": 2612281,
+    "pages": 60,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2018": {
+    "file_name": "KAI_2018_BCTN.pdf",
+    "file_size": 9945530,
+    "pages": 55,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2017": {
+    "file_name": "KAI_2017_BCTN.pdf",
+    "file_size": 13766466,
+    "pages": 44,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "KAI_2016": {
+    "file_name": "KAI_2016_BCTN.pdf",
+    "file_size": 15040969,
+    "pages": 49,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2025": {
+    "file_name": "UPS_2025_BCTN.pdf",
+    "file_size": 35263301,
+    "pages": 153,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2024": {
+    "file_name": "UPS_2024_BCTN.pdf",
+    "file_size": 15559995,
+    "pages": 120,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2023": {
+    "file_name": "UPS_2023_BCTN.pdf",
+    "file_size": 15777342,
+    "pages": 71,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2022": {
+    "file_name": "UPS_2022_BCTN.pdf",
+    "file_size": 25273988,
+    "pages": 72,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2021": {
+    "file_name": "UPS_2021_BCTN.pdf",
+    "file_size": 6969854,
+    "pages": 80,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2020": {
+    "file_name": "UPS_2020_BCTN.pdf",
+    "file_size": 6605039,
+    "pages": 77,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2019": {
+    "file_name": "UPS_2019_BCTN.pdf",
+    "file_size": 17448708,
+    "pages": 76,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2018": {
+    "file_name": "UPS_2018_BCTN.pdf",
+    "file_size": 16038790,
+    "pages": 71,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2017": {
+    "file_name": "UPS_2017_BCTN.pdf",
+    "file_size": 8552037,
+    "pages": 74,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "UPS_2016": {
+    "file_name": "UPS_2016_BCTN.pdf",
+    "file_size": 18271207,
+    "pages": 60,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "ULG_2025": {
+    "file_name": "ULG_2025_BCTN.pdf",
+    "file_size": 25974516,
+    "pages": 132,
+    "source": "Vietstock API",
+    "healthy": true
+  },
+  "GDH_2025": {
+    "file_name": "GDH_2025_BCTN.pdf",
+    "file_size": 7448295,
+    "pages": 26,
+    "source": "Vietstock API",
+    "healthy": true
   }
 }
