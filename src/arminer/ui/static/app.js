@@ -388,12 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnReindexCatalog.addEventListener('click', async () => {
       const icon = document.getElementById('reindexIcon');
       btnReindexCatalog.disabled = true;
-      if (icon) icon.textContent = '⏳';
+      if (icon) icon.textContent = '';
       try {
         const res = await fetch('/api/catalog/reindex', { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-          alert(`✅ ${data.message}`);
+          alert(data.message);
           await loadSectors();
           await loadCatalog();
           const badgeEl = document.getElementById('totalCatalogCountBadge');
@@ -407,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Lỗi kết nối khi cập nhật chỉ mục: ' + err.message);
       } finally {
         btnReindexCatalog.disabled = false;
-        if (icon) icon.textContent = '🔄';
+        if (icon) icon.textContent = '';
       }
     });
   }
@@ -2338,11 +2338,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const finExHSX = document.getElementById('finExHSX');
       const finExHNX = document.getElementById('finExHNX');
+      const finExUPCOM = document.getElementById('finExUPCOM');
       let allowedExchanges = [];
       if (finExHSX && finExHSX.checked) allowedExchanges.push('HSX');
       if (finExHNX && finExHNX.checked) allowedExchanges.push('HNX');
-      if (allowedExchanges.length === 0 || allowedExchanges.length === 2) {
-        allowedExchanges = ['HSX', 'HNX'];
+      if (finExUPCOM && finExUPCOM.checked) allowedExchanges.push('UPCOM');
+      if (allowedExchanges.length === 0) {
+        allowedExchanges = ['HSX', 'HNX', 'UPCOM'];
       }
 
       // Filter tickersToAdd by allowed exchanges
@@ -2367,11 +2369,13 @@ document.addEventListener('DOMContentLoaded', () => {
     btnFinAddAllTickers.addEventListener('click', () => {
       const finExHSX = document.getElementById('finExHSX');
       const finExHNX = document.getElementById('finExHNX');
+      const finExUPCOM = document.getElementById('finExUPCOM');
       let allowedExchanges = [];
       if (finExHSX && finExHSX.checked) allowedExchanges.push('HSX');
       if (finExHNX && finExHNX.checked) allowedExchanges.push('HNX');
-      if (allowedExchanges.length === 0 || allowedExchanges.length === 2) {
-        allowedExchanges = ['HSX', 'HNX'];
+      if (finExUPCOM && finExUPCOM.checked) allowedExchanges.push('UPCOM');
+      if (allowedExchanges.length === 0) {
+        allowedExchanges = ['HSX', 'HNX', 'UPCOM'];
       }
 
       finSectorTree.forEach(s => {
@@ -2484,7 +2488,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (isMissing) {
         pill.style.cssText = 'background: rgba(239, 68, 68, 0.1); color: #DC2626; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 600;';
-        pill.title = 'Mã này không có trong vnfinancialdata (sẽ không có số liệu BCTC)';
+        pill.title = 'Mã này không có trong cơ sở dữ liệu BCTC';
         pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}" style="color: #DC2626;">×</span>`;
       } else {
         pill.innerHTML = `${escapeHtml(ticker)} <span class="pill-remove" data-ticker="${ticker}">×</span>`;
@@ -2525,7 +2529,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     const y1 = document.getElementById('finYearFrom')?.value || '2014';
-    const y2 = document.getElementById('finYearTo')?.value || '2024';
+    const y2 = document.getElementById('finYearTo')?.value || '2025';
     if (nTickers === 0) {
       el.textContent = '';
     } else {

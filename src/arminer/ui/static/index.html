@@ -56,12 +56,12 @@
       <div class="card" style="margin-bottom: 20px;">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <h2 class="card-title">Kho Báo Cáo Thường Niên (<span id="totalCatalogCountBadge">20,404</span> Báo Cáo)</h2>
+            <h2 class="card-title">Kho Báo Cáo Thường Niên (<span id="totalCatalogCountBadge">20,523</span> Báo Cáo)</h2>
             <p class="card-desc">Lọc theo mã cổ phiếu, phân ngành ICB và khoảng thời gian. Chọn các báo cáo cần nghiên cứu và bấm "Khai Phá".</p>
           </div>
           <div style="display: flex; gap: 8px;">
             <button id="btnReindexCatalog" class="btn btn-secondary btn-sm" type="button" title="Làm mới chỉ mục từ Google Drive H:, ổ F: và local" style="white-space: nowrap;">
-              <span id="reindexIcon">🔄</span> Cập Nhật Chỉ Mục
+              <span id="reindexIcon"></span> Cập Nhật Chỉ Mục
             </button>
           </div>
         </div>
@@ -488,7 +488,7 @@
         <div class="card-header">
           <div>
             <h2 class="card-title">Dữ Liệu Báo Cáo Tài Chính (BCTC)</h2>
-            <p class="card-desc">Truy vấn đầy đủ 702 chỉ tiêu tài chính của DN niêm yết Việt Nam (Balance Sheet, Income Statement, Cash Flow) -- dữ liệu từ <code>vnfinancialdata</code>.</p>
+            <p class="card-desc">Truy vấn đầy đủ 702 chỉ tiêu tài chính của DN niêm yết Việt Nam (Balance Sheet, Income Statement, Cash Flow) -- dữ liệu từ <code>vnfinancialdata</code> kết hợp đồng bộ 100% 3 sàn HSX, HNX, UPCoM (2009 - 2025).</p>
           </div>
           <div id="finStatusBadge" style="font-size: 12px;"></div>
         </div>
@@ -526,7 +526,7 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Sàn (HSX / HNX):</label>
+              <label class="form-label">Sàn (HSX / HNX / UPCoM):</label>
               <div class="exchange-pills-wrap" style="min-height: 38px;">
                 <label class="exchange-pill-chk active-hsx" title="Sở GDCK TP.HCM (HSX/HOSE)">
                   <input type="checkbox" id="finExHSX" value="HSX" checked>
@@ -536,13 +536,17 @@
                   <input type="checkbox" id="finExHNX" value="HNX" checked>
                   <span>HNX</span>
                 </label>
+                <label class="exchange-pill-chk active-upcom" title="Sàn UPCoM">
+                  <input type="checkbox" id="finExUPCOM" value="UPCOM" checked>
+                  <span>UPCOM</span>
+                </label>
               </div>
             </div>
             <div class="form-group" style="align-self: flex-end;">
               <button id="btnFinAddSector" class="btn btn-secondary btn-sm" style="white-space: nowrap;" title="Thêm toàn bộ mã cổ phiếu thuộc ngành đã chọn">Thêm ngành</button>
             </div>
             <div class="form-group" style="align-self: flex-end;">
-              <button id="btnFinAddAllTickers" class="btn btn-secondary btn-sm" style="white-space: nowrap;" title="Chọn toàn bộ mã trên sàn HSX & HNX">Chọn tất cả mã</button>
+              <button id="btnFinAddAllTickers" class="btn btn-secondary btn-sm" style="white-space: nowrap;" title="Chọn toàn bộ mã trên sàn HSX, HNX & UPCoM">Chọn tất cả mã</button>
             </div>
             <div class="form-group">
               <label class="form-label">Từ năm:</label>
@@ -550,7 +554,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Đến năm:</label>
-              <input type="number" id="finYearTo" class="form-input tabular" value="2024" min="2006" max="2025">
+              <input type="number" id="finYearTo" class="form-input tabular" value="2025" min="2006" max="2025">
             </div>
           </div>
 
@@ -558,11 +562,12 @@
           <div style="display: flex; align-items: flex-start; gap: 10px;">
             <div style="flex: 1;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                <input type="text" id="finTickerInput" class="form-input" placeholder="Nhập mã CK rồi Enter (VCB, FPT, HPG...)" style="flex: 1;">
+                <input type="text" id="finTickerInput" class="form-input" placeholder="Nhập mã CK rồi Enter (VCB, FPT, BSR...)" style="flex: 1;">
                 <select id="finExchangeSelect" class="form-select" style="width: 90px;">
                   <option value="">Tự động</option>
                   <option value="HSX">HSX</option>
                   <option value="HNX">HNX</option>
+                  <option value="UPCOM">UPCOM</option>
                 </select>
                 <button id="btnFinClearTickers" class="btn btn-secondary btn-sm" title="Xóa hết mã CK đã chọn">Xóa hết</button>
               </div>
@@ -573,8 +578,8 @@
               <div id="finMissingTickersAlert" style="display: none; margin-top: 8px; padding: 10px 14px; border-radius: 8px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); font-size: 12px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                   <div style="color: #B45309; line-height: 1.5;">
-                    <span style="font-weight: 700;">Cảnh báo mã bị khuyết dữ liệu (<span id="finMissingCount">0</span> mã):</span>
-                    Các mã sau không có trong cơ sở dữ liệu vnfinancialdata (do sàn UPCoM hoặc khuyết từ nguồn cào):
+                    <span style="font-weight: 700;">Thông báo mã khuyết dữ liệu (<span id="finMissingCount">0</span> mã):</span>
+                    Các mã sau không có trong cơ sở dữ liệu BCTC:
                     <span id="finMissingList" style="font-weight: 600; color: #DC2626;"></span>
                   </div>
                   <button type="button" id="btnRemoveMissingTickers" class="btn btn-sm" style="background: #F59E0B; color: #fff; border: none; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap;" title="Loại bỏ toàn bộ các mã bị khuyết này khỏi danh sách truy vấn">
@@ -649,7 +654,7 @@
           <button id="btnFinQuery" class="btn btn-primary" style="padding: 8px 24px; font-weight: 600;">Tải Dữ Liệu BCTC</button>
           <span id="finQuerySummary" style="font-size: 12px; color: var(--brand-primary); font-weight: 600;"></span>
           <div style="margin-left: auto; font-size: 11px; color: var(--text-muted);">
-            * vnfinancialdata hỗ trợ 692 mã trên HSX/HNX
+            * Dữ liệu hỗ trợ 1,564 mã trên cả 3 sàn HSX, HNX và UPCoM (2009 - 2025)
           </div>
         </div>
 

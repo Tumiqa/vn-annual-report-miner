@@ -86,6 +86,12 @@ def _patch_vnf_local_loader() -> None:
         if not bundled_dir.exists():
             bundled_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "bctc_data"
 
+        try:
+            import vnfinancialdata.config as vnf_cfg
+            vnf_cfg.SUPPORTED_EXCHANGES.add("UPCOM")
+        except Exception:
+            pass
+
         orig_download = getattr(vnf_loader, "_orig_download_parquet", vnf_loader._download_parquet)
         setattr(vnf_loader, "_orig_download_parquet", orig_download)
 
@@ -1703,47 +1709,39 @@ def _check_vnf():
 
 
 def _get_supported_vnf_tickers() -> set[str]:
-    """Return cached set of uppercase tickers supported by vnfinancialdata."""
+    """Return cached set of uppercase tickers supported by local BCTC parquets (HSX, HNX, UPCOM)."""
     global _CACHED_VNF_TICKERS
     if _CACHED_VNF_TICKERS is not None:
         return _CACHED_VNF_TICKERS
 
-    if not _check_vnf():
-        return set()
-
     try:
-        import vnfinancialdata.loader as l
+        from pathlib import Path
         import pandas as pd
-        p_hsx = l._download_parquet('HSX', 'balance_sheet')
-        p_hnx = l._download_parquet('HNX', 'balance_sheet')
-        s_hsx = set(pd.read_parquet(p_hsx, columns=['ticker'])['ticker'].unique())
-        s_hnx = set(pd.read_parquet(p_hnx, columns=['ticker'])['ticker'].unique())
-        _CACHED_VNF_TICKERS = {str(t).upper().strip() for t in (s_hsx | s_hnx)}
-        logger.info(f"Loaded {len(_CACHED_VNF_TICKERS)} supported tickers from vnfinancialdata")
+        bundled_dir = Path(__file__).resolve().parent.parent / "data" / "bctc_data"
+        if not bundled_dir.exists():
+            bundled_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "bctc_data"
+        tickers = set()
+        for ex in ["HSX", "HNX", "UPCOM"]:
+            p = bundled_dir / "balance_sheet" / f"{ex}.parquet"
+            if p.exists():
+                s = set(pd.read_parquet(p, columns=['ticker'])['ticker'].unique())
+                tickers |= {str(t).upper().strip() for t in s}
+        _CACHED_VNF_TICKERS = tickers
+        logger.info(f"Loaded {len(_CACHED_VNF_TICKERS)} supported tickers from local BCTC parquets (HSX, HNX, UPCOM)")
     except Exception as e:
-        logger.warning(f"Could not load VNF tickers: {e}")
+        logger.warning(f"Could not load BCTC tickers: {e}")
         _CACHED_VNF_TICKERS = set()
     return _CACHED_VNF_TICKERS
 
 
 @app.get("/api/financial/supported-tickers")
 def financial_supported_tickers():
-    """Return all tickers supported by vnfinancialdata and common missing ticker explanations."""
+    """Return all tickers supported by BCTC datasets."""
     valid = _get_supported_vnf_tickers()
     return {
         "supported_tickers": sorted(list(valid)),
         "count": len(valid),
-        "notable_missing": {
-            "SSI": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
-            "SCR": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
-            "SCS": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
-            "OPC": "Khuyết trong bộ dữ liệu gốc vnfinancialdata (HOSE)",
-            "AAS": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
-            "ABW": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
-            "ART": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
-            "PHS": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
-            "SBS": "Sàn UPCoM (vnfinancialdata chỉ hỗ trợ HSX/HNX)",
-        }
+        "notable_missing": {}
     }
 
 
@@ -2007,7 +2005,7 @@ def financial_available_items(
     if not ticker_list:
         raise HTTPException(status_code=400, detail="Vui lòng cung cấp ít nhất 1 mã chứng khoán.")
 
-    exchanges_to_try = [exchange.strip().upper()] if (isinstance(exchange, str) and exchange.strip()) else ["HSX", "HNX"]
+    exchanges_to_try = [exchange.strip().upper()] if (isinstance(exchange, str) and exchange.strip()) else ["HSX", "HNX", "UPCOM"]
     available_codes = set()
     probe_year = None
 
@@ -2409,7 +2407,7 @@ async def financial_query(req: FinancialQueryRequest):
 
     async def event_generator():
         total_ops = len(req.tickers)
-        exchanges = [req.exchange] if req.exchange else ["HSX", "HNX"]
+        exchanges = [req.exchange] if req.exchange else ["HSX", "HNX", "UPCOM"]
 
         # Determine which statements we need
         has_ratios = bool(req.ratios is None or len(req.ratios) > 0)
@@ -2534,18 +2532,18 @@ async def financial_query(req: FinancialQueryRequest):
 
         if all_data.empty:
             yield {"event": "error", "data": json.dumps(
-                {"detail": f"Không tìm thấy số liệu BCTC cho mã: {', '.join(req.tickers)}. Bộ dữ liệu vnfinancialdata hiện hỗ trợ 692 mã trên HSX/HNX nhưng bị khuyết mã SSI từ nguồn cào gốc. Nếu bạn nghiên cứu nhóm Công ty Chứng khoán (CTCK), vui lòng chọn các mã có đầy đủ 100% dữ liệu như: VND, VCI, HCM, SHS, VIX, MBS, FTS, BSI, CTS, AGR, VDS... Hoặc nhóm Bluechips: VCB, VNM, HPG, FPT, TCB, MBB..."},
+                {"detail": f"Không tìm thấy số liệu BCTC cho các mã: {', '.join(req.tickers)} trong khoảng năm đã chọn."},
                 ensure_ascii=False)}
             return
 
         found_tickers = set(all_data["ticker"].str.upper().unique()) if not all_data.empty else set()
         missing_tickers = [t for t in req.tickers if t.upper() not in found_tickers]
         if missing_tickers:
-            logger.warning(f"Các mã sau không có trong vnfinancialdata: {missing_tickers}")
+            logger.warning(f"Các mã sau không có trong cơ sở dữ liệu BCTC: {missing_tickers}")
             yield {"event": "warning", "data": json.dumps({
                 "warning": True,
                 "missing_tickers": missing_tickers,
-                "message": f"⚠️ Các mã {missing_tickers} không có trong cơ sở dữ liệu vnfinancialdata và đã được tự động loại bỏ khỏi kết quả.",
+                "message": f"Các mã {missing_tickers} không có trong cơ sở dữ liệu BCTC và đã được tự động loại bỏ khỏi kết quả.",
             }, ensure_ascii=False)}
 
         pivot = await loop.run_in_executor(

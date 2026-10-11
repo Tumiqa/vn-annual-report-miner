@@ -73,6 +73,13 @@ def _patch_vnf_local_loader() -> None:
         if not bundled_dir.exists():
             bundled_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "bctc_data"
 
+        # Register UPCOM into supported exchanges so vnf.load accepts it seamlessly
+        try:
+            import vnfinancialdata.config as vnf_cfg
+            vnf_cfg.SUPPORTED_EXCHANGES.add("UPCOM")
+        except Exception:
+            pass
+
         orig_download = getattr(vnf_loader, "_orig_download_parquet", vnf_loader._download_parquet)
         setattr(vnf_loader, "_orig_download_parquet", orig_download)
 
@@ -185,25 +192,42 @@ class FinancialDataProvider:
                        item_name: Any, statement: str = "balance_sheet",
                        exchange: str = None) -> Optional[float]:
         """Lấy 1 giá trị cụ thể cho (ticker, year, item) với hỗ trợ danh sách tên dự phòng đa ngành."""
-        exchanges = [exchange] if exchange else ["HSX", "HNX"]
-        names = [item_name] if isinstance(item_name, str) else list(item_name)
+        exchanges = [exchange] if exchange else ["HSX", "HNX", "UPCOM"]
+        
+        # Tự động suy luận statement và alias nếu truyền key chuẩn từ ITEM_MAPPING
+        if isinstance(item_name, str) and item_name.lower() in self.ITEM_MAPPING:
+            key = item_name.lower()
+            names = list(self.ITEM_MAPPING[key])
+            if key in ("revenue", "net_income", "ebit", "ebitda"):
+                statement = "income_statement"
+        elif isinstance(item_name, str):
+            names = [item_name]
+        else:
+            names = list(item_name)
 
-        for ex in exchanges:
-            try:
-                df = self.load_raw(ex, statement)
-                for name in names:
-                    mask = (
-                        (df["ticker"] == ticker) &
-                        (df["year"] == year) &
-                        (df["item_name"].str.strip() == str(name).strip())
-                    )
-                    result = df.loc[mask, "value"]
-                    if not result.empty:
-                        val = result.iloc[0]
-                        if pd.notna(val):
-                            return float(val)
-            except Exception:
-                continue
+        stmts_to_try = [statement]
+        for alt_stmt in ["balance_sheet", "income_statement", "cash_flow"]:
+            if alt_stmt not in stmts_to_try:
+                stmts_to_try.append(alt_stmt)
+
+        for stmt in stmts_to_try:
+            for ex in exchanges:
+                try:
+                    df = self.load_raw(ex, stmt)
+                    for name in names:
+                        name_str = str(name).strip()
+                        mask = (
+                            (df["ticker"] == ticker) &
+                            (df["year"] == year) &
+                            ((df["item_name"].str.strip() == name_str) | (df["item_code"] == name_str))
+                        )
+                        result = df.loc[mask, "value"]
+                        if not result.empty:
+                            val = result.iloc[0]
+                            if pd.notna(val):
+                                return float(val)
+                except Exception:
+                    continue
 
         return None
 
