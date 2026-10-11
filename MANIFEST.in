@@ -1,0 +1,6 @@
+recursive-include src/arminer/data/bctc_data *.parquet
+recursive-include src/arminer/data/fixtures *
+recursive-include src/arminer/ui/static *
+recursive-include src/arminer/templates *.yaml
+include README.md
+include LICENSE
