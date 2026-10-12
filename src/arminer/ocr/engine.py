@@ -235,10 +235,9 @@ class OCREngine:
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
         try:
-            try:
-                import pymupdf as fitz
-            except ImportError:
-                import fitz
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
         if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
             fitz.TOOLS.mupdf_display_errors(False)
 
