@@ -71,13 +71,13 @@ class GenericFuzzyMatcher:
     """
 
     def __init__(self, dictionary: Dictionary, threshold: int = 85,
-                 include_ambiguous: bool = False,
+                 include_ambiguous: bool = True,
                  categories: Optional[List[str]] = None):
         """
         Args:
             dictionary: Bộ từ điển đã load
             threshold: Ngưỡng similarity cho fuzzy match (0-100)
-            include_ambiguous: Bao gồm từ khóa đa nghĩa
+            include_ambiguous: Bao gồm từ khóa đa nghĩa (mặc định True chuẩn NCKH)
             categories: Lọc theo nhóm category (None = tất cả)
         """
         self.dictionary = dictionary
@@ -90,12 +90,24 @@ class GenericFuzzyMatcher:
             include_ambiguous=include_ambiguous,
             categories=categories,
         )
-        self.keywords = [normalize_vn_term(kw) for kw in raw_keywords]
-
         raw_canon = dictionary.get_canonical_map(
             include_ambiguous=include_ambiguous,
             categories=categories,
         )
+
+        # Safety fallback: nếu include_ambiguous=False làm rỗng từ điển, tự động nạp include_ambiguous=True
+        if not raw_keywords:
+            raw_keywords = dictionary.get_flat_list(
+                include_variants=True,
+                include_ambiguous=True,
+                categories=categories,
+            )
+            raw_canon = dictionary.get_canonical_map(
+                include_ambiguous=True,
+                categories=categories,
+            )
+
+        self.keywords = [normalize_vn_term(kw) for kw in raw_keywords]
         self.canonical_map = {
             normalize_vn_term(k): normalize_vn_term(v)
             for k, v in raw_canon.items()

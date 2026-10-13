@@ -256,14 +256,14 @@ class Dictionary:
         return sum(len(cat) for cat in self.categories.values())
 
     def get_flat_list(self, include_variants: bool = True,
-                      include_ambiguous: bool = False,
+                      include_ambiguous: bool = True,
                       categories: Optional[List[str]] = None) -> List[str]:
         """
         Trả về danh sách phẳng tất cả từ khóa + biến thể.
 
         Args:
             include_variants: Có bao gồm biến thể viết không
-            include_ambiguous: Có bao gồm từ khóa đa nghĩa không
+            include_ambiguous: Có bao gồm từ khóa đa nghĩa không (mặc định True để không bỏ sót)
             categories: Lọc theo nhóm (None = tất cả)
 
         Returns:
@@ -288,9 +288,18 @@ class Dictionary:
                         if form not in excluded:
                             result.add(form)
 
+        # Fallback an toàn: nếu include_ambiguous=False làm cho danh sách rỗng 100%
+        # (như AI dictionary được đánh dấu chú thích học thuật toàn bộ), tự động nạp include_ambiguous=True
+        if not result and not include_ambiguous:
+            return self.get_flat_list(
+                include_variants=include_variants,
+                include_ambiguous=True,
+                categories=categories,
+            )
+
         return sorted(result)
 
-    def get_canonical_map(self, include_ambiguous: bool = False,
+    def get_canonical_map(self, include_ambiguous: bool = True,
                           categories: Optional[List[str]] = None) -> Dict[str, str]:
         """
         Mapping: mọi biến thể → từ khóa chính (canonical form).
@@ -314,6 +323,13 @@ class Dictionary:
                     if form not in excluded:
                         mapping[form] = entry.original_keyword
 
+        # Fallback an toàn nếu mapping rỗng vì cờ include_ambiguous=False
+        if not mapping and not include_ambiguous:
+            return self.get_canonical_map(
+                include_ambiguous=True,
+                categories=categories,
+            )
+
         return mapping
 
     def get_category_map(self) -> Dict[str, str]:
@@ -326,10 +342,12 @@ class Dictionary:
         return result
 
     def get_keywords_by_category(self, category: str,
-                                 include_variants: bool = True) -> List[str]:
+                                 include_variants: bool = True,
+                                 include_ambiguous: bool = True) -> List[str]:
         """Lấy tất cả keywords cho 1 category."""
         return self.get_flat_list(
             include_variants=include_variants,
+            include_ambiguous=include_ambiguous,
             categories=[category],
         )
 

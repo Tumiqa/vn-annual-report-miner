@@ -942,7 +942,7 @@ def scan_selected_reports(req: ScanSelectedRequest):
     is_pure_labor = (req.topic in ("none", "", None)) and req.extract_labor
     flex_dict = None if is_pure_labor else _resolve_dictionary(topic=req.topic, keywords=req.keywords)
     core_dict = flex_dict.to_core_dictionary() if flex_dict else None
-    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold) if core_dict else None
+    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold, include_ambiguous=True) if core_dict else None
     calc = SmartVariableCalculator() if flex_dict else None
 
     # Parallel report mining across available CPU cores
@@ -1154,7 +1154,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         is_pure_labor = (req.topic in ("none", "", None)) and req.extract_labor
         flex_dict = None if is_pure_labor else _resolve_dictionary(topic=req.topic, keywords=req.keywords)
         core_dict = flex_dict.to_core_dictionary() if flex_dict else None
-        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold) if core_dict else None
+        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold, include_ambiguous=True) if core_dict else None
         calc = SmartVariableCalculator() if flex_dict else None
 
         rows = []
@@ -1544,7 +1544,7 @@ async def scan_file(
         raise HTTPException(status_code=400, detail="Vui lòng tải lên file hoặc cung cấp đường dẫn hợp lệ.")
 
     core_dict = flex_dict.to_core_dictionary()
-    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=threshold)
+    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=threshold, include_ambiguous=True)
     matches = matcher.search(text, use_fuzzy=fuzzy)
     words = text.split()
     total_words = len(words)
@@ -1604,7 +1604,7 @@ async def scan_folder(
 
     flex_dict = _resolve_dictionary(topic=topic, keywords=keywords)
     core_dict = flex_dict.to_core_dictionary()
-    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=threshold)
+    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=threshold, include_ambiguous=True)
     calc = SmartVariableCalculator()
 
     supported_exts = {".pdf", ".txt"}
@@ -3197,7 +3197,7 @@ async def mine_news_stream(req: NewsMineRequest):
         await asyncio.sleep(0)
 
         core_dict = flex_dict.to_core_dictionary()
-        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
+        matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold, include_ambiguous=True)
         calc = SmartVariableCalculator()
 
         def _process_one_article(art: Dict[str, Any]) -> Dict[str, Any]:
@@ -3413,7 +3413,7 @@ def mine_news_text(req: NewsPasteMineRequest):
 
     flex_dict = _resolve_dictionary(topic=req.topic, keywords=req.keywords)
     core_dict = flex_dict.to_core_dictionary()
-    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold)
+    matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold, include_ambiguous=True)
     calc = SmartVariableCalculator()
 
     text = req.text.strip()
