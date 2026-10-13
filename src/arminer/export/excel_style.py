@@ -390,6 +390,14 @@ def style_worksheet(
             cell.fill = fill
             cell.border = THIN_BORDER
 
+            # Fix accidental formula interpretation in non-formula data sheets (e.g. "= Số lượng nhân viên...")
+            if ws.title not in ("Bao_Cao_Tai_Chinh", "Ty_So_Tai_Chinh"):
+                if cell.data_type == "f" or (isinstance(cell.value, str) and cell.value.startswith("=")):
+                    val_str = str(cell.value or "")
+                    cleaned_val = val_str.lstrip("=").lstrip()
+                    cell.data_type = "s"
+                    cell.value = cleaned_val if cleaned_val else val_str
+
             cname_lower = col_names[col_idx - 1].lower()
 
             # Alignments & Formats

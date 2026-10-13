@@ -145,7 +145,12 @@ from arminer.data.pdf_source import PDFSource
 from arminer.data.catalog import UnifiedCatalog
 from arminer.core.dictionary_manager import DictionaryManager
 from arminer.core.dictionary_importer import DictionaryFileImporter
-from arminer.data.zenodo_downloader import ZenodoDownloader, MIN_BCTN_PAGES, is_valid_bctn_file
+from arminer.data.bctn_validator import (
+    MIN_BCTN_PAGES,
+    is_valid_bctn_file,
+    audit_bctn_file,
+)
+from arminer.data.zenodo_downloader import ZenodoDownloader
 from arminer.data.news_scraper import (
     CompanyWebsiteResolver,
     UniversalNewsExtractor,
@@ -1029,6 +1034,8 @@ def scan_selected_reports(req: ScanSelectedRequest):
     context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
     for idx, item in enumerate(all_labor_audits, 1):
         item["STT"] = idx
+        if isinstance(item.get("Snippet"), str) and item["Snippet"].startswith("="):
+            item["Snippet"] = item["Snippet"].lstrip("=").lstrip()
     labor_audit_df = pd.DataFrame(all_labor_audits) if all_labor_audits else None
     generator = ResearchOutputGenerator(DOWNLOAD_DIR)
     generator.generate_all(
@@ -1293,6 +1300,8 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         context_df = pd.DataFrame(all_context_snippets) if all_context_snippets else None
         for idx, item in enumerate(all_labor_audits, 1):
             item["STT"] = idx
+            if isinstance(item.get("Snippet"), str) and item["Snippet"].startswith("="):
+                item["Snippet"] = item["Snippet"].lstrip("=").lstrip()
         labor_audit_df = pd.DataFrame(all_labor_audits) if all_labor_audits else None
         generator = ResearchOutputGenerator(DOWNLOAD_DIR)
         generator.generate_all(
@@ -2086,7 +2095,7 @@ def financial_available_items(
 def financial_status():
     """Check vnfinancialdata availability and return full dataset metadata."""
     available = _check_vnf()
-    result = {"available": available}
+    result: Dict[str, Any] = {"available": available}
     if available:
         import vnfinancialdata as vnf
         from vnfinancialdata import config as vnf_cfg

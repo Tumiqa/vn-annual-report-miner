@@ -1018,13 +1018,24 @@ class ResearchOutputGenerator:
                 r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f'
                 r'\ud800-\udfff\ufdd0-\ufdef\ufffe\uffff]'
             )
+            def _clean_str_for_excel(x):
+                if not isinstance(x, str):
+                    return x
+                val = illegal_chars_re.sub('', x)
+                # Prevent openpyxl from converting non-formula text into broken formulas
+                # When text starts with "=", openpyxl forces cell.data_type = 'f' which corrupts Excel
+                if val.startswith('='):
+                    s = val.lstrip('=').lstrip()
+                    return s if s else val
+                return val
+
             def sanitize(df_in):
                 if df_in is None or df_in.empty: return df_in
                 df_out = df_in.copy()
                 for col in df_out.select_dtypes(include=['object', 'string']).columns:
-                    df_out[col] = df_out[col].apply(lambda x: illegal_chars_re.sub('', x) if isinstance(x, str) else x)
+                    df_out[col] = df_out[col].apply(_clean_str_for_excel)
                 # Also sanitize column names themselves
-                df_out.columns = [illegal_chars_re.sub('', str(c)) if isinstance(c, str) else c for c in df_out.columns]
+                df_out.columns = [_clean_str_for_excel(str(c)) if isinstance(c, str) else c for c in df_out.columns]
                 return df_out
 
             export_df_clean = sanitize(export_df)

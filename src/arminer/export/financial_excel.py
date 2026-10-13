@@ -1787,7 +1787,10 @@ def _create_panel_sheet(ws, pivot):
             elif isinstance(val, (int, float)):
                 row_vals.append(float(val))
             else:
-                row_vals.append(str(val))
+                s_val = str(val)
+                if s_val.startswith("="):
+                    s_val = s_val.lstrip("=").lstrip()
+                row_vals.append(s_val)
         ws.append(row_vals)
 
     ws.auto_filter.ref = f"A1:{get_column_letter(len(pnl_cols))}{len(pivot) + 1}"
@@ -1824,7 +1827,13 @@ def _create_codebook_sheet(ws, fin_codebook):
 
     cb_full = list(fin_codebook)
     for item in cb_full:
-        ws.append([item.get(h, "") for h in cb_headers])
+        row_vals = []
+        for h in cb_headers:
+            val = item.get(h, "")
+            if isinstance(val, str) and val.startswith("="):
+                val = val.lstrip("=").lstrip()
+            row_vals.append(val)
+        ws.append(row_vals)
 
     ws.column_dimensions["A"].width = 24
     ws.column_dimensions["B"].width = 40
