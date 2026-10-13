@@ -834,11 +834,10 @@ def _process_one_bctn(
     if extract_labor:
         try:
             yr = int(item["year"]) if item.get("year") else 0
-            # 1. ƯU TIÊN SỐ 1: Sử dụng ngay text đã nạp từ cache ở trên (0.001s, regex tức thì, KHÔNG bao giờ OCR lại!)
-            if text and len(text.strip()) >= 50:
-                labor_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
-            elif p.exists() and p.suffix.lower() == ".pdf":
+            if p.exists() and p.suffix.lower() == ".pdf":
                 labor_res = labor_extractor.extract_from_pdf(p, item["ticker"], yr)
+            elif text and len(text.strip()) >= 50:
+                labor_res = labor_extractor.extract_from_text(text, item["ticker"], yr)
             else:
                 labor_res = None
 
@@ -1189,6 +1188,61 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                 {"detail": err_msg},
                 ensure_ascii=False)}
             return
+
+        # Deduplication Pass: Kiểm tra và loại bỏ các file trùng lặp nội dung giữa các năm của cùng một mã cổ phiếu
+        # (Ngăn ngừa lỗi 338 cặp năm bị copy giả lập cùng 1 file BCTN từ mạng để bù khoảng trống thời gian)
+        deduped_items = []
+        seen_firm_years = set()
+        ticker_file_hashes = {}  # ticker -> {hash: (year, path)}
+
+        for itm in target_items:
+            t = str(itm.get("ticker", "")).upper()
+            y = itm.get("year")
+            p = itm.get("path")
+            fy_key = (t, y)
+            if fy_key in seen_firm_years:
+                logger.warning(f"Bỏ qua mục trùng lặp (ticker={t}, year={y}): {p.name if p else 'N/A'}")
+                continue
+
+            if p and p.exists() and p.is_file():
+                try:
+                    f_size = p.stat().st_size
+                    with open(p, "rb") as fp:
+                        header = fp.read(8192)
+                        fp.seek(max(0, f_size - 8192))
+                        footer = fp.read(8192)
+                    fast_hash = hashlib.md5(header + footer + str(f_size).encode()).hexdigest()
+
+                    if t not in ticker_file_hashes:
+                        ticker_file_hashes[t] = {}
+
+                    if fast_hash in ticker_file_hashes[t]:
+                        prev_y, prev_p = ticker_file_hashes[t][fast_hash]
+                        audit_cur = audit_bctn_file(p)
+                        title_sample = audit_cur.get("title_sample", "")
+                        m_cur = re.search(r"(?:BÁO\s+CÁO\s+THƯỜNG\s+NIÊN|ANNUAL\s+REPORT)\s*(?:NĂM\s*)?(201\d|202\d)", title_sample, re.IGNORECASE)
+                        detected_yr = int(m_cur.group(1)) if m_cur else None
+
+                        if detected_yr and detected_yr == prev_y and y != detected_yr:
+                            logger.warning(
+                                f"Phát hiện file {p.name} (năm {y}) trùng 100% nội dung với {prev_p.name} (năm {prev_y}, bìa BCTN {detected_yr}). Đã loại trừ quan sát giả lập!"
+                            )
+                            continue
+                        elif detected_yr and detected_yr == y and prev_y != detected_yr:
+                            logger.warning(
+                                f"File {prev_p.name} (năm {prev_y}) trùng 100% nội dung với {p.name} (năm {y}, bìa BCTN {detected_yr}). Thay thế bằng file chuẩn năm {y}!"
+                            )
+                            deduped_items = [x for x in deduped_items if not (str(x.get("ticker", "")).upper() == t and x.get("year") == prev_y)]
+                            seen_firm_years.discard((t, prev_y))
+
+                    ticker_file_hashes[t][fast_hash] = (y, p)
+                except Exception:
+                    pass
+
+            seen_firm_years.add(fy_key)
+            deduped_items.append(itm)
+
+        target_items = deduped_items
 
         # --- Phase 2: Mining (Parallel + Cached) ---
         is_pure_labor = (req.topic in ("none", "", None)) and req.extract_labor
@@ -2858,8 +2912,24 @@ def financial_merge(req: FinancialMergeRequest):
     df_fin["ticker"] = df_fin["ticker"].astype(str).str.strip().str.upper()
     df_mining["year"] = pd.to_numeric(df_mining["year"], errors="coerce")
     df_fin["year"] = pd.to_numeric(df_fin["year"], errors="coerce")
+    df_mining = df_mining.dropna(subset=["ticker", "year"])
+    df_fin = df_fin.dropna(subset=["ticker", "year"])
+    df_mining["year"] = df_mining["year"].astype(int)
+    df_fin["year"] = df_fin["year"].astype(int)
+
+    # Chống nhân bản số dòng (Cartesian product) do trùng lặp năm ở file tài chính/mining
+    df_mining = df_mining.drop_duplicates(subset=["ticker", "year"], keep="first")
+    df_fin = df_fin.drop_duplicates(subset=["ticker", "year"], keep="last")
+
+    # Xử lý cột trùng lặp thông tin doanh nghiệp (company_name, exchange)
+    for c_overlap in ["company_name", "exchange"]:
+        if c_overlap in df_fin.columns and c_overlap in df_mining.columns:
+            df_mining[c_overlap] = df_mining[c_overlap].fillna(df_fin[c_overlap])
+            df_fin = df_fin.drop(columns=[c_overlap])
 
     merged = pd.merge(df_mining, df_fin, on=["ticker", "year"], how="left", suffixes=("", "_fin"))
+    # Sắp xếp tuyệt đối theo trật tự thời gian firm - year (ticker ASC, year ASC)
+    merged = merged.sort_values(["ticker", "year"]).reset_index(drop=True)
 
     # Save Excel with premium styling
     out_path = _get_safe_export_path(DOWNLOAD_DIR, "merged_panel_data", ".xlsx")

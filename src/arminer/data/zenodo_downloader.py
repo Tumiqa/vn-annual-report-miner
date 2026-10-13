@@ -394,8 +394,10 @@ class ZenodoDownloader:
 
         return None
 
-    def _is_valid_bctn_file(self, path: Path) -> bool:
-        """Kiểm tra file PDF có đủ tiêu chuẩn là BCTN hay không (ít nhất MIN_BCTN_PAGES trang)."""
+    def _is_valid_bctn_file(self, path: Path, expected_year: Optional[int] = None) -> bool:
+        """Kiểm tra file PDF có đủ tiêu chuẩn là BCTN hay không (ít nhất MIN_BCTN_PAGES trang)
+        và không bị gán nhầm sang năm báo cáo khác.
+        """
         if not path or not path.exists() or not path.is_file():
             return False
         try:
@@ -407,10 +409,55 @@ class ZenodoDownloader:
                 fitz.TOOLS.mupdf_display_errors(False)
             doc = fitz.open(path)
             pages = len(doc)
+            if pages < MIN_BCTN_PAGES:
+                doc.close()
+                return False
+
+            # Kiểm tra lệch năm: Nếu bìa ghi rõ BCTN của năm khác khác expected_year
+            if expected_year:
+                import re
+                for p_idx in range(min(12, pages)):
+                    txt = doc[p_idx].get_text()
+                    m_yr = re.findall(
+                        r"(?:BÁO\s+CÁO\s+THƯỜNG\s+NIÊN|ANNUAL\s+REPORT)\s*(?:NĂM\s*)?(201\d|202\d)",
+                        txt,
+                        re.IGNORECASE,
+                    )
+                    if m_yr:
+                        detected_yr = int(m_yr[0])
+                        if abs(detected_yr - expected_year) >= 1:
+                            logger.warning(
+                                f"File {path.name} tải cho năm {expected_year} nhưng tiêu đề xác định BCTN năm {detected_yr}. Từ chối nhận nhầm năm."
+                            )
+                            doc.close()
+                            return False
+                        break
+
             doc.close()
-            return pages >= MIN_BCTN_PAGES
+            return True
         except Exception:
             return False
+
+    def _is_duplicate_of_adjacent_year(self, path: Path, ticker: str, year: int) -> bool:
+        """Kiểm tra xem file mới tải về có bị trùng mã MD5 100% với file BCTN của năm lân cận hay không."""
+        import hashlib
+        try:
+            target_size = path.stat().st_size
+            target_hash = hashlib.md5(path.read_bytes()).hexdigest()
+            parent = path.parent
+            for other_file in parent.glob(f"{ticker}_*_BCTN.pdf"):
+                if other_file.name == path.name:
+                    continue
+                if other_file.stat().st_size == target_size:
+                    other_hash = hashlib.md5(other_file.read_bytes()).hexdigest()
+                    if other_hash == target_hash:
+                        logger.warning(
+                            f"Phát hiện file {path.name} trùng lặp MD5 100% với {other_file.name}. Loại bỏ quan sát giả lập."
+                        )
+                        return True
+        except Exception:
+            pass
+        return False
 
     def _check_and_return_path(self, path: Path) -> Optional[Path]:
         """Xác thực file tồn tại và đủ số trang chuẩn BCTN, chỉ loại bỏ khỏi cache nếu là file đệm tạm thời."""
@@ -667,7 +714,7 @@ class ZenodoDownloader:
 
         # Already cached locally
         if cached_pdf.exists():
-            if self._is_valid_bctn_file(cached_pdf):
+            if self._is_valid_bctn_file(cached_pdf, expected_year=year) and not self._is_duplicate_of_adjacent_year(cached_pdf, ticker, year):
                 return cached_pdf
             else:
                 cached_pdf.unlink(missing_ok=True)
@@ -703,11 +750,11 @@ class ZenodoDownloader:
                                     f_out.write(chunk)
 
                             if cached_pdf.exists():
-                                if self._is_valid_bctn_file(cached_pdf):
+                                if self._is_valid_bctn_file(cached_pdf, expected_year=year) and not self._is_duplicate_of_adjacent_year(cached_pdf, ticker, year):
                                     logger.info(f"Downloaded from Google Drive Cloud HTTP: {ticker} ({year}) -> {cached_pdf.name}")
                                     return cached_pdf
                                 else:
-                                    logger.warning(f"File từ Google Drive cho {ticker} ({year}) chỉ là công văn/thông báo (< {MIN_BCTN_PAGES} trang). Đã loại bỏ.")
+                                    logger.warning(f"File từ Google Drive cho {ticker} ({year}) không hợp lệ hoặc trùng lặp năm lân cận. Đã loại bỏ.")
                                     cached_pdf.unlink(missing_ok=True)
             except Exception as e:
                 logger.debug(f"Direct Google Drive HTTP download failed, trying gdown: {e}")
@@ -718,7 +765,7 @@ class ZenodoDownloader:
                 cached_pdf.parent.mkdir(parents=True, exist_ok=True)
                 gdown.download(gdrive_url, str(cached_pdf), quiet=True)
                 if cached_pdf.exists():
-                    if self._is_valid_bctn_file(cached_pdf):
+                    if self._is_valid_bctn_file(cached_pdf, expected_year=year) and not self._is_duplicate_of_adjacent_year(cached_pdf, ticker, year):
                         logger.info(f"Downloaded from Google Drive Cloud (gdown): {ticker} ({year})")
                         return cached_pdf
                     else:
@@ -757,11 +804,11 @@ class ZenodoDownloader:
                                     f_out.write(chunk)
 
                             if cached_pdf.exists():
-                                if self._is_valid_bctn_file(cached_pdf):
+                                if self._is_valid_bctn_file(cached_pdf, expected_year=year) and not self._is_duplicate_of_adjacent_year(cached_pdf, ticker, year):
                                     logger.info(f"Downloaded from Cloud CDN Network: {ticker} ({year}) -> {cached_pdf.name}")
                                     return cached_pdf
                                 else:
-                                    logger.warning(f"File từ CDN cho {ticker} ({year}) chỉ là công văn/thông báo (< {MIN_BCTN_PAGES} trang). Đã loại bỏ.")
+                                    logger.warning(f"File từ CDN cho {ticker} ({year}) không hợp lệ hoặc trùng lặp năm lân cận. Đã loại bỏ.")
                                     cached_pdf.unlink(missing_ok=True)
             except Exception:
                 continue

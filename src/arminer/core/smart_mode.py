@@ -931,6 +931,10 @@ class ResearchOutputGenerator:
     ) -> Dict[str, Path]:
         outputs = {}
 
+        if "ticker" in panel_df.columns and "year" in panel_df.columns:
+            panel_df = panel_df.sort_values(["ticker", "year"]).reset_index(drop=True)
+            panel_df = panel_df.drop_duplicates(subset=["ticker", "year"], keep="first").reset_index(drop=True)
+
         if variable_info is None:
             variable_info = auto_generate_codebook(panel_df)
 
@@ -1000,6 +1004,10 @@ class ResearchOutputGenerator:
         ordered_cols = [c for c in core_order if c in clean_base_df.columns]
         extra_cols = [c for c in clean_base_df.columns if c not in ordered_cols]
         export_df = clean_base_df[ordered_cols + extra_cols].copy()
+
+        # Luôn sắp xếp dữ liệu theo trật tự thời gian theo firm - year (ticker ASC, year ASC)
+        if "ticker" in export_df.columns and "year" in export_df.columns:
+            export_df = export_df.sort_values(["ticker", "year"]).reset_index(drop=True)
 
         # Đảm bảo cột pages/page là số nguyên (integer), không bị tự động thêm thập phân (90 không thành 90.00)
         for page_col in ["pages", "page", "n_pages", "total_pages", "so_trang"]:

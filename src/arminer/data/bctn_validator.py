@@ -30,7 +30,7 @@ if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
 from loguru import logger
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ
-MIN_BCTN_PAGES = 6
+MIN_BCTN_PAGES = 8
 
 
 import unicodedata
@@ -43,7 +43,7 @@ def strip_accents(text: str) -> str:
     return "".join(c for c in nfkd if unicodedata.category(c) != "Mn").replace("đ", "d").replace("Đ", "D")
 
 
-# Từ khóa chỉ loại trừ khi tài liệu rõ ràng là Nghị quyết / Biên bản họp ĐHĐCĐ / Điều lệ thuần túy
+# Từ khóa chỉ loại trừ khi tài liệu rõ ràng là Nghị quyết / Biên bản họp ĐHĐCĐ / Điều lệ / Công văn CBTT thuần túy
 ADMINISTRATIVE_DISCLOSURE_PATTERNS = [
     "nghị quyết đại hội đồng cổ đông",
     "nghi quyet dai hoi dong co dong",
@@ -59,6 +59,18 @@ ADMINISTRATIVE_DISCLOSURE_PATTERNS = [
     "quy che noi bo ve quan tri",
     "báo cáo kết quả kiểm phiếu",
     "bao cao ket qua kiem phieu",
+    "bản công bố thông tin",
+    "ban cong bo thong tin",
+    "công bố thông tin định kỳ",
+    "cong bo thong tin dinh ky",
+    "công bố thông tin",
+    "cong bo thong tin",
+    "sở giao dịch chứng khoán",
+    "so giao dich chung khoan",
+    "ủy ban chứng khoán",
+    "uy ban chung khoan",
+    "kính gửi: sở giao dịch",
+    "kinh gui: so giao dich",
 ]
 
 # Từ khóa xác nhận BCTN hợp lệ (hỗ trợ nhiều biến thể và định dạng)

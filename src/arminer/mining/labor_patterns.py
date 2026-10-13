@@ -171,9 +171,15 @@ EXCLUSION_PATTERNS: List[str] = [
     "sáng kiến, giải pháp của", "sáng kiến của", "mua cổ phiếu của cbcnv",
     "phát hành cổ phiếu theo chương trình", "lựa chọn người lao động", "esop", "được phân phối", "cổ phiếu thưởng",
     "khẩu trang", "tiêm ngừa", "tiêm chủng", "vắc xin", "vacxin", "covid", "mũi 1", "mũi 2", "mũi 3",
-    "có trình độ từ", "trung cấp trở lên", "đại học trở lên", "sau đại học",
     "thất nghiệp", "tai nạn lao động", "bảo hiểm thất nghiệp", "trợ cấp thất nghiệp",
     "đội ngũ điều hành", "ban tổng giám đốc", "ban giám đốc", "ban kiểm soát",
+    # Energy, utilities, meal allowances, industrial parks, construction revenue
+    "kwh", "kwh/tháng", "kwh/thang", "kwh/năm", "điện năng", "tiêu thụ điện", "lượng điện",
+    "suất ăn", "suất ăn trưa", "suất ăn ca", "tiền ăn", "đồng/suất", "đồng / suất", "bữa ăn",
+    "khu công nghiệp", "kcn biên hòa", "thu hút trong kcn", "toàn kcn",
+    "doanh thu xây lắp", "doanh thu hợp nhất", "tổng doanh thu", "doanh thu thuần",
+    "lượt đào tạo", "đưa đi đào tạo", "lớp đào tạo", "tổng số lớp",
+    "tập đoàn 911", "tập đòan 911", "công ty 911",
 ]
 
 # Regex nhận diện các câu chỉ mức biến động (delta), bộ phận, hoặc quyết định chứ không phải tổng quy mô

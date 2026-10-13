@@ -91,7 +91,7 @@ class LaborExtractor:
     """
 
     MIN_HEADCOUNT = 1  # Distressed/micro firms can have 1-4 employees
-    MAX_HEADCOUNT = 500_000
+    MAX_HEADCOUNT = 150_000
 
     def __init__(self):
         self._compile_special_patterns()
@@ -148,9 +148,10 @@ class LaborExtractor:
         )
 
         # Average labor utilized: "sử dụng bình quân năm 2018 là: 556 người"
+        # Unit MUST be explicitly a labor unit (never electricity kWh or fuel)
         self.re_avg_utilized = re.compile(
-            r"(?:sử\s+dụng|sri\s+d[ụup]+ng|sir\s+d[ụup]+ng)\s+b[ìi]nh\s+qu[âa6]n[^\n:]{0,50}?(?:(?:n[ăâa]m|ndm)\s+\d{4})?[^\n:]{0,30}?(?:là|1a|ld|ldr|:)\s*"
-            rf"{num_re}\s*{unit_opt}",
+            r"(?:lao\s+động\s+)?(?:sử\s+dụng|sri\s+d[ụup]+ng|sir\s+d[ụup]+ng)\s+b[ìi]nh\s+qu[âa6]n[^\n:]{0,50}?(?:(?:n[ăâa]m|ndm)\s+\d{4})?[^\n:]{0,30}?(?:là|1a|ld|ldr|:)\s*"
+            rf"{num_re}\s*(?P<unit>{self.unit_re})",
             re.IGNORECASE,
         )
 
@@ -478,7 +479,10 @@ class LaborExtractor:
 
         # Normalize text to bridge line wraps in sentences
         norm_text = re.sub(r"[ \t]*\n[ \t]*", " ", text)
-        CURRENCY_REJECTS = ["đồng", "tỷ", "triệu", "vnd", "usd", "ca mắc", "%", "cổ phần", "cổ phiếu"]
+        CURRENCY_REJECTS = [
+            "đồng", "tỷ", "triệu", "vnd", "usd", "ca mắc", "%", "cổ phần", "cổ phiếu",
+            "kwh", "kwh/tháng", "kwh/năm", "suất", "suất ăn", "m3", "m2", "m²", "đồng/suất", "đ/suất",
+        ]
 
         patterns = [
             (self.re_date_first, "narrative_date_total", 0.98),
@@ -731,6 +735,12 @@ class LaborExtractor:
                 w_low = w_line.lower()
                 if any(b in w_low for b in TABLE_ROW_REJECTS) or any(b in w_low for b in ["thu nhập", "lương", "triệu đồng", "tỷ đồng", "vnd", "usd"]):
                     continue
+                # Running headers/footers check (e.g. "Báo cáo thường niên năm 2022 « 55")
+                if re.search(r"(?:báo cáo thường niên|annual report).*?(?:trang|\b\d+\b|[«»])", w_low):
+                    continue
+                if any(sym in w_line for sym in ["«", "»", "Trang", "trang"]):
+                    continue
+
                 direct_match = re.search(
                     rf"(?:năm\s+)?{year_str}[^0-9\n]{{0,30}}?(?P<val>\d{{1,3}}(?:[.,]\d{{3}})+|\d{{4,6}}|\d{{1,3}})\s*(?:người|lao\s*động|nhân\s*viên)?\b",
                     w_line,
@@ -739,6 +749,9 @@ class LaborExtractor:
                 if direct_match and not direct_match.group(0).endswith("%"):
                     val = normalize_number(direct_match.group("val"))
                     has_u = any(u in w_line.lower() for u in ["người", "nhân viên", "lao động", "cbcnv"])
+                    # If number is small (< 100), MUST have explicit labor unit to prevent page numbers / scores
+                    if val < 100 and not has_u:
+                        continue
                     if self._is_valid_headcount(val, has_unit=has_u) and not self._is_year_like(val) and not self._has_exclusion(w_line):
                         cand = LaborCandidate(
                             value=val,
@@ -1267,6 +1280,13 @@ class LaborExtractor:
             # Macro / National statistics
             "cục quản lý lao động", "bộ lao động", "lao động ngoài nước", "lao động ngòai nước", "xuất khẩu lao động", "thị trường lao động",
             "thất nghiệp", "tai nạn lao động", "bảo hiểm thất nghiệp",
+            # Energy, electricity, meals, allowances, industrial parks, training counts
+            "kwh", "kwh/tháng", "kwh/thang", "kwh/năm", "điện năng", "tiêu thụ điện", "lượng điện",
+            "suất ăn", "suất ăn trưa", "suất ăn ca", "tiền ăn", "đồng/suất", "đồng / suất",
+            "khu công nghiệp", "kcn biên hòa", "thu hút trong kcn", "toàn kcn",
+            "doanh thu xây lắp", "doanh thu hợp nhất", "tổng doanh thu", "doanh thu thuần",
+            "lượt đào tạo", "đưa đi đào tạo", "lớp đào tạo", "tổng số lớp",
+            "2025-2035", "2025–2035", "tập đoàn 911", "tập đòan 911", "công ty 911",
         ]
 
         has_group_candidate = any(
@@ -1381,8 +1401,8 @@ class LaborExtractor:
                 all_candidates=candidates,
             )
 
-        # Sort by target_year_matched first, then highest score
-        scored.sort(key=lambda x: (1 if x[1].target_year_matched else 0, x[0]), reverse=True)
+        # Sort by target_year_matched (only if reliable score > 0.4) first, then highest score
+        scored.sort(key=lambda x: (1 if (x[1].target_year_matched and x[0] > 0.4) else 0, x[0]), reverse=True)
         best_score, best_cand = scored[0]
 
         # Explicit mismatch penalty
@@ -1436,8 +1456,8 @@ class LaborExtractor:
         return True
 
     def _is_year_like(self, val: int) -> bool:
-        """Reject numbers that look like years (2010..2030) or date days (30, 31)."""
-        return (2010 <= val <= 2030) or val in [31, 30, 29, 28, 12]
+        """Reject numbers that look like years (2005..2040) or date days (30, 31)."""
+        return (2005 <= val <= 2040) or val in [31, 30, 29, 28, 12]
 
     def _has_exclusion(self, text: str) -> bool:
         """Check if text snippet is an excluded non-headcount metric."""
