@@ -687,7 +687,8 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
     n_pages = 1
     if file_path.suffix.lower() == ".pdf":
         if not is_valid_bctn_file(file_path):
-            logger.warning(f"Bỏ qua file không phải BCTN hợp lệ (< {MIN_BCTN_PAGES} trang hoặc công văn): {file_path.name}")
+            audit = audit_bctn_file(file_path)
+            logger.warning(f"Bỏ qua file không phải BCTN hợp lệ: {file_path.name} ({audit.get('reason', 'Không đạt tiêu chuẩn')})")
             return "", 0
 
         try:

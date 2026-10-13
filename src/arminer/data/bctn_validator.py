@@ -122,7 +122,20 @@ def is_valid_bctn_file(
             p = Path(pdf_path)
             if not p.exists() or p.stat().st_size < 1000:
                 return False
-            doc = fitz.open(p)
+            doc = None
+            for attempt in range(3):
+                try:
+                    doc = fitz.open(p)
+                    break
+                except Exception:
+                    if attempt < 2:
+                        import time
+                        time.sleep(0.08)
+                    else:
+                        return False
+
+        if not doc:
+            return False
 
         pages = len(doc)
         if pages < min_pages:
@@ -201,7 +214,22 @@ def audit_bctn_file(pdf_path: Union[str, Path, bytes]) -> Dict[str, Any]:
             if p.stat().st_size < 1000:
                 res["reason"] = f"File quá nhỏ ({p.stat().st_size} bytes)"
                 return res
-            doc = fitz.open(p)
+            doc = None
+            for attempt in range(3):
+                try:
+                    doc = fitz.open(p)
+                    break
+                except Exception as ex_open:
+                    if attempt < 2:
+                        import time
+                        time.sleep(0.08)
+                    else:
+                        res["reason"] = f"Không thể mở file PDF (đang bị khóa hoặc lỗi I/O): {ex_open}"
+                        return res
+
+        if not doc:
+            res["reason"] = "Không thể mở file PDF"
+            return res
 
         pages = len(doc)
         res["pages"] = pages
