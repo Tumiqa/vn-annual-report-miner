@@ -187,7 +187,8 @@ class SnippetExtractor:
         return bool(_TABLE_LINE_RE.search(line))
 
     def extract_sentence_context(self, text: str, position: int,
-                                 keyword_length: int) -> str:
+                                 keyword_length: int,
+                                 precomputed_sentences: Optional[List[Tuple[int, int]]] = None) -> str:
         """
         Trích xuất ngữ cảnh thông minh: câu chứa từ khóa ± 1 câu lân cận.
 
@@ -203,7 +204,7 @@ class SnippetExtractor:
             return self._extract_table_context(text, position, keyword_length)
 
         # --- Trường hợp văn xuôi: tìm câu chứa từ khóa ---
-        sentences = self._split_sentences(text)
+        sentences = precomputed_sentences if precomputed_sentences is not None else self._split_sentences(text)
         if not sentences:
             # Fallback: character-based
             return self.extract_snippet(text, position, keyword_length)
@@ -303,6 +304,10 @@ class SnippetExtractor:
               "Match_Type", "Similarity", "Sentence_Context"}, ...]
         """
         results: List[Dict] = []
+        if not text or not matches:
+            return results
+
+        precomputed_sentences = self._split_sentences(text)
 
         for i, match in enumerate(matches, start=1):
             position = match.get("position", 0)
@@ -310,7 +315,8 @@ class SnippetExtractor:
             kw_canonical = match.get("keyword_canonical", kw_found)
 
             sentence_ctx = self.extract_sentence_context(
-                text, position, len(kw_found)
+                text, position, len(kw_found),
+                precomputed_sentences=precomputed_sentences,
             )
 
             results.append({

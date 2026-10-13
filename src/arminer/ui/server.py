@@ -639,6 +639,26 @@ _BCTN_MEMORY_CACHE_MAX = 500
 _BCTN_CACHE_DIR = Path.home() / ".arminer" / "text_cache"
 
 
+_STEM_CACHE_MAP: Optional[Dict[str, Tuple[Path, int]]] = None
+
+def _get_stem_cache_map() -> Dict[str, Tuple[Path, int]]:
+    global _STEM_CACHE_MAP
+    if _STEM_CACHE_MAP is None:
+        _STEM_CACHE_MAP = {}
+        if _BCTN_CACHE_DIR.exists():
+            for m in _BCTN_CACHE_DIR.glob("*.meta"):
+                try:
+                    meta_info = json.loads(m.read_text(encoding="utf-8"))
+                    stem = meta_info.get("stem")
+                    if stem:
+                        txt = m.with_suffix(".txt")
+                        if txt.exists() and txt.stat().st_size >= 300:
+                            _STEM_CACHE_MAP[stem.upper()] = (txt, meta_info.get("pages", 1))
+                except Exception:
+                    pass
+    return _STEM_CACHE_MAP
+
+
 def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[str, int]:
     """
     Extracts text from PDF/TXT with high-speed 2-tier caching.
@@ -659,7 +679,7 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
             _BCTN_MEMORY_CACHE.move_to_end(cache_key)
             return cached_t, cached_p
 
-    # Check disk cache
+    # Check disk cache by hash
     if cache_key:
         _BCTN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         txt_path = _BCTN_CACHE_DIR / f"{cache_key}.txt"
@@ -669,8 +689,6 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
                 n_pages = meta.get("pages", 1)
                 text = txt_path.read_text(encoding="utf-8", errors="replace")
-                # Nếu text rỗng hoặc quá ít (< 300 ký tự) đối với file BCTN chuẩn (>= 8 trang),
-                # đây là kết quả của lần trích xuất bị crash/lỗi OCR trước đó -> XÓA CACHE NGAY để OCR lại!
                 if file_path.suffix.lower() == ".pdf" and (n_pages < MIN_BCTN_PAGES or len(text.strip()) < 300):
                     txt_path.unlink(missing_ok=True)
                     meta_path.unlink(missing_ok=True)
@@ -681,6 +699,20 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
                     return text, n_pages
             except Exception:
                 pass
+
+    # Tier 2.5: Fallback to STEM match in text_cache (chống lệch cache_key do mtime ổ ảo Google Drive H:)
+    try:
+        stem = file_path.stem.upper()
+        stem_map = _get_stem_cache_map()
+        if stem in stem_map:
+            txt_path, n_pages = stem_map[stem]
+            text = txt_path.read_text(encoding="utf-8", errors="replace")
+            if len(text.strip()) >= 300:
+                if cache_key:
+                    _BCTN_MEMORY_CACHE[cache_key] = (text, n_pages)
+                return text, n_pages
+    except Exception:
+        pass
 
     # Extract from source file with C-level flags
     text = ""
@@ -1221,16 +1253,22 @@ async def scan_selected_stream(req: ScanSelectedRequest):
                 }, ensure_ascii=False)}
                 await asyncio.sleep(0)
 
-        # --- Phase 3: Generate output ---
-        yield {"event": "progress", "data": json.dumps(
-            {"phase": "export", "current": total, "total": total,
-             "message": "Đang tạo file kết quả nghiên cứu..."},
-            ensure_ascii=False)}
+        # --- Phase 3: Generate output (Guaranteed to execute even if client disconnected) ---
+        try:
+            yield {"event": "progress", "data": json.dumps(
+                {"phase": "export", "current": total, "total": total,
+                 "message": "Đang tạo file kết quả nghiên cứu..."},
+                ensure_ascii=False)}
+        except Exception:
+            logger.info("Client SSE đã ngắt kết nối trước đó, hệ thống tiếp tục tự động lưu file kết quả vào đĩa...")
 
         if not rows:
-            yield {"event": "error", "data": json.dumps(
-                {"detail": "Không trích xuất được nội dung từ các file."},
-                ensure_ascii=False)}
+            try:
+                yield {"event": "error", "data": json.dumps(
+                    {"detail": "Không trích xuất được nội dung từ các file."},
+                    ensure_ascii=False)}
+            except Exception:
+                pass
             return
 
         df = pd.DataFrame(rows)
