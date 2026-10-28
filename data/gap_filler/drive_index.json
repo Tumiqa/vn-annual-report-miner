@@ -85103,12 +85103,12 @@
     "direct_url": "https://drive.google.com/uc?export=download&id=1rPFC-_lCqYHG8Xed4-z9r9sf8Zhciocu"
   },
   "BID_2021": {
-    "file_id": "12w71MzIwMGd2igAkYxEiY9uFN_IPABRc",
+    "file_id": "",
     "file_name": "BID_2021_BCTN.pdf",
     "file_size": 30750591,
-    "direct_url": "https://drive.google.com/uc?export=download&id=12w71MzIwMGd2igAkYxEiY9uFN_IPABRc",
     "pages": 119,
-    "healthy": true
+    "healthy": true,
+    "direct_url": ""
   },
   "BIC_2021": {
     "file_id": "1FRm7kl81NqIrte6mBHToVqv5fkenFugd",
@@ -108454,12 +108454,12 @@
     "direct_url": "https://drive.google.com/uc?export=download&id=1uzIyjhZ-O_zLAkGVfjoh3v-8BoxJxwNN"
   },
   "VPI_2024": {
-    "file_id": "16kE7daxlZkUG5stGVhnFu9TQBm9RcPih",
+    "file_id": "",
     "file_name": "VPI_2024_BCTN.pdf",
     "file_size": 10657859,
-    "direct_url": "https://drive.google.com/uc?export=download&id=16kE7daxlZkUG5stGVhnFu9TQBm9RcPih",
     "pages": 101,
-    "healthy": true
+    "healthy": true,
+    "direct_url": ""
   },
   "VRC_2023": {
     "file_id": "1hhXU59sCCccO1qpL0VWD8m6LdsquIO3a",
@@ -131352,5 +131352,205 @@
     "pages": 26,
     "source": "Vietstock API",
     "healthy": true
+  },
+  "KMT_2012": {
+    "file_id": "",
+    "file_name": "KMT_2012_BCTN.pdf",
+    "file_size": 682488,
+    "pages": 33,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "MLS_2020": {
+    "file_id": "",
+    "file_name": "MLS_2020_BCTN.pdf",
+    "file_size": 1895815,
+    "pages": 45,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HDM_2009": {
+    "file_id": "",
+    "file_name": "HDM_2009_BCTN.pdf",
+    "file_size": 218134,
+    "pages": 4,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HDM_2010": {
+    "file_id": "",
+    "file_name": "HDM_2010_BCTN.pdf",
+    "file_size": 225996,
+    "pages": 4,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "CAP_2021": {
+    "file_id": "",
+    "file_name": "CAP_2021_BCTN.pdf",
+    "file_size": 3259147,
+    "pages": 12,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "VCW_2023": {
+    "file_id": "",
+    "file_name": "VCW_2023_BCTN.pdf",
+    "file_size": 13800835,
+    "pages": 15,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "TPB_2022": {
+    "file_id": "",
+    "file_name": "TPB_2022_BCTN.pdf",
+    "file_size": 8699037,
+    "pages": 65,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "AGX_2020": {
+    "file_id": "",
+    "file_name": "AGX_2020_BCTN.pdf",
+    "file_size": 8333965,
+    "pages": 14,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "AGX_2021": {
+    "file_id": "",
+    "file_name": "AGX_2021_BCTN.pdf",
+    "file_size": 1192355,
+    "pages": 14,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "BMG_2024": {
+    "file_id": "",
+    "file_name": "BMG_2024_BCTN.pdf",
+    "file_size": 15696615,
+    "pages": 15,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HFC_2023": {
+    "file_id": "",
+    "file_name": "HFC_2023_BCTN.pdf",
+    "file_size": 5631141,
+    "pages": 14,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HKB_2020": {
+    "file_id": "",
+    "file_name": "HKB_2020_BCTN.pdf",
+    "file_size": 2878821,
+    "pages": 10,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "KSS_2020": {
+    "file_id": "",
+    "file_name": "KSS_2020_BCTN.pdf",
+    "file_size": 4230980,
+    "pages": 15,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "POV_2024": {
+    "file_id": "",
+    "file_name": "POV_2024_BCTN.pdf",
+    "file_size": 8554710,
+    "pages": 13,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "SRB_2023": {
+    "file_id": "",
+    "file_name": "SRB_2023_BCTN.pdf",
+    "file_size": 3922935,
+    "pages": 11,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "XMP_2024": {
+    "file_id": "",
+    "file_name": "XMP_2024_BCTN.pdf",
+    "file_size": 4902126,
+    "pages": 10,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "AGX_2016": {
+    "file_id": "",
+    "file_name": "AGX_2016_BCTN.pdf",
+    "file_size": 8334986,
+    "pages": 13,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "DBM_2019": {
+    "file_id": "",
+    "file_name": "DBM_2019_BCTN.pdf",
+    "file_size": 3317998,
+    "pages": 12,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HKB_2019": {
+    "file_id": "",
+    "file_name": "HKB_2019_BCTN.pdf",
+    "file_size": 3586935,
+    "pages": 12,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HSP_2015": {
+    "file_id": "",
+    "file_name": "HSP_2015_BCTN.pdf",
+    "file_size": 944159,
+    "pages": 14,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HSP_2016": {
+    "file_id": "",
+    "file_name": "HSP_2016_BCTN.pdf",
+    "file_size": 1159243,
+    "pages": 15,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "HSP_2017": {
+    "file_id": "",
+    "file_name": "HSP_2017_BCTN.pdf",
+    "file_size": 5835638,
+    "pages": 14,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "M10_2015": {
+    "file_id": "",
+    "file_name": "M10_2015_BCTN.pdf",
+    "file_size": 2799490,
+    "pages": 15,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "MIM_2015": {
+    "file_id": "",
+    "file_name": "MIM_2015_BCTN.pdf",
+    "file_size": 824618,
+    "pages": 31,
+    "healthy": true,
+    "direct_url": ""
+  },
+  "VCW_2019": {
+    "file_id": "",
+    "file_name": "VCW_2019_BCTN.pdf",
+    "file_size": 5973913,
+    "pages": 13,
+    "healthy": true,
+    "direct_url": ""
   }
 }

@@ -33,6 +33,7 @@ data/ocr_output/
 data/reports/
 data/bctn_new_extracted/
 data/bctc_cache/
+data/company_history_cache/
 data/hf_upload_progress.txt
 output/
 *.pdf

@@ -122,98 +122,148 @@ class ReportHealer:
         year_str = str(year)
         token = self._ensure_vietstock_token()
 
-        payload = {
-            "code": ticker_u,
-            "type": "2",  # 2 = Báo cáo thường niên (BCTN)
-            "page": 1,
-            "pageSize": 50,
-        }
-        if token:
-            payload["__RequestVerificationToken"] = token
+        # Thử lần lượt các loại tài liệu: type=2 (BCTN), type=0 (Tất cả), type=1 (Tài liệu ĐHCĐ)
+        doc_types = ["2", "0", "1"]
+        for doc_type in doc_types:
+            payload = {
+                "code": ticker_u,
+                "type": doc_type,
+                "page": 1,
+                "pageSize": 50,
+            }
+            if token:
+                payload["__RequestVerificationToken"] = token
 
-        headers = {
-            "User-Agent": DEFAULT_HEADERS["User-Agent"],
-            "Referer": f"https://finance.vietstock.vn/{ticker_u}/tai-lieu/bao-cao-thuong-nien.htm",
-            "X-Requested-With": "XMLHttpRequest",
-        }
+            headers = {
+                "User-Agent": DEFAULT_HEADERS["User-Agent"],
+                "Referer": f"https://finance.vietstock.vn/{ticker_u}/tai-lieu/bao-cao-thuong-nien.htm",
+                "X-Requested-With": "XMLHttpRequest",
+            }
 
-        try:
-            r = self.session.post("https://finance.vietstock.vn/data/getdocument", data=payload, headers=headers, timeout=12)
-            if r.status_code != 200:
-                return None
-            raw_text = r.content.decode("utf-8-sig", errors="replace").strip()
-            items = json.loads(raw_text)
-            if not isinstance(items, list):
-                return None
-        except Exception as e:
-            logger.debug(f"ReportHealer: Lỗi truy vấn Vietstock cho {ticker_u}: {e}")
-            return None
-
-        candidates = []
-        for it in items:
-            title = it.get("Title", "") or ""
-            url = it.get("Url", "") or it.get("FileUrl", "") or ""
-            comb = (title + " " + url).lower()
-
-            matched_year = False
-            if f"năm {year_str}" in comb or f" {year_str}" in comb or f"_{year_str}" in comb or f"/{year_str}/" in comb or f"-{year_str}" in comb:
-                matched_year = True
-
-            if matched_year:
-                candidates.append((title, url))
-
-        logger.info(f"ReportHealer: Tìm thấy {len(candidates)} ứng viên Vietstock cho {ticker_u}/{year}")
-
-        for title, url in candidates:
-            if not url or not url.startswith("http"):
-                continue
             try:
-                resp = self.session.get(url, headers={"User-Agent": DEFAULT_HEADERS["User-Agent"]}, stream=True, timeout=30)
-                if resp.status_code != 200:
+                r = self.session.post("https://finance.vietstock.vn/data/getdocument", data=payload, headers=headers, timeout=12)
+                if r.status_code != 200:
                     continue
-                content = resp.content
-                if len(content) < 100_000:
+                raw_text = r.content.decode("utf-8-sig", errors="replace").strip()
+                items = json.loads(raw_text)
+                if not isinstance(items, list):
                     continue
+            except Exception as e:
+                logger.debug(f"ReportHealer: Lỗi truy vấn Vietstock cho {ticker_u} (type={doc_type}): {e}")
+                continue
 
-                url_low = url.lower()
-                # 1. Trực tiếp PDF
-                if url_low.endswith(".pdf") or b"%PDF" in content[:1024]:
-                    if is_valid_bctn_file(content):
-                        logger.info(f"ReportHealer: Tải thành công BCTN trực tiếp Vietstock: {ticker_u}/{year} ({len(content)//1024} KB)")
-                        return content
+            candidates = []
+            for it in items:
+                title = it.get("Title", "") or ""
+                url = it.get("Url", "") or it.get("FileUrl", "") or ""
+                comb = (title + " " + url).lower()
 
-                # 2. File nén ZIP
-                elif url_low.endswith(".zip") or content[:4] == b"PK\x03\x04":
-                    try:
-                        zf = zipfile.ZipFile(io.BytesIO(content))
-                        pdf_entries = [f for f in zf.infolist() if f.filename.lower().endswith(".pdf")]
-                        pdf_entries.sort(key=lambda x: x.file_size, reverse=True)
-                        for entry in pdf_entries:
-                            pdf_bytes = zf.read(entry)
-                            if is_valid_bctn_file(pdf_bytes):
-                                logger.info(f"ReportHealer: Bóc tách thành công BCTN từ ZIP Vietstock: {ticker_u}/{year} - {entry.filename} ({len(pdf_bytes)//1024} KB)")
-                                return pdf_bytes
-                    except Exception as ze:
-                        logger.debug(f"ReportHealer zip extract error: {ze}")
+                # Kiểm tra năm
+                matched_year = False
+                if f"năm {year_str}" in comb or f" {year_str}" in comb or f"_{year_str}" in comb or f"/{year_str}/" in comb or f"-{year_str}" in comb:
+                    matched_year = True
 
-                # 3. File nén RAR / 7Z
-                elif url_low.endswith((".rar", ".7z")):
-                    with tempfile.TemporaryDirectory() as tmp_dir:
-                        tmp_archive = Path(tmp_dir) / f"archive_{ticker_u}_{year}"
-                        tmp_archive.write_bytes(content)
-                        extract_dir = Path(tmp_dir) / "extracted"
-                        extract_dir.mkdir(exist_ok=True)
+                # Nếu là type != 2, cần kiểm tra thêm từ khóa BCTN / Báo cáo thường niên / Báo cáo HĐQT
+                if matched_year:
+                    if doc_type == "2":
+                        candidates.append((title, url))
+                    else:
+                        if any(k in comb for k in ("thường niên", "bctn", "annual", "hội đồng quản trị", "ban giám đốc")):
+                            candidates.append((title, url))
 
-                        proc = subprocess.run(["tar", "-xf", str(tmp_archive), "-C", str(extract_dir)], capture_output=True, text=True)
-                        if proc.returncode == 0:
+            if not candidates:
+                continue
+
+            logger.info(f"ReportHealer: Tìm thấy {len(candidates)} ứng viên Vietstock (type={doc_type}) cho {ticker_u}/{year}")
+
+            for title, url in candidates:
+                if not url or not url.startswith("http"):
+                    continue
+                try:
+                    resp = self.session.get(url, headers={"User-Agent": DEFAULT_HEADERS["User-Agent"]}, stream=True, timeout=30)
+                    if resp.status_code != 200:
+                        continue
+                    content = resp.content
+                    if len(content) < 50_000:
+                        continue
+
+                    url_low = url.lower()
+                    # 1. Trực tiếp PDF
+                    if url_low.endswith(".pdf") or b"%PDF" in content[:1024]:
+                        if is_valid_bctn_file(content):
+                            logger.info(f"ReportHealer: Tải thành công BCTN trực tiếp Vietstock: {ticker_u}/{year} ({len(content)//1024} KB)")
+                            return content
+
+                    # 2. File nén ZIP
+                    elif url_low.endswith(".zip") or content[:4] == b"PK\x03\x04":
+                        try:
+                            zf = zipfile.ZipFile(io.BytesIO(content))
+                            pdf_entries = [f for f in zf.infolist() if f.filename.lower().endswith(".pdf")]
+                            pdf_entries.sort(key=lambda x: x.file_size, reverse=True)
+                            for entry in pdf_entries:
+                                pdf_bytes = zf.read(entry)
+                                if is_valid_bctn_file(pdf_bytes):
+                                    logger.info(f"ReportHealer: Bóc tách thành công BCTN từ ZIP Vietstock: {ticker_u}/{year} - {entry.filename} ({len(pdf_bytes)//1024} KB)")
+                                    return pdf_bytes
+                        except Exception as ze:
+                            logger.debug(f"ReportHealer zip extract error: {ze}")
+
+                    # 3. File nén RAR / 7Z
+                    elif url_low.endswith((".rar", ".7z")):
+                        with tempfile.TemporaryDirectory() as tmp_dir:
+                            tmp_archive = Path(tmp_dir) / f"archive_{ticker_u}_{year}"
+                            tmp_archive.write_bytes(content)
+                            extract_dir = Path(tmp_dir) / "extracted"
+                            extract_dir.mkdir(exist_ok=True)
+
+                            # Ưu tiên UnRAR.exe chuyên dụng trên Windows
+                            unrar_bin = None
+                            for cand_bin in [r"C:\Program Files\WinRAR\UnRAR.exe", r"C:\Program Files (x86)\WinRAR\UnRAR.exe", shutil.which("unrar"), shutil.which("7z")]:
+                                if cand_bin and os.path.exists(str(cand_bin)):
+                                    unrar_bin = str(cand_bin)
+                                    break
+
+                            if unrar_bin and "unrar" in unrar_bin.lower():
+                                subprocess.run([unrar_bin, "x", "-y", str(tmp_archive), str(extract_dir) + "\\"], capture_output=True)
+                            elif unrar_bin and "7z" in unrar_bin.lower():
+                                subprocess.run([unrar_bin, "x", "-y", f"-o{extract_dir}", str(tmp_archive)], capture_output=True)
+                            else:
+                                subprocess.run(["tar", "-xf", str(tmp_archive), "-C", str(extract_dir)], capture_output=True)
+
                             extracted_pdfs = list(extract_dir.rglob("*.pdf"))
                             extracted_pdfs.sort(key=lambda p: p.stat().st_size, reverse=True)
                             for ep in extracted_pdfs:
                                 if is_valid_bctn_file(ep):
-                                    logger.info(f"ReportHealer: Bóc tách thành công BCTN từ RAR/7Z Vietstock: {ticker_u}/{year} - {ep.name} ({ep.stat().st_size//1024} KB)")
-                                    return ep.read_bytes()
-            except Exception as e:
-                logger.debug(f"ReportHealer: Lỗi tải ứng viên Vietstock {url}: {e}")
+                                    pdf_data = ep.read_bytes()
+                                    logger.info(f"ReportHealer: Bóc tách thành công BCTN từ RAR/7Z Vietstock: {ticker_u}/{year} - {ep.name} ({len(pdf_data)//1024} KB)")
+                                    return pdf_data
+
+                    # 4. File văn bản Word DOC / DOCX
+                    elif url_low.endswith((".doc", ".docx")):
+                        try:
+                            import win32com.client
+                            with tempfile.TemporaryDirectory() as tmp_dir:
+                                ext = ".docx" if url_low.endswith(".docx") else ".doc"
+                                tmp_doc = Path(tmp_dir) / f"doc_{ticker_u}_{year}{ext}"
+                                tmp_pdf = Path(tmp_dir) / f"doc_{ticker_u}_{year}.pdf"
+                                tmp_doc.write_bytes(content)
+                                word = win32com.client.Dispatch("Word.Application")
+                                word.Visible = False
+                                try:
+                                    w_doc = word.Documents.Open(str(tmp_doc.resolve()))
+                                    w_doc.SaveAs(str(tmp_pdf.resolve()), FileFormat=17)
+                                    w_doc.Close()
+                                finally:
+                                    word.Quit()
+                                if tmp_pdf.exists() and is_valid_bctn_file(tmp_pdf):
+                                    pdf_bytes = tmp_pdf.read_bytes()
+                                    logger.info(f"ReportHealer: Chuyển đổi DOC thành công BCTN: {ticker_u}/{year} ({len(pdf_bytes)//1024} KB)")
+                                    return pdf_bytes
+                        except Exception as e_doc:
+                            logger.debug(f"ReportHealer doc convert error: {e_doc}")
+
+                except Exception as e:
+                    logger.debug(f"ReportHealer: Lỗi tải ứng viên Vietstock {url}: {e}")
 
         return None
 
@@ -497,6 +547,14 @@ class ReportHealer:
                 audit = self.audit_pdf(probe_p)
                 res["old_pages"] = max(res["old_pages"], audit["pages"])
                 if not audit["is_bogus"] and audit["pages"] >= 8:
+                    if target_file and not target_file.exists():
+                        try:
+                            target_file.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(probe_p, target_file)
+                            self._update_drive_index(ticker_u, year, target_file.stat().st_size, audit["pages"])
+                            logger.info(f"ReportHealer: Đã đồng bộ sang Google Drive: {target_file}")
+                        except Exception as e_sync:
+                            logger.warning(f"Could not sync to drive: {e_sync}")
                     res["status"] = "already_healthy"
                     res["message"] = f"Báo cáo {ticker_u}/{year} đã chuẩn ({audit['pages']} trang)."
                     return res

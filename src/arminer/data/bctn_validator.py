@@ -30,7 +30,8 @@ if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
 from loguru import logger
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ
-MIN_BCTN_PAGES = 8
+# Lưu ý: Các mẫu BCTN thời kỳ đầu (TT 38/2007, TT 09/2010, UPCoM) có từ 4-7 trang chuẩn.
+MIN_BCTN_PAGES = 4
 
 
 import unicodedata

@@ -1,0 +1,258 @@
+name: Tu dien Blockchain
+version: 1.0.0
+categories:
+  chung:
+    description: Category chung
+    keywords:
+    - keyword: blockchain
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: cryptocurrency
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: bitcoin
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: chuỗi khối
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: tiền mã hóa
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: hyperledger
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: distributed ledger
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: tokenization
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: digital asset
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: stablecoin
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: proof of work
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: proof of stake
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: ethereum virtual machine
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: EVM
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: central bank digital currency
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: CBDC
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: crypto
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: ethereum
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: nft
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: binance
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: smart contract
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: block chain
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: web3
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: tiền ảo
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: dogecoin
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: tether
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: altcoin
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: defi
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: airdrop
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: coinbase
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: metamask
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: opensea
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: solana
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: usdt
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: bnb
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: xrp
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: solidity
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: etherscan
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: cardano
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: okx
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: ripple
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: shiba inu
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: litecoin
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: kraken
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: pancakeswap
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: polygon
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: trust wallet
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: rarible
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: uniswap
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: phantom
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: erc20
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: openzeppelin
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: polkadot
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: erc721
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: parachain
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: substrate
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: cosmos
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: kusama
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: chainlink
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: corda
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: tài sản mã hoá
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: NFTs
+      weight: 1.0
+      variants: []
+      language: vi
+    - keyword: tài chính phi tập trung
+      weight: 1.0
+      variants: []
+      language: vi
