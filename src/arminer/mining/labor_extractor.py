@@ -306,11 +306,13 @@ class LaborExtractor:
                 import pymupdf as fitz
             except ImportError:
                 import fitz
-            doc = fitz.open(path)
-            for page_num in range(len(doc)):
-                t = doc[page_num].get_text()
-                pages.append((page_num + 1, t))
-            doc.close()
+            from arminer.utils.pdf_lock import PYMUPDF_LOCK
+            with PYMUPDF_LOCK:
+                doc = fitz.open(path)
+                for page_num in range(len(doc)):
+                    t = doc[page_num].get_text()
+                    pages.append((page_num + 1, t))
+                doc.close()
         except Exception as e:
             logger.warning(f"PyMuPDF error reading {path.name}: {e}")
 

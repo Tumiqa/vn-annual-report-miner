@@ -27,6 +27,7 @@ except ImportError:
 
 if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
     fitz.TOOLS.mupdf_display_errors(False)
+from arminer.utils.pdf_lock import PYMUPDF_LOCK
 from loguru import logger
 
 # Tiêu chuẩn tối thiểu cho một Báo cáo thường niên (BCTN) hợp lệ
@@ -161,60 +162,61 @@ def is_valid_bctn_file(
 
     try:
         doc = None
-        if isinstance(pdf_path, (bytes, bytearray)):
-            if len(pdf_path) < 1000:
+        with PYMUPDF_LOCK:
+            if isinstance(pdf_path, (bytes, bytearray)):
+                if len(pdf_path) < 1000:
+                    return False
+                doc = fitz.open(stream=pdf_path, filetype="pdf")
+            else:
+                p = Path(pdf_path)
+                if not p.exists() or p.stat().st_size < 1000:
+                    return False
+                doc = None
+                for attempt in range(3):
+                    try:
+                        doc = fitz.open(p)
+                        break
+                    except Exception:
+                        if attempt < 2:
+                            import time
+                            time.sleep(0.08)
+                        else:
+                            return False
+
+            if not doc:
                 return False
-            doc = fitz.open(stream=pdf_path, filetype="pdf")
-        else:
-            p = Path(pdf_path)
-            if not p.exists() or p.stat().st_size < 1000:
+
+            pages = len(doc)
+            if pages < min_pages:
+                doc.close()
                 return False
-            doc = None
-            for attempt in range(3):
-                try:
-                    doc = fitz.open(p)
-                    break
-                except Exception:
-                    if attempt < 2:
-                        import time
-                        time.sleep(0.08)
-                    else:
-                        return False
 
-        if not doc:
-            return False
+            # Nếu số trang vừa phải (8 - 15 trang), kiểm tra xem có phải là nghị quyết ĐHĐCĐ/Điều lệ thuần túy không
+            if strict_content_check and pages <= 15:
+                # Lấy text 3 trang đầu
+                text_probe = ""
+                for i in range(min(3, pages)):
+                    text_probe += " " + doc[i].get_text()[:1000]
 
-        pages = len(doc)
-        if pages < min_pages:
-            doc.close()
-            return False
+                doc.close()
 
-        # Nếu số trang vừa phải (8 - 15 trang), kiểm tra xem có phải là nghị quyết ĐHĐCĐ/Điều lệ thuần túy không
-        if strict_content_check and pages <= 15:
-            # Lấy text 3 trang đầu
-            text_probe = ""
-            for i in range(min(3, pages)):
-                text_probe += " " + doc[i].get_text()[:1000]
+                # Nếu là file scan ảnh hoàn toàn (không có text layer) và >= 8 trang -> chấp nhận
+                if len(text_probe.strip()) < 50:
+                    return True
 
-            doc.close()
+                probe_low = text_probe.lower()
+                probe_unacc = strip_accents(probe_low)
+                has_genuine_kw = any(k in probe_low or k in probe_unacc for k in GENUINE_BCTN_PATTERNS)
+                has_admin_kw = any(k in probe_low or k in probe_unacc for k in ADMINISTRATIVE_DISCLOSURE_PATTERNS)
 
-            # Nếu là file scan ảnh hoàn toàn (không có text layer) và >= 8 trang -> chấp nhận
-            if len(text_probe.strip()) < 50:
+                # Chỉ loại trừ khi tài liệu rõ ràng là Nghị quyết ĐHĐCĐ / Điều lệ mà hoàn toàn không có nội dung báo cáo
+                if has_admin_kw and not has_genuine_kw:
+                    return False
+
                 return True
 
-            probe_low = text_probe.lower()
-            probe_unacc = strip_accents(probe_low)
-            has_genuine_kw = any(k in probe_low or k in probe_unacc for k in GENUINE_BCTN_PATTERNS)
-            has_admin_kw = any(k in probe_low or k in probe_unacc for k in ADMINISTRATIVE_DISCLOSURE_PATTERNS)
-
-            # Chỉ loại trừ khi tài liệu rõ ràng là Nghị quyết ĐHĐCĐ / Điều lệ mà hoàn toàn không có nội dung báo cáo
-            if has_admin_kw and not has_genuine_kw:
-                return False
-
+            doc.close()
             return True
-
-        doc.close()
-        return True
     except Exception:
         return False
 
@@ -256,48 +258,49 @@ def audit_bctn_file(pdf_path: Union[str, Path, bytes]) -> Dict[str, Any]:
 
     try:
         doc = None
-        if isinstance(pdf_path, (bytes, bytearray)):
-            size_kb = round(len(pdf_path) / 1024, 1)
-            res["file_size_kb"] = size_kb
-            if len(pdf_path) < 5000:
-                res["reason"] = f"File quá nhỏ ({len(pdf_path)} bytes)"
-                return res
-            doc = fitz.open(stream=pdf_path, filetype="pdf")
-        else:
-            p = Path(pdf_path)
-            if not p.exists():
-                res["reason"] = "File không tồn tại trên hệ thống"
-                return res
-            size_kb = round(p.stat().st_size / 1024, 1)
-            res["file_size_kb"] = size_kb
-            if p.stat().st_size < 1000:
-                res["reason"] = f"File quá nhỏ ({p.stat().st_size} bytes)"
-                return res
-            doc = None
-            for attempt in range(3):
-                try:
-                    doc = fitz.open(p)
-                    break
-                except Exception as ex_open:
-                    if attempt < 2:
-                        import time
-                        time.sleep(0.08)
-                    else:
-                        res["reason"] = f"Không thể mở file PDF (đang bị khóa hoặc lỗi I/O): {ex_open}"
-                        return res
+        with PYMUPDF_LOCK:
+            if isinstance(pdf_path, (bytes, bytearray)):
+                size_kb = round(len(pdf_path) / 1024, 1)
+                res["file_size_kb"] = size_kb
+                if len(pdf_path) < 5000:
+                    res["reason"] = f"File quá nhỏ ({len(pdf_path)} bytes)"
+                    return res
+                doc = fitz.open(stream=pdf_path, filetype="pdf")
+            else:
+                p = Path(pdf_path)
+                if not p.exists():
+                    res["reason"] = "File không tồn tại trên hệ thống"
+                    return res
+                size_kb = round(p.stat().st_size / 1024, 1)
+                res["file_size_kb"] = size_kb
+                if p.stat().st_size < 1000:
+                    res["reason"] = f"File quá nhỏ ({p.stat().st_size} bytes)"
+                    return res
+                doc = None
+                for attempt in range(3):
+                    try:
+                        doc = fitz.open(p)
+                        break
+                    except Exception as ex_open:
+                        if attempt < 2:
+                            import time
+                            time.sleep(0.08)
+                        else:
+                            res["reason"] = f"Không thể mở file PDF (đang bị khóa hoặc lỗi I/O): {ex_open}"
+                            return res
 
-        if not doc:
-            res["reason"] = "Không thể mở file PDF"
-            return res
+            if not doc:
+                res["reason"] = "Không thể mở file PDF"
+                return res
 
-        pages = len(doc)
-        res["pages"] = pages
-        res["page_count"] = pages
+            pages = len(doc)
+            res["pages"] = pages
+            res["page_count"] = pages
 
-        title_sample = ""
-        for i in range(min(2, pages)):
-            title_sample += " " + doc[i].get_text()[:400].strip()
-        doc.close()
+            title_sample = ""
+            for i in range(min(2, pages)):
+                title_sample += " " + doc[i].get_text()[:400].strip()
+            doc.close()
 
         res["title_sample"] = title_sample[:200].replace("\n", " ")
 

@@ -25,6 +25,7 @@ from typing import List, Optional
 
 _OCR_SEMAPHORE = threading.Semaphore(2)  # Giới hạn tối đa 2 tác vụ OCR đồng thời tránh nghẽn CPU/RAM
 
+from arminer.utils.pdf_lock import PYMUPDF_LOCK
 from loguru import logger
 
 
@@ -241,92 +242,94 @@ class OCREngine:
         if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
             fitz.TOOLS.mupdf_display_errors(False)
 
-        doc = fitz.open(str(pdf_path))
         pages_text: List[str] = []
         scanned_pages: List[int] = []
-
         extract_flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_PRESERVE_WHITESPACE
-
         import unicodedata
 
-        # Phase 1: Smart Hybrid Page Analysis — Xử lý triệt để 100% các trường hợp PDF
-        for i, page in enumerate(doc):
-            p_text = page.get_text(flags=extract_flags).strip()
-            if p_text:
-                p_text = unicodedata.normalize("NFC", p_text)
+        with PYMUPDF_LOCK:
+            doc = fitz.open(str(pdf_path))
+            try:
+                # Phase 1: Smart Hybrid Page Analysis — Xử lý triệt để 100% các trường hợp PDF
+                for i, page in enumerate(doc):
+                    p_text = page.get_text(flags=extract_flags).strip()
+                    if p_text:
+                        p_text = unicodedata.normalize("NFC", p_text)
 
-            if ocr_mode == "fast":
-                pages_text.append(p_text)
-                continue
+                    if ocr_mode == "fast":
+                        pages_text.append(p_text)
+                        continue
 
-            if ocr_mode == "force_ocr":
-                scanned_pages.append(i)
-                pages_text.append(p_text)
-                continue
+                    if ocr_mode == "force_ocr":
+                        scanned_pages.append(i)
+                        pages_text.append(p_text)
+                        continue
 
-            # Kiểm tra chất lượng text native (phát hiện lỗi CID font / font mã hóa hỏng)
-            alnum_chars = sum(1 for c in p_text if c.isalnum())
-            is_corrupted = (
-                p_text.count("(cid:") >= 5
-                or p_text.count("\ufffd") >= 5
-                or (len(p_text) >= 50 and (alnum_chars / len(p_text)) < 0.25)
-            )
+                    # Kiểm tra chất lượng text native (phát hiện lỗi CID font / font mã hóa hỏng)
+                    alnum_chars = sum(1 for c in p_text if c.isalnum())
+                    is_corrupted = (
+                        p_text.count("(cid:") >= 5
+                        or p_text.count("\ufffd") >= 5
+                        or (len(p_text) >= 50 and (alnum_chars / len(p_text)) < 0.25)
+                    )
 
-            # Phân tích toàn diện hình ảnh trên trang (xử lý cả ảnh đơn lẫn trang ghép từ 4-5 ảnh nhỏ/lát cắt)
-            imgs = page.get_images()
-            total_img_pixels = 0
-            max_img_pixels = 0
-            has_substantial_single_img = False
+                    # Phân tích toàn diện hình ảnh trên trang (xử lý cả ảnh đơn lẫn trang ghép từ 4-5 ảnh nhỏ/lát cắt)
+                    imgs = page.get_images()
+                    total_img_pixels = 0
+                    max_img_pixels = 0
+                    has_substantial_single_img = False
 
-            if imgs:
-                for img_info in imgs:
-                    try:
-                        base_img = doc.extract_image(img_info[0])
-                        if base_img:
-                            w = base_img.get("width", 0)
-                            h = base_img.get("height", 0)
-                            px = w * h
-                            total_img_pixels += px
-                            if px > max_img_pixels:
-                                max_img_pixels = px
-                            if w >= 300 or h >= 200:
-                                has_substantial_single_img = True
-                    except Exception:
-                        pass
+                    if imgs:
+                        for img_info in imgs:
+                            try:
+                                base_img = doc.extract_image(img_info[0])
+                                if base_img:
+                                    w = base_img.get("width", 0)
+                                    h = base_img.get("height", 0)
+                                    px = w * h
+                                    total_img_pixels += px
+                                    if px > max_img_pixels:
+                                        max_img_pixels = px
+                                    if w >= 300 or h >= 200:
+                                        has_substantial_single_img = True
+                            except Exception:
+                                pass
 
-            # TRƯỜNG HỢP 1: Văn bản native dày dặn, chuẩn xác (>= 300 ký tự và không hỏng font)
-            # -> Giữ nguyên 100%, tốc độ < 0.001s, không tốn tài nguyên OCR.
-            if len(p_text) >= 300 and alnum_chars >= 60 and not is_corrupted:
-                pages_text.append(p_text)
-                continue
+                    # TRƯỜNG HỢP 1: Văn bản native dày dặn, chuẩn xác (>= 300 ký tự và không hỏng font)
+                    # -> Giữ nguyên 100%, tốc độ < 0.001s, không tốn tài nguyên OCR.
+                    if len(p_text) >= 300 and alnum_chars >= 60 and not is_corrupted:
+                        pages_text.append(p_text)
+                        continue
 
-            # TRƯỜNG HỢP 2: Văn bản native ngắn (50 <= len < 300 ký tự)
-            # Kiểm tra xem đây là trang ngắn thật hay trang scan có đóng dấu số trang/header watermark (CafeF, stamp...)
-            if len(p_text) >= 50 and not is_corrupted:
-                if total_img_pixels >= 400_000:
-                    # Trang scan tài liệu nhưng có header/footer điện tử -> Kích hoạt OCR kết hợp
-                    scanned_pages.append(i)
-                    pages_text.append(p_text)
-                else:
-                    # Trang văn bản ngắn tự nhiên (lời đề tặng, trích dẫn) -> Giữ nguyên
-                    pages_text.append(p_text)
-                continue
+                    # TRƯỜNG HỢP 2: Văn bản native ngắn (50 <= len < 300 ký tự)
+                    # Kiểm tra xem đây là trang ngắn thật hay trang scan có đóng dấu số trang/header watermark (CafeF, stamp...)
+                    if len(p_text) >= 50 and not is_corrupted:
+                        if total_img_pixels >= 400_000:
+                            # Trang scan tài liệu nhưng có header/footer điện tử -> Kích hoạt OCR kết hợp
+                            scanned_pages.append(i)
+                            pages_text.append(p_text)
+                        else:
+                            # Trang văn bản ngắn tự nhiên (lời đề tặng, trích dẫn) -> Giữ nguyên
+                            pages_text.append(p_text)
+                        continue
 
-            # TRƯỜNG HỢP 3: Văn bản rất ít (< 50 ký tự) hoặc font bị hỏng
-            # Phân biệt giữa "Trang scan/ghép ảnh" vs "Trang trắng/bìa lót"
-            has_scanned_visual = (
-                total_img_pixels >= 50_000
-                or max_img_pixels >= 30_000
-                or (len(imgs) >= 1 and has_substantial_single_img)
-            )
+                    # TRƯỜNG HỢP 3: Văn bản rất ít (< 50 ký tự) hoặc font bị hỏng
+                    # Phân biệt giữa "Trang scan/ghép ảnh" vs "Trang trắng/bìa lót"
+                    has_scanned_visual = (
+                        total_img_pixels >= 50_000
+                        or max_img_pixels >= 30_000
+                        or (len(imgs) >= 1 and has_substantial_single_img)
+                    )
 
-            if has_scanned_visual or is_corrupted:
-                # Trang scan thực sự (bao gồm trang ghép từ 4-5 ảnh lát cắt như AAA 2018, AAA 2019)
-                scanned_pages.append(i)
-                pages_text.append(p_text)
-            else:
-                # Trang trắng, trang bìa lót không có hình ảnh đáng kể -> Bỏ qua OCR để tiết kiệm tài nguyên
-                pages_text.append(p_text)
+                    if has_scanned_visual or is_corrupted:
+                        # Trang scan thực sự (bao gồm trang ghép từ 4-5 ảnh lát cắt như AAA 2018, AAA 2019)
+                        scanned_pages.append(i)
+                        pages_text.append(p_text)
+                    else:
+                        # Trang trắng, trang bìa lót không có hình ảnh đáng kể -> Bỏ qua OCR để tiết kiệm tài nguyên
+                        pages_text.append(p_text)
+            except Exception as e_scan:
+                logger.warning(f"Lỗi phân tích trang PDF {pdf_path.name}: {e_scan}")
 
         # Phase 2: Chạy OCR an toàn cho các trang scan thực sự
         active_dpi = dpi or self.dpi
@@ -335,14 +338,18 @@ class OCREngine:
                 f"Smart Hybrid: PDF {pdf_path.name} có {len(scanned_pages)}/{len(pages_text)} "
                 f"trang scan thực sự cần OCR (DPI={active_dpi})"
             )
-            ocr_texts = self._ocr_pages(doc, pdf_path, scanned_pages, dpi=active_dpi)
-            for page_idx, ocr_text in zip(scanned_pages, ocr_texts):
-                orig = pages_text[page_idx]
-                if ocr_text and ocr_text.strip():
-                    # Kết hợp native text với ocr text để không bao giờ mất thông tin
-                    pages_text[page_idx] = f"{orig}\n{ocr_text}".strip() if orig else ocr_text.strip()
-
-        doc.close()
+            with PYMUPDF_LOCK:
+                doc_ocr = fitz.open(str(pdf_path))
+            try:
+                ocr_texts = self._ocr_pages(doc_ocr, pdf_path, scanned_pages, dpi=active_dpi)
+                for page_idx, ocr_text in zip(scanned_pages, ocr_texts):
+                    orig = pages_text[page_idx]
+                    if ocr_text and ocr_text.strip():
+                        # Kết hợp native text với ocr text để không bao giờ mất thông tin
+                        pages_text[page_idx] = f"{orig}\n{ocr_text}".strip() if orig else ocr_text.strip()
+            finally:
+                with PYMUPDF_LOCK:
+                    doc_ocr.close()
 
         full_text = "\n\n".join(pages_text)
         full_text = self._clean_text(full_text)
@@ -441,17 +448,18 @@ class OCREngine:
         for i, page_idx in enumerate(page_indices):
             page_start = time.time()
             try:
-                page = doc[page_idx]
-                pix = page.get_pixmap(dpi=active_dpi)
+                with PYMUPDF_LOCK:
+                    page = doc[page_idx]
+                    pix = page.get_pixmap(dpi=active_dpi)
 
-                # Preprocessing
-                if self.preprocess:
-                    img_input = self._preprocess_image(pix)
-                else:
-                    img_input = pix.tobytes("png")
+                    # Preprocessing
+                    if self.preprocess:
+                        img_input = self._preprocess_image(pix)
+                    else:
+                        img_input = pix.tobytes("png")
 
-                # Giải phóng pixmap ngay → tiết kiệm RAM
-                del pix
+                    # Giải phóng pixmap ngay → tiết kiệm RAM
+                    del pix
 
                 # OCR
                 ocr_results = reader.readtext(
@@ -516,16 +524,17 @@ class OCREngine:
         for i, page_idx in enumerate(page_indices):
             page_start = time.time()
             try:
-                page = doc[page_idx]
-                pix = page.get_pixmap(dpi=active_dpi)
+                with PYMUPDF_LOCK:
+                    page = doc[page_idx]
+                    pix = page.get_pixmap(dpi=active_dpi)
 
-                # Preprocessing
-                if self.preprocess:
-                    img = self._preprocess_image_pil(pix)
-                else:
-                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    # Preprocessing
+                    if self.preprocess:
+                        img = self._preprocess_image_pil(pix)
+                    else:
+                        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
 
-                del pix
+                    del pix
 
                 text = pytesseract.image_to_string(
                     img,

@@ -407,34 +407,36 @@ class ZenodoDownloader:
                 import fitz
             if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
                 fitz.TOOLS.mupdf_display_errors(False)
-            doc = fitz.open(path)
-            pages = len(doc)
-            if pages < MIN_BCTN_PAGES:
+            from arminer.utils.pdf_lock import PYMUPDF_LOCK
+            with PYMUPDF_LOCK:
+                doc = fitz.open(path)
+                pages = len(doc)
+                if pages < MIN_BCTN_PAGES:
+                    doc.close()
+                    return False
+
+                # Kiểm tra lệch năm: Nếu bìa ghi rõ BCTN của năm khác khác expected_year
+                if expected_year:
+                    import re
+                    for p_idx in range(min(12, pages)):
+                        txt = doc[p_idx].get_text()
+                        m_yr = re.findall(
+                            r"(?:BÁO\s+CÁO\s+THƯỜNG\s+NIÊN|ANNUAL\s+REPORT)\s*(?:NĂM\s*)?(201\d|202\d)",
+                            txt,
+                            re.IGNORECASE,
+                        )
+                        if m_yr:
+                            detected_yr = int(m_yr[0])
+                            if abs(detected_yr - expected_year) >= 1:
+                                logger.warning(
+                                    f"File {path.name} tải cho năm {expected_year} nhưng tiêu đề xác định BCTN năm {detected_yr}. Từ chối nhận nhầm năm."
+                                )
+                                doc.close()
+                                return False
+                            break
+
                 doc.close()
-                return False
-
-            # Kiểm tra lệch năm: Nếu bìa ghi rõ BCTN của năm khác khác expected_year
-            if expected_year:
-                import re
-                for p_idx in range(min(12, pages)):
-                    txt = doc[p_idx].get_text()
-                    m_yr = re.findall(
-                        r"(?:BÁO\s+CÁO\s+THƯỜNG\s+NIÊN|ANNUAL\s+REPORT)\s*(?:NĂM\s*)?(201\d|202\d)",
-                        txt,
-                        re.IGNORECASE,
-                    )
-                    if m_yr:
-                        detected_yr = int(m_yr[0])
-                        if abs(detected_yr - expected_year) >= 1:
-                            logger.warning(
-                                f"File {path.name} tải cho năm {expected_year} nhưng tiêu đề xác định BCTN năm {detected_yr}. Từ chối nhận nhầm năm."
-                            )
-                            doc.close()
-                            return False
-                        break
-
-            doc.close()
-            return True
+                return True
         except Exception:
             return False
 

@@ -302,10 +302,12 @@ def _scan_directory(dir_path: Path, flex_dict, topic, fuzzy, threshold, output=N
                             import pymupdf as fitz
                         except ImportError:
                             import fitz
-                        doc = fitz.open(f)
-                        text = "\n".join(page.get_text() for page in doc)
-                        n_pages = len(doc)
-                        doc.close()
+                        from arminer.utils.pdf_lock import PYMUPDF_LOCK
+                        with PYMUPDF_LOCK:
+                            doc = fitz.open(f)
+                            text = "\n".join(page.get_text() for page in doc)
+                            n_pages = len(doc)
+                            doc.close()
                     except Exception as e:
                         logger.warning(f"Failed reading {f.name}: {e}")
             else:

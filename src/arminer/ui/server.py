@@ -136,6 +136,7 @@ except ImportError:
 
 if hasattr(fitz, "TOOLS") and hasattr(fitz.TOOLS, "mupdf_display_errors"):
     fitz.TOOLS.mupdf_display_errors(False)
+from arminer.utils.pdf_lock import PYMUPDF_LOCK
 from loguru import logger
 
 from arminer.core.smart_mode import FlexibleDictionary, SmartVariableCalculator, ResearchOutputGenerator
@@ -735,18 +736,20 @@ def _extract_text_cached(file_path: Path, dpi: Optional[int] = None) -> Tuple[st
             # chỉ OCR các trang scan thực sự (báo cáo kiểm toán, bảng biểu có dấu đỏ).
             text = ocr_engine.extract_text(file_path, ocr_mode="smart", dpi=dpi)
             try:
-                doc_probe = fitz.open(file_path)
-                n_pages = len(doc_probe)
-                doc_probe.close()
+                with PYMUPDF_LOCK:
+                    doc_probe = fitz.open(file_path)
+                    n_pages = len(doc_probe)
+                    doc_probe.close()
             except Exception:
                 n_pages = 1
         except Exception as e:
             logger.warning(f"OCREngine exception on {file_path.name}: {e}")
             try:
-                doc = fitz.open(file_path)
-                n_pages = len(doc)
-                text = "\n".join(p.get_text() for p in doc)
-                doc.close()
+                with PYMUPDF_LOCK:
+                    doc = fitz.open(file_path)
+                    n_pages = len(doc)
+                    text = "\n".join(p.get_text() for p in doc)
+                    doc.close()
             except Exception:
                 text = ""
     else:
@@ -982,8 +985,8 @@ def scan_selected_reports(req: ScanSelectedRequest):
     matcher = GenericFuzzyMatcher(dictionary=core_dict, threshold=req.threshold, include_ambiguous=True) if core_dict else None
     calc = SmartVariableCalculator() if flex_dict else None
 
-    # Parallel report mining across available CPU cores
-    workers = min(8, max(2, (os.cpu_count() or 4)))
+    # Parallel report mining across available CPU cores (synchronized via PYMUPDF_LOCK)
+    workers = int(os.environ.get("ARMINER_WORKERS", min(6, max(2, (os.cpu_count() or 4)))))
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = list(executor.map(
             lambda itm: _process_one_bctn(
@@ -1257,7 +1260,7 @@ async def scan_selected_stream(req: ScanSelectedRequest):
         all_context_snippets = []
         all_labor_audits = []
         total = len(target_items)
-        workers = min(8, max(2, (os.cpu_count() or 4)))
+        workers = int(os.environ.get("ARMINER_WORKERS", min(6, max(2, (os.cpu_count() or 4)))))
 
         yield {"event": "progress", "data": json.dumps({
             "phase": "mining", "current": 0, "total": total, "percent": 0.0,

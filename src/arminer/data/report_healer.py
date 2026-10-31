@@ -18,6 +18,7 @@ try:
     import pymupdf as fitz
 except ImportError:
     import fitz
+from arminer.utils.pdf_lock import PYMUPDF_LOCK
 import json
 import os
 from pathlib import Path
@@ -434,9 +435,10 @@ class ReportHealer:
                         pdf_resp = safe_requests_get(norm_pdf_url, timeout=30)
                         if pdf_resp and pdf_resp.status_code == 200 and len(pdf_resp.content) > 300_000:
                             if is_valid_bctn_file(pdf_resp.content):
-                                t_doc = fitz.open(stream=pdf_resp.content, filetype="pdf")
-                                t_pages = len(t_doc)
-                                t_doc.close()
+                                with PYMUPDF_LOCK:
+                                    t_doc = fitz.open(stream=pdf_resp.content, filetype="pdf")
+                                    t_pages = len(t_doc)
+                                    t_doc.close()
                                 logger.info(f"ReportHealer: BCTN {ticker}/{year} TẢI THÀNH CÔNG TỪ IR! ({t_pages} trang, {len(pdf_resp.content)//1024} KB)")
                                 return pdf_resp.content
 
@@ -502,9 +504,10 @@ class ReportHealer:
                 resp = safe_requests_get(u, timeout=8)
                 if resp.status_code == 200 and len(resp.content) > 300_000:
                     try:
-                        doc = fitz.open(stream=resp.content, filetype="pdf")
-                        pages = len(doc)
-                        doc.close()
+                        with PYMUPDF_LOCK:
+                            doc = fitz.open(stream=resp.content, filetype="pdf")
+                            pages = len(doc)
+                            doc.close()
                         if pages >= 10:
                             logger.info(f"ReportHealer: CafeF CDN hit: {u} ({pages} trang, {len(resp.content)//1024} KB)")
                             return resp.content
@@ -599,9 +602,10 @@ class ReportHealer:
             try:
                 from arminer.data.bctn_validator import is_valid_bctn_file
                 if is_valid_bctn_file(pdf_bytes):
-                    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-                    new_pages = len(doc)
-                    doc.close()
+                    with PYMUPDF_LOCK:
+                        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                        new_pages = len(doc)
+                        doc.close()
 
                     # Ghi vào local cache trước
                     local_target.parent.mkdir(parents=True, exist_ok=True)
