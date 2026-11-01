@@ -1800,6 +1800,7 @@ async def scan_folder(
 
 _VNF_AVAILABLE = None
 _CACHED_VNF_TICKERS: Optional[set[str]] = None
+_CACHED_TICKER_ACTIVE_YEARS: Optional[Dict[str, Set[int]]] = None
 
 def _check_vnf():
     """Check if vnfinancialdata is installed and importable."""
@@ -1837,6 +1838,76 @@ def _get_supported_vnf_tickers() -> set[str]:
         logger.warning(f"Could not load BCTC tickers: {e}")
         _CACHED_VNF_TICKERS = set()
     return _CACHED_VNF_TICKERS
+
+
+def _get_ticker_active_years_map() -> Dict[str, Set[int]]:
+    """Return cached mapping of ticker -> set of years the ticker was active on the market."""
+    global _CACHED_TICKER_ACTIVE_YEARS
+    if _CACHED_TICKER_ACTIVE_YEARS is not None:
+        return _CACHED_TICKER_ACTIVE_YEARS
+
+    active_map: Dict[str, Set[int]] = {}
+    try:
+        from pathlib import Path
+        import pandas as pd
+
+        # 1. BCTC parquets (HSX, HNX, UPCOM)
+        bundled_dir = Path(__file__).resolve().parent.parent / "data" / "bctc_data"
+        if not bundled_dir.exists():
+            bundled_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "bctc_data"
+        for ex in ["HSX", "HNX", "UPCOM"]:
+            for stmt in ["balance_sheet", "income_statement"]:
+                p = bundled_dir / stmt / f"{ex}.parquet"
+                if p.exists():
+                    try:
+                        df_sub = pd.read_parquet(p, columns=["ticker", "year"]).dropna().drop_duplicates()
+                        for t, y in df_sub.itertuples(index=False):
+                            t_str = str(t).upper().strip()
+                            try:
+                                active_map.setdefault(t_str, set()).add(int(y))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+
+        # 2. Zenodo BCTN index
+        fixtures_dir = Path(__file__).resolve().parent.parent / "data" / "fixtures"
+        if not fixtures_dir.exists():
+            fixtures_dir = Path(__file__).resolve().parent.parent.parent.parent / "src" / "arminer" / "data" / "fixtures"
+        zen_path = fixtures_dir / "zenodo_master_index.parquet"
+        if zen_path.exists():
+            try:
+                df_zen = pd.read_parquet(zen_path, columns=["ticker_file", "year_full"]).dropna().drop_duplicates()
+                for t, y in df_zen.itertuples(index=False):
+                    t_str = str(t).upper().strip()
+                    try:
+                        active_map.setdefault(t_str, set()).add(int(y))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        # 3. Supplement BCTN index
+        supp_path = fixtures_dir / "bctn_supplement_index.parquet"
+        if supp_path.exists():
+            try:
+                df_supp = pd.read_parquet(supp_path, columns=["ticker_file", "year_full"]).dropna().drop_duplicates()
+                for t, y in df_supp.itertuples(index=False):
+                    t_str = str(t).upper().strip()
+                    try:
+                        active_map.setdefault(t_str, set()).add(int(y))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        _CACHED_TICKER_ACTIVE_YEARS = active_map
+        logger.info(f"Loaded active market year history for {len(_CACHED_TICKER_ACTIVE_YEARS)} tickers")
+    except Exception as e:
+        logger.warning(f"Could not load active market years: {e}")
+        _CACHED_TICKER_ACTIVE_YEARS = active_map
+
+    return _CACHED_TICKER_ACTIVE_YEARS
 
 
 @app.get("/api/financial/supported-tickers")
@@ -3457,61 +3528,140 @@ async def mine_news_stream(req: NewsMineRequest):
         df_articles_raw = pd.DataFrame(all_raw_article_rows) if all_raw_article_rows else pd.DataFrame()
 
         # Ensure year is integer
-        df_articles["year"] = pd.to_numeric(df_articles["year"], errors="coerce")
-        df_articles["year"] = df_articles["year"].fillna(req.year_to or 2026).astype(int)
+        if not df_articles.empty and "year" in df_articles.columns:
+            df_articles["year"] = pd.to_numeric(df_articles["year"], errors="coerce")
+            df_articles["year"] = df_articles["year"].fillna(req.year_to or 2026).astype(int)
 
-        freq_col = next((c for c in df_articles.columns if "frequency" in c.lower() and "log" not in c.lower()), None)
-        dummy_col = next((c for c in df_articles.columns if "dummy" in c.lower() or "mention" in c.lower()), None)
+        freq_col = next((c for c in df_articles.columns if "frequency" in c.lower() and "log" not in c.lower()), "Frequency") if not df_articles.empty else "Frequency"
+        dummy_col = next((c for c in df_articles.columns if "dummy" in c.lower() or "mention" in c.lower()), "Mention") if not df_articles.empty else "Mention"
 
         # Category frequency columns
-        cat_cols = [c for c in df_articles.columns if "_freq" in c.lower() and c != freq_col]
+        cat_cols = [c for c in df_articles.columns if "_freq" in c.lower() and c != freq_col] if not df_articles.empty else []
+        if not cat_cols and flex_dict and flex_dict.categories:
+            p_prefix = (req.topic or "news").lower()
+            cat_cols = [f"{p_prefix}_{c.lower().replace(' ', '_')}_freq" for c in flex_dict.categories]
 
-        # Aggregate strictly by (ticker, year) — standard Firm-Year Panel Data matching other tabs
+        # Existing grouped articles by (ticker, year)
+        existing_grouped: Dict[Tuple[str, int], pd.DataFrame] = {}
+        if not df_articles.empty and "ticker" in df_articles.columns and "year" in df_articles.columns:
+            for (t, y), grp in df_articles.groupby(["ticker", "year"]):
+                try:
+                    existing_grouped[(str(t).upper().strip(), int(y))] = grp
+                except Exception:
+                    pass
+
+        # Identify requested tickers and time window
+        req_y_from = req.year_from or 2020
+        req_y_to = req.year_to or 2026
+
+        target_tickers: List[str] = []
+        if req.tickers:
+            for tk in req.tickers:
+                tk_u = str(tk).upper().strip()
+                if tk_u and tk_u not in target_tickers:
+                    target_tickers.append(tk_u)
+        if not df_articles.empty and "ticker" in df_articles.columns:
+            for tk in df_articles["ticker"].dropna().unique():
+                tk_u = str(tk).upper().strip()
+                if tk_u and tk_u not in target_tickers:
+                    target_tickers.append(tk_u)
+
+        active_map = _get_ticker_active_years_map()
+
+        scraped_years: Dict[str, Set[int]] = {}
+        for art in all_articles:
+            tk = str(art.get("ticker", "")).upper().strip()
+            py = art.get("published_year")
+            if tk and py:
+                try:
+                    scraped_years.setdefault(tk, set()).add(int(py))
+                except Exception:
+                    pass
+
+        # Aggregate strictly by (ticker, year) — standard Academic Firm-Year Panel Data
         firm_year_summary = []
-        for (ticker, yr), grp in df_articles.groupby(["ticker", "year"]):
-            tot_art = len(grp)
-            reprints = grp["reprint_count"] if "reprint_count" in grp else pd.Series(1, index=grp.index)
-            tot_art_full = int(reprints.sum())
-            tot_dup_art = tot_art_full - tot_art
+        for ticker in target_tickers:
+            known_active = active_map.get(ticker, set()) | scraped_years.get(ticker, set())
+            if known_active:
+                first_market_yr = min(known_active)
+                # Firm active range: from max(req_y_from, first_market_yr) to req_y_to
+                # Years prior to first_market_yr are omitted (pre-IPO / not yet founded / not yet on the market)
+                panel_start_yr = max(req_y_from, first_market_yr)
+                panel_years = list(range(panel_start_yr, req_y_to + 1))
+            else:
+                # If ticker has no known market debut year (e.g. unindexed), include full requested span
+                panel_years = list(range(req_y_from, req_y_to + 1))
 
-            tot_words = int(grp["word_count"].sum())
-            tot_words_full = int((grp["word_count"] * reprints).sum())
-            tot_hits = int(grp[freq_col].sum()) if freq_col and freq_col in grp else 0
-            art_with_hits = int((grp[dummy_col] > 0).sum()) if dummy_col and dummy_col in grp else 0
+            for yr in panel_years:
+                grp = existing_grouped.get((ticker, yr))
+                if grp is not None and len(grp) > 0:
+                    tot_art = len(grp)
+                    reprints = grp["reprint_count"] if "reprint_count" in grp else pd.Series(1, index=grp.index)
+                    tot_art_full = int(reprints.sum())
+                    tot_dup_art = tot_art_full - tot_art
 
-            tot_hits_full = int((grp[freq_col] * reprints).sum()) if freq_col and freq_col in grp else tot_hits
-            art_with_hits_full = int(((grp[dummy_col] > 0) * reprints).sum()) if dummy_col and dummy_col in grp else art_with_hits
+                    tot_words = int(grp["word_count"].sum())
+                    tot_words_full = int((grp["word_count"] * reprints).sum())
+                    tot_hits = int(grp[freq_col].sum()) if freq_col and freq_col in grp else 0
+                    art_with_hits = int((grp[dummy_col] > 0).sum()) if dummy_col and dummy_col in grp else 0
 
-            hit_ratio = round(art_with_hits / tot_art * 100, 2) if tot_art > 0 else 0.0
-            hit_ratio_full = round(art_with_hits_full / tot_art_full * 100, 2) if tot_art_full > 0 else 0.0
-            density = round(tot_hits / tot_words * 1000, 4) if tot_words > 0 else 0.0
-            log_freq = round(math.log1p(tot_hits), 4)
-            log_freq_full = round(math.log1p(tot_hits_full), 4)
+                    tot_hits_full = int((grp[freq_col] * reprints).sum()) if freq_col and freq_col in grp else tot_hits
+                    art_with_hits_full = int(((grp[dummy_col] > 0) * reprints).sum()) if dummy_col and dummy_col in grp else art_with_hits
 
-            row_data = {
-                "ticker": ticker,
-                "year": int(yr),
-                "total_articles": tot_art,
-                "total_articles_full": tot_art_full,  # Cột tổng full (trùng lặp vẫn lấy)
-                "duplicate_articles_count": tot_dup_art,  # Số bài trùng lặp / đăng lại
-                "articles_with_hits": art_with_hits,
-                "articles_with_hits_full": art_with_hits_full,
-                "article_hit_ratio_pct": hit_ratio,
-                "article_hit_ratio_full_pct": hit_ratio_full,
-                "total_mentions": tot_hits,
-                "total_mentions_full": tot_hits_full,
-                "log_frequency": log_freq,
-                "log_frequency_full": log_freq_full,
-                "mention": 1 if tot_hits > 0 else 0,
-                "total_words": tot_words,
-                "total_words_full": tot_words_full,
-                "keyword_density_per_1k": density,
-            }
-            for cc in cat_cols:
-                row_data[cc] = int(grp[cc].sum())
-                row_data[f"{cc}_full"] = int((grp[cc] * reprints).sum())
+                    hit_ratio = round(art_with_hits / tot_art * 100, 2) if tot_art > 0 else 0.0
+                    hit_ratio_full = round(art_with_hits_full / tot_art_full * 100, 2) if tot_art_full > 0 else 0.0
+                    density = round(tot_hits / tot_words * 1000, 4) if tot_words > 0 else 0.0
+                    log_freq = round(math.log1p(tot_hits), 4)
+                    log_freq_full = round(math.log1p(tot_hits_full), 4)
 
-            firm_year_summary.append(row_data)
+                    row_data = {
+                        "ticker": ticker,
+                        "year": int(yr),
+                        "total_articles": tot_art,
+                        "total_articles_full": tot_art_full,
+                        "duplicate_articles_count": tot_dup_art,
+                        "articles_with_hits": art_with_hits,
+                        "articles_with_hits_full": art_with_hits_full,
+                        "article_hit_ratio_pct": hit_ratio,
+                        "article_hit_ratio_full_pct": hit_ratio_full,
+                        "total_mentions": tot_hits,
+                        "total_mentions_full": tot_hits_full,
+                        "log_frequency": log_freq,
+                        "log_frequency_full": log_freq_full,
+                        "mention": 1 if tot_hits > 0 else 0,
+                        "total_words": tot_words,
+                        "total_words_full": tot_words_full,
+                        "keyword_density_per_1k": density,
+                    }
+                    for cc in cat_cols:
+                        row_data[cc] = int(grp[cc].sum()) if cc in grp else 0
+                        row_data[f"{cc}_full"] = int((grp[cc] * reprints).sum()) if cc in grp else 0
+                else:
+                    # Academic Structural Zero: Active listed firm, but 0 media articles found in year yr
+                    row_data = {
+                        "ticker": ticker,
+                        "year": int(yr),
+                        "total_articles": 0,
+                        "total_articles_full": 0,
+                        "duplicate_articles_count": 0,
+                        "articles_with_hits": 0,
+                        "articles_with_hits_full": 0,
+                        "article_hit_ratio_pct": 0.0,
+                        "article_hit_ratio_full_pct": 0.0,
+                        "total_mentions": 0,
+                        "total_mentions_full": 0,
+                        "log_frequency": 0.0,
+                        "log_frequency_full": 0.0,
+                        "mention": 0,
+                        "total_words": 0,
+                        "total_words_full": 0,
+                        "keyword_density_per_1k": 0.0,
+                    }
+                    for cc in cat_cols:
+                        row_data[cc] = 0
+                        row_data[f"{cc}_full"] = 0
+
+                firm_year_summary.append(row_data)
 
         df_firm_year = pd.DataFrame(firm_year_summary)
         if not df_firm_year.empty:
