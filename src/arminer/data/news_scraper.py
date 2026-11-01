@@ -1409,24 +1409,41 @@ class MultiSourceNewsAggregator:
                     except Exception as e:
                         logger.warning(f"Lỗi hoàn tất thu thập link từ {future_to_src[fut]}: {e}")
 
-        # Interleave links from sources to achieve a balanced and diverse aggregation
-        all_candidate_links: List[Tuple[str, str]] = []
+        # Phase 1.5: Sequence candidate links with absolute precedence for company_website (Official Source)
+        primary_candidate_links: List[Tuple[str, str]] = []
+        secondary_candidate_links: List[Tuple[str, str]] = []
         seen_urls: Set[str] = set()
-        source_keys = list(links_by_source.keys())
-        max_len = max([len(v) for v in links_by_source.values()]) if links_by_source else 0
 
-        for idx in range(max_len):
-            for s_key in source_keys:
+        # 1. Company Website / IR links FIRST (Authoritative Primary Source)
+        if "company_website" in links_by_source:
+            for u in links_by_source["company_website"]:
+                if u not in seen_urls:
+                    seen_urls.add(u)
+                    primary_candidate_links.append((u, "company_website"))
+
+        # 2. Custom URLs
+        if "custom" in links_by_source:
+            for u in links_by_source["custom"]:
+                if u not in seen_urls:
+                    seen_urls.add(u)
+                    primary_candidate_links.append((u, "custom"))
+
+        # 3. Third-party portals (CafeF, TinNhanhCK, VnEconomy, etc.) interleaved afterwards
+        other_keys = [k for k in links_by_source.keys() if k not in ("company_website", "custom")]
+        max_other = max([len(links_by_source[k]) for k in other_keys]) if other_keys else 0
+        for idx in range(max_other):
+            for s_key in other_keys:
                 s_links = links_by_source[s_key]
                 if idx < len(s_links):
                     u = s_links[idx]
                     if u not in seen_urls:
                         seen_urls.add(u)
-                        all_candidate_links.append((u, s_key))
+                        secondary_candidate_links.append((u, s_key))
 
         # Dynamic backfill expansion if target_articles is specified and candidate links are low
-        if target_articles is not None and len(all_candidate_links) < (target_articles * 2):
-            needed = (target_articles * 2) - len(all_candidate_links)
+        total_queued_links = len(primary_candidate_links) + len(secondary_candidate_links)
+        if target_articles is not None and total_queued_links < (target_articles * 2):
+            needed = (target_articles * 2) - total_queued_links
             for backfill_src, scraper_fn in [
                 ("cafef", lambda: CafeFScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
                 ("cafebiz", lambda: CafeBizScraper.get_article_links(t, max_links=(target_per_source or 10) + needed + 10)),
@@ -1439,104 +1456,143 @@ class MultiSourceNewsAggregator:
                     for u in extra_links:
                         if u not in seen_urls:
                             seen_urls.add(u)
-                            all_candidate_links.append((u, f"{backfill_src} (bù đắp)"))
-                            if len(all_candidate_links) >= (target_articles * 2):
+                            secondary_candidate_links.append((u, f"{backfill_src} (bù đắp)"))
+                            if (len(primary_candidate_links) + len(secondary_candidate_links)) >= (target_articles * 2):
                                 break
-                if len(all_candidate_links) >= (target_articles * 2):
+                if (len(primary_candidate_links) + len(secondary_candidate_links)) >= (target_articles * 2):
                     break
 
-        # Phase 2: Fetch articles content concurrently with connection pooling
-        total_links = len(all_candidate_links)
-        logger.info(f"Starting content extraction for {t}: {total_links} links queued")
-        if progress_cb:
-            progress_cb(f"Đang phân tích & trích xuất nội dung {total_links} link cho {t}...", 0, target_articles or total_links)
+        # Phase 2: Fetch articles content in two distinct priority passes:
+        # Pass 1: Official company website & custom URLs (Top authoritative priority)
+        # Pass 2: Secondary financial media portals
+        total_links = len(primary_candidate_links) + len(secondary_candidate_links)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
-            future_to_meta = {
-                executor.submit(self.fetch_article, url, src, t): (url, src)
-                for url, src in all_candidate_links
-            }
+        def _process_link_batch(candidate_links: List[Tuple[str, str]], phase_name: str):
+            if not candidate_links:
+                return
+            if target_articles is not None and len(collected_articles) >= target_articles:
+                return
 
-            for future in concurrent.futures.as_completed(future_to_meta):
-                url, src = future_to_meta[future]
-                try:
-                    art = future.result()
-                    if art and art.get("title") and art.get("text"):
-                        # Year range filter check
-                        art_year = art.get("published_year")
-                        if not art_year:
-                            art_year = UniversalNewsExtractor.parse_year(
-                                art.get("published_date", ""),
-                                art.get("url", ""),
-                                art.get("text", ""),
-                            )
+            batch_count = len(candidate_links)
+            logger.info(f"Starting content extraction for {t} ({phase_name}): {batch_count} links queued")
+            if progress_cb:
+                progress_cb(f"Đang trích xuất {phase_name} ({batch_count} link) cho {t}...", len(collected_articles), target_articles or total_links)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+                future_to_meta = {
+                    executor.submit(self.fetch_article, url, src, t): (url, src)
+                    for url, src in candidate_links
+                }
+
+                for future in concurrent.futures.as_completed(future_to_meta):
+                    url, src = future_to_meta[future]
+                    try:
+                        art = future.result()
+                        if art and art.get("title") and art.get("text"):
+                            # Year range filter check
+                            art_year = art.get("published_year")
+                            if not art_year:
+                                art_year = UniversalNewsExtractor.parse_year(
+                                    art.get("published_date", ""),
+                                    art.get("url", ""),
+                                    art.get("text", ""),
+                                )
+                                if art_year:
+                                    art["published_year"] = art_year
+
                             if art_year:
-                                art["published_year"] = art_year
+                                if year_from is not None and art_year < year_from:
+                                    continue
+                                if year_to is not None and art_year > year_to:
+                                    continue
 
-                        if art_year:
-                            if year_from is not None and art_year < year_from:
+                            # 1. Strict Company Confirmation
+                            if not is_company_confirmed(art, t, company_name, clean_name, brand_tokens):
+                                logger.debug(f"Article dropped (unconfirmed company): {art.get('title')}")
                                 continue
-                            if year_to is not None and art_year > year_to:
+
+                            # 2. Keyword Confirmation
+                            if not is_keyword_confirmed(art, kw_list):
+                                logger.debug(f"Article dropped (missing required keywords): {art.get('title')}")
                                 continue
 
-                        # 1. Strict Company Confirmation
-                        if not is_company_confirmed(art, t, company_name, clean_name, brand_tokens):
-                            logger.debug(f"Article dropped (unconfirmed company): {art.get('title')}")
-                            continue
+                            art["company_confirmed"] = True
+                            art["reprint_count"] = 1
+                            art["syndicated_sources"] = [src]
+                            art["duplicate_articles"] = []
 
-                        # 2. Keyword Confirmation
-                        if not is_keyword_confirmed(art, kw_list):
-                            logger.debug(f"Article dropped (missing required keywords): {art.get('title')}")
-                            continue
+                            # 3. Cross-Source Semantic Content Deduplication
+                            existing_dup = find_existing_duplicate(art)
+                            if existing_dup:
+                                existing_dup["reprint_count"] = existing_dup.get("reprint_count", 1) + 1
+                                existing_sources = existing_dup.setdefault("syndicated_sources", [existing_dup.get("news_source", "")])
+                                if src not in existing_sources:
+                                    existing_sources.append(src)
 
-                        art["company_confirmed"] = True
-                        art["reprint_count"] = 1
-                        art["syndicated_sources"] = [src]
-                        art["duplicate_articles"] = []
+                                # Authoritative Promotion: If new article is from official website, promote it to primary!
+                                if src == "company_website" and existing_dup.get("news_source") != "company_website":
+                                    existing_dup.setdefault("duplicate_articles", []).append({
+                                        "ticker": t,
+                                        "company_name": company_name,
+                                        "year": existing_dup.get("published_year"),
+                                        "news_source": existing_dup.get("news_source", ""),
+                                        "title": existing_dup.get("title", ""),
+                                        "published_date": existing_dup.get("published_date", ""),
+                                        "url": existing_dup.get("url", ""),
+                                        "word_count": existing_dup.get("word_count", 0),
+                                        "is_duplicate": True,
+                                        "primary_source": "company_website",
+                                        "primary_title": art.get("title", ""),
+                                    })
+                                    existing_dup["news_source"] = "company_website"
+                                    existing_dup["title"] = art.get("title") or existing_dup.get("title")
+                                    existing_dup["url"] = art.get("url") or existing_dup.get("url")
+                                    existing_dup["published_date"] = art.get("published_date") or existing_dup.get("published_date")
+                                    if len(art.get("text", "")) >= len(existing_dup.get("text", "")) - 100:
+                                        existing_dup["text"] = art["text"]
+                                        existing_dup["word_count"] = art.get("word_count", existing_dup.get("word_count", 0))
+                                else:
+                                    existing_dup.setdefault("duplicate_articles", []).append({
+                                        "ticker": t,
+                                        "company_name": company_name,
+                                        "year": art_year,
+                                        "news_source": src,
+                                        "title": art.get("title", ""),
+                                        "published_date": art.get("published_date", ""),
+                                        "url": art.get("url", ""),
+                                        "word_count": art.get("word_count", 0),
+                                        "is_duplicate": True,
+                                        "primary_source": existing_dup.get("news_source", ""),
+                                        "primary_title": existing_dup.get("title", ""),
+                                    })
+                                    if len(art.get("text", "")) > len(existing_dup.get("text", "")) + 150:
+                                        existing_dup["text"] = art["text"]
+                                        existing_dup["word_count"] = art.get("word_count", existing_dup.get("word_count", 0))
+                                logger.debug(f"Article deduplicated: '{art.get('title')[:40]}' ({src} -> {existing_dup.get('news_source')})")
+                                continue
 
-                        # 3. Cross-Source Semantic Content Deduplication
-                        existing_dup = find_existing_duplicate(art)
-                        if existing_dup:
-                            existing_dup["reprint_count"] = existing_dup.get("reprint_count", 1) + 1
-                            existing_sources = existing_dup.setdefault("syndicated_sources", [existing_dup.get("news_source", "")])
-                            if src not in existing_sources:
-                                existing_sources.append(src)
-                            existing_dup.setdefault("duplicate_articles", []).append({
-                                "ticker": t,
-                                "company_name": company_name,
-                                "year": art_year,
-                                "news_source": src,
-                                "title": art.get("title", ""),
-                                "published_date": art.get("published_date", ""),
-                                "url": art.get("url", ""),
-                                "word_count": art.get("word_count", 0),
-                                "is_duplicate": True,
-                                "primary_source": existing_dup.get("news_source", ""),
-                                "primary_title": existing_dup.get("title", ""),
-                            })
-                            # Retain the version with richer content length
-                            if len(art.get("text", "")) > len(existing_dup.get("text", "")) + 150:
-                                existing_dup["text"] = art["text"]
-                                existing_dup["word_count"] = art.get("word_count", existing_dup.get("word_count", 0))
-                            logger.debug(f"Article deduplicated: '{art.get('title')[:40]}' ({src} -> {existing_dup.get('news_source')})")
-                            continue
+                            collected_articles.append(art)
+                            if progress_cb:
+                                progress_cb(
+                                    f"Đã thu thập [{len(collected_articles)}]: {art['title'][:40]}... ({src})",
+                                    len(collected_articles),
+                                    target_articles or total_links,
+                                )
 
-                        collected_articles.append(art)
-                        if progress_cb:
-                            progress_cb(
-                                f"Đã thu thập [{len(collected_articles)}]: {art['title'][:40]}... ({src})",
-                                len(collected_articles),
-                                target_articles or total_links,
-                            )
+                            if target_articles is not None and target_articles > 0:
+                                if len(collected_articles) >= target_articles:
+                                    for rem_fut in future_to_meta:
+                                        if not rem_fut.done():
+                                            rem_fut.cancel()
+                                    break
+                    except Exception as e:
+                        logger.debug(f"Error processing article {url}: {e}")
 
-                        if target_articles is not None and target_articles > 0:
-                            if len(collected_articles) >= target_articles:
-                                for rem_fut in future_to_meta:
-                                    if not rem_fut.done():
-                                        rem_fut.cancel()
-                                break
-                except Exception as e:
-                    logger.debug(f"Error processing article {url}: {e}")
+        # Pass 1: Extract official company website & custom URLs first
+        _process_link_batch(primary_candidate_links, "website chính thức DN")
+
+        # Pass 2: Extract secondary media portals afterwards
+        _process_link_batch(secondary_candidate_links, "cổng tin tức tài chính")
 
         logger.info(f"Finished crawling for {t}: collected {len(collected_articles)} verified articles")
         return collected_articles
