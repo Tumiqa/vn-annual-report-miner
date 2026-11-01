@@ -3278,7 +3278,7 @@ async def mine_news_stream(req: NewsMineRequest):
                     year_from=req.year_from,
                     year_to=req.year_to,
                     custom_urls=req.custom_urls,
-                    keywords=topic_kws if topic_kws else None,
+                    keywords=None,  # Cào FULL toàn bộ bài báo của DN trong khoảng năm (không lọc bỏ theo từ khóa từ điển lúc cào)
                     progress_cb=_thread_cb,
                 )
             )

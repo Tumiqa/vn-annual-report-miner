@@ -578,7 +578,7 @@ class CafeFScraper:
 
         # 2. Paginated search
         page = 1
-        max_pages = 50 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = 100 if max_links is None else max(1, (max_links + 19) // 20)
 
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
@@ -661,7 +661,7 @@ class CafeBizScraper:
 
         # 2. Search
         page = 1
-        max_pages = 50 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = 100 if max_links is None else max(1, (max_links + 19) // 20)
 
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
@@ -724,7 +724,7 @@ class VnExpressScraper:
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = 50 if max_links is None else max(1, (max_links + 14) // 15)
+        max_pages = 100 if max_links is None else max(1, (max_links + 14) // 15)
 
         for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
             page = 1
@@ -770,7 +770,7 @@ class VietnamNetScraper:
         links: List[str] = []
         t_clean = ticker.lower().strip()
         page = 1
-        max_pages = 50 if max_links is None else max(1, (max_links + 14) // 15)
+        max_pages = 100 if max_links is None else max(1, (max_links + 14) // 15)
 
         for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
             page = 1
@@ -837,7 +837,7 @@ class TinNhanhCKScraper:
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = 50 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = 100 if max_links is None else max(1, (max_links + 19) // 20)
 
         while (max_links is None or len(links) < max_links) and page <= max_pages:
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
@@ -878,8 +878,8 @@ class VnEconomyScraper:
         links: List[str] = []
         t_clean = ticker.lower().strip()
         page = 1
-        # Deep pagination: up to 50 pages if max_links is None, or until max_links is reached
-        max_pages = 50 if max_links is None else max(1, (max_links + 9) // 10)
+        # Deep pagination: up to 100 pages if max_links is None, or until max_links is reached
+        max_pages = 100 if max_links is None else max(1, (max_links + 9) // 10)
 
         # 1. Search with exact results container selection
         while (max_links is None or len(links) < max_links) and page <= max_pages:
