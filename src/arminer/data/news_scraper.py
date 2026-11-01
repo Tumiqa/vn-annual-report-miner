@@ -578,9 +578,9 @@ class CafeFScraper:
 
         # 2. Paginated search
         page = 1
-        max_pages = 100 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = None if max_links is None else max(1, (max_links + 19) // 20)
 
-        while (max_links is None or len(links) < max_links) and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and (max_pages is None or page <= max_pages):
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -661,9 +661,9 @@ class CafeBizScraper:
 
         # 2. Search
         page = 1
-        max_pages = 100 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = None if max_links is None else max(1, (max_links + 19) // 20)
 
-        while (max_links is None or len(links) < max_links) and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and (max_pages is None or page <= max_pages):
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -724,11 +724,11 @@ class VnExpressScraper:
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = 100 if max_links is None else max(1, (max_links + 14) // 15)
+        max_pages = None if max_links is None else max(1, (max_links + 14) // 15)
 
         for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
             page = 1
-            while (max_links is None or len(links) < max_links) and page <= max_pages:
+            while (max_links is None or len(links) < max_links) and (max_pages is None or page <= max_pages):
                 url = search_template.format(ticker=urllib.parse.quote(ticker), page=page)
                 try:
                     resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -770,11 +770,11 @@ class VietnamNetScraper:
         links: List[str] = []
         t_clean = ticker.lower().strip()
         page = 1
-        max_pages = 100 if max_links is None else max(1, (max_links + 14) // 15)
+        max_pages = None if max_links is None else max(1, (max_links + 14) // 15)
 
         for search_template in [cls.BASE_SEARCH_URL, cls.GENERAL_SEARCH_URL]:
             page = 1
-            while (max_links is None or len(links) < max_links) and page <= max_pages:
+            while (max_links is None or len(links) < max_links) and (max_pages is None or page <= max_pages):
                 url = search_template.format(ticker=urllib.parse.quote(ticker), page=page)
                 try:
                     resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -837,9 +837,9 @@ class TinNhanhCKScraper:
     def get_article_links(cls, ticker: str, max_links: Optional[int] = None) -> List[str]:
         links: List[str] = []
         page = 1
-        max_pages = 100 if max_links is None else max(1, (max_links + 19) // 20)
+        max_pages = None if max_links is None else max(1, (max_links + 19) // 20)
 
-        while (max_links is None or len(links) < max_links) and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and (max_pages is None or page <= max_pages):
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -878,11 +878,11 @@ class VnEconomyScraper:
         links: List[str] = []
         t_clean = ticker.lower().strip()
         page = 1
-        # Deep pagination: up to 100 pages if max_links is None, or until max_links is reached
-        max_pages = 100 if max_links is None else max(1, (max_links + 9) // 10)
+        # Exhaustive pagination: unlimited if max_links is None, or until max_links is reached
+        max_pages = None if max_links is None else max(1, (max_links + 9) // 10)
 
         # 1. Search with exact results container selection
-        while (max_links is None or len(links) < max_links) and page <= max_pages:
+        while (max_links is None or len(links) < max_links) and (max_pages is None or page <= max_pages):
             url = cls.BASE_SEARCH_URL.format(ticker=urllib.parse.quote(ticker), page=page)
             try:
                 resp = safe_requests_get(url, headers=DEFAULT_HEADERS, timeout=8)
@@ -994,7 +994,7 @@ class CompanyWebsiteScraper:
                         if any(k in l.lower() for k in ["news", "tin-tuc", "post", "article", "thong-bao"])
                         and l.endswith(".xml")
                     ]
-                    for child_sm in child_news_sitemaps[:3]:
+                    for child_sm in child_news_sitemaps:
                         try:
                             r_c = safe_requests_get(child_sm, headers=DEFAULT_HEADERS, timeout=4)
                             if r_c.status_code == 200:
@@ -1024,12 +1024,11 @@ class CompanyWebsiteScraper:
                         if max_links is not None and len(article_links) >= max_links:
                             break
 
-                    # Add general links up to quota or reasonable safety limit
-                    gen_limit = max_links if max_links is not None else 100
+                    # Add general links (unlimited when max_links is None)
                     for l in general_locs:
-                        if len(article_links) >= (gen_limit + len(priority_locs)):
-                            break
                         article_links.add(l)
+                        if max_links is not None and len(article_links) >= max_links:
+                            break
 
                     if len(article_links) > 0:
                         logger.info(f"Sitemap auto-discovery for {ticker} ({sm_url}) selected {len(article_links)} news URLs (priority: {len(priority_locs)})")
@@ -1351,11 +1350,11 @@ class MultiSourceNewsAggregator:
             if clean_name and clean_name.lower() != t.lower():
                 queries.append(clean_name)
             if brand_tokens:
-                for bt in brand_tokens[:2]:
+                for bt in brand_tokens:
                     if bt.lower() not in [q.lower() for q in queries]:
                         queries.append(bt)
             if kw_list:
-                for kw in kw_list[:2]:
+                for kw in kw_list:
                     combo = f"{t} {kw}"
                     if combo.lower() not in [q.lower() for q in queries]:
                         queries.append(combo)
