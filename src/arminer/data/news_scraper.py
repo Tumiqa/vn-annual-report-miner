@@ -1489,12 +1489,31 @@ class MultiSourceNewsAggregator:
                             logger.debug(f"Article dropped (missing required keywords): {art.get('title')}")
                             continue
 
+                        art["company_confirmed"] = True
+                        art["reprint_count"] = 1
+                        art["syndicated_sources"] = [src]
+                        art["duplicate_articles"] = []
+
                         # 3. Cross-Source Semantic Content Deduplication
                         existing_dup = find_existing_duplicate(art)
                         if existing_dup:
+                            existing_dup["reprint_count"] = existing_dup.get("reprint_count", 1) + 1
                             existing_sources = existing_dup.setdefault("syndicated_sources", [existing_dup.get("news_source", "")])
                             if src not in existing_sources:
                                 existing_sources.append(src)
+                            existing_dup.setdefault("duplicate_articles", []).append({
+                                "ticker": t,
+                                "company_name": company_name,
+                                "year": art_year,
+                                "news_source": src,
+                                "title": art.get("title", ""),
+                                "published_date": art.get("published_date", ""),
+                                "url": art.get("url", ""),
+                                "word_count": art.get("word_count", 0),
+                                "is_duplicate": True,
+                                "primary_source": existing_dup.get("news_source", ""),
+                                "primary_title": existing_dup.get("title", ""),
+                            })
                             # Retain the version with richer content length
                             if len(art.get("text", "")) > len(existing_dup.get("text", "")) + 150:
                                 existing_dup["text"] = art["text"]
@@ -1502,7 +1521,6 @@ class MultiSourceNewsAggregator:
                             logger.debug(f"Article deduplicated: '{art.get('title')[:40]}' ({src} -> {existing_dup.get('news_source')})")
                             continue
 
-                        art["company_confirmed"] = True
                         collected_articles.append(art)
                         if progress_cb:
                             progress_cb(

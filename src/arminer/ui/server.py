@@ -3342,6 +3342,8 @@ async def mine_news_stream(req: NewsMineRequest):
                 "company_name": art.get("company_name") or (news_resolver.get_company(art["ticker"]) or {}).get("name", ""),
                 "year": art.get("published_year") or "",
                 "news_source": art.get("news_source", ""),
+                "reprint_count": int(art.get("reprint_count", 1)),
+                "syndicated_sources": ", ".join(art.get("syndicated_sources", [art.get("news_source", "")])),
                 "title": art.get("title", ""),
                 "published_date": art.get("published_date", ""),
                 "url": art.get("url", ""),
@@ -3390,6 +3392,7 @@ async def mine_news_stream(req: NewsMineRequest):
         article_rows = []
         all_snippets = []
         all_raw_keywords = []
+        completed_results = []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_art = {
@@ -3402,9 +3405,11 @@ async def mine_news_stream(req: NewsMineRequest):
                 completed_count += 1
                 try:
                     res = fut.result()
+                    art_ref = future_to_art[fut]
                     article_rows.append(res["row"])
                     all_raw_keywords.extend(res["raw_keywords"])
                     all_snippets.extend(res["snippets"])
+                    completed_results.append((res["row"], art_ref))
                 except Exception as exc:
                     logger.warning(f"Lỗi khai phá bài báo: {exc}")
 
@@ -3421,6 +3426,36 @@ async def mine_news_stream(req: NewsMineRequest):
 
         df_articles = pd.DataFrame(article_rows)
 
+        # Collect raw article rows including duplicate instances for Articles_Raw_Full sheet
+        all_raw_article_rows = []
+        for a_row, art in completed_results:
+            p_dict = dict(a_row)
+            p_dict["is_duplicate"] = False
+            p_dict["primary_source"] = a_row.get("news_source", "")
+            all_raw_article_rows.append(p_dict)
+
+            for dup in art.get("duplicate_articles", []):
+                dup_row = {
+                    "ticker": dup.get("ticker", a_row.get("ticker")),
+                    "company_name": dup.get("company_name", a_row.get("company_name")),
+                    "year": dup.get("year", a_row.get("year")),
+                    "news_source": dup.get("news_source", ""),
+                    "reprint_count": 1,
+                    "syndicated_sources": dup.get("news_source", ""),
+                    "title": dup.get("title", ""),
+                    "published_date": dup.get("published_date", ""),
+                    "url": dup.get("url", ""),
+                    "word_count": dup.get("word_count", 0),
+                    "is_duplicate": True,
+                    "primary_source": dup.get("primary_source", a_row.get("news_source", "")),
+                }
+                for k, v in a_row.items():
+                    if k not in dup_row and k != "is_duplicate":
+                        dup_row[k] = v
+                all_raw_article_rows.append(dup_row)
+
+        df_articles_raw = pd.DataFrame(all_raw_article_rows) if all_raw_article_rows else pd.DataFrame()
+
         # Ensure year is integer
         df_articles["year"] = pd.to_numeric(df_articles["year"], errors="coerce")
         df_articles["year"] = df_articles["year"].fillna(req.year_to or 2026).astype(int)
@@ -3435,27 +3470,46 @@ async def mine_news_stream(req: NewsMineRequest):
         firm_year_summary = []
         for (ticker, yr), grp in df_articles.groupby(["ticker", "year"]):
             tot_art = len(grp)
+            reprints = grp["reprint_count"] if "reprint_count" in grp else pd.Series(1, index=grp.index)
+            tot_art_full = int(reprints.sum())
+            tot_dup_art = tot_art_full - tot_art
+
             tot_words = int(grp["word_count"].sum())
+            tot_words_full = int((grp["word_count"] * reprints).sum())
             tot_hits = int(grp[freq_col].sum()) if freq_col and freq_col in grp else 0
             art_with_hits = int((grp[dummy_col] > 0).sum()) if dummy_col and dummy_col in grp else 0
+
+            tot_hits_full = int((grp[freq_col] * reprints).sum()) if freq_col and freq_col in grp else tot_hits
+            art_with_hits_full = int(((grp[dummy_col] > 0) * reprints).sum()) if dummy_col and dummy_col in grp else art_with_hits
+
             hit_ratio = round(art_with_hits / tot_art * 100, 2) if tot_art > 0 else 0.0
+            hit_ratio_full = round(art_with_hits_full / tot_art_full * 100, 2) if tot_art_full > 0 else 0.0
             density = round(tot_hits / tot_words * 1000, 4) if tot_words > 0 else 0.0
             log_freq = round(math.log1p(tot_hits), 4)
+            log_freq_full = round(math.log1p(tot_hits_full), 4)
 
             row_data = {
                 "ticker": ticker,
                 "year": int(yr),
                 "total_articles": tot_art,
+                "total_articles_full": tot_art_full,  # Cột tổng full (trùng lặp vẫn lấy)
+                "duplicate_articles_count": tot_dup_art,  # Số bài trùng lặp / đăng lại
                 "articles_with_hits": art_with_hits,
+                "articles_with_hits_full": art_with_hits_full,
                 "article_hit_ratio_pct": hit_ratio,
+                "article_hit_ratio_full_pct": hit_ratio_full,
                 "total_mentions": tot_hits,
+                "total_mentions_full": tot_hits_full,
                 "log_frequency": log_freq,
+                "log_frequency_full": log_freq_full,
                 "mention": 1 if tot_hits > 0 else 0,
                 "total_words": tot_words,
+                "total_words_full": tot_words_full,
                 "keyword_density_per_1k": density,
             }
             for cc in cat_cols:
                 row_data[cc] = int(grp[cc].sum())
+                row_data[f"{cc}_full"] = int((grp[cc] * reprints).sum())
 
             firm_year_summary.append(row_data)
 
@@ -3478,6 +3532,8 @@ async def mine_news_stream(req: NewsMineRequest):
             with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
                 df_firm_year.to_excel(writer, sheet_name="Firm_Year_Panel", index=False)
                 df_articles.to_excel(writer, sheet_name="Articles_Detail", index=False)
+                if not df_articles_raw.empty:
+                    df_articles_raw.to_excel(writer, sheet_name="Articles_Raw_Full", index=False)
                 if not raw_df.empty:
                     raw_df.to_excel(writer, sheet_name="Raw_Keywords", index=False)
                 # Company_Info sheet
